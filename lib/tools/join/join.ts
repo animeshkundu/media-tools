@@ -24,10 +24,8 @@ function orderedTracks(
     if (!Number.isInteger(index) || index < 0 || index >= tracks.length || seen.has(index)) {
       throw new Error('Track order must include every input exactly once.');
     }
-    const track = tracks[index];
-    if (!track) throw new Error('Track order references a missing input.');
     seen.add(index);
-    return track;
+    return tracks[index]!;
   });
 }
 
@@ -87,9 +85,7 @@ export function joinPcm(
   const sampleRate = Math.max(...arrangedTracks.map((track) => track.sampleRate));
   const channelCount = Math.max(...arrangedTracks.map((track) => track.channelData.length));
   const normalizedLengths = arrangedTracks.map((track, index) => {
-    const frameCount = frameCounts[index];
-    if (frameCount === undefined) throw new Error('Track frame count is unavailable.');
-    return normalizedFrameCount(frameCount, track.sampleRate, sampleRate);
+    return normalizedFrameCount(frameCounts[index]!, track.sampleRate, sampleRate);
   });
   const totalFrames = normalizedLengths.reduce((total, length) => {
     const next = total + length;
@@ -101,10 +97,8 @@ export function joinPcm(
 
   const channelData = Array.from({ length: channelCount }, () => new Float32Array(totalFrames));
   let outputOffset = 0;
-
   arrangedTracks.forEach((track, trackIndex) => {
-    const outputFrames = normalizedLengths[trackIndex];
-    if (outputFrames === undefined) throw new Error('Normalized track length is unavailable.');
+    const outputFrames = normalizedLengths[trackIndex]!;
     for (let channelIndex = 0; channelIndex < channelCount; channelIndex += 1) {
       // Falling back to channel zero intentionally duplicates mono input into stereo output.
       const source = track.channelData[channelIndex] ?? track.channelData[0];
