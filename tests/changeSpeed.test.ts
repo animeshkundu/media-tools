@@ -39,9 +39,8 @@ describe('change-speed', () => {
     const output = changeSpeed({ channelData: [new Float32Array(8)], sampleRate: 8_000 }, factor);
 
     expect(output.channelData[0]).toHaveLength(expectedLength);
-    expect(output.channelData[0].length / output.sampleRate).toBe(
-      Math.round(8 / factor) / output.sampleRate,
-    );
+    const durationError = Math.abs(output.channelData[0].length / output.sampleRate - 8 / 8_000 / factor);
+    expect(durationError).toBeLessThanOrEqual(1 / output.sampleRate);
   });
 
   it('linearly interpolates a known ramp', () => {

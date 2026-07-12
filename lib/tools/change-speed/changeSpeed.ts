@@ -43,8 +43,8 @@ export function changeSpeed(source: PcmAudio, factor: number): PcmAudio {
       const leftIndex = Math.max(0, Math.floor(sourcePosition));
       const rightIndex = Math.min(leftIndex + 1, inputLength - 1);
       const fraction = sourcePosition - leftIndex;
-      const left = input[leftIndex];
-      output[outputIndex] = left + (input[rightIndex] - left) * fraction;
+      const leftSample = input[leftIndex];
+      output[outputIndex] = leftSample + (input[rightIndex] - leftSample) * fraction;
     }
     return output;
   });
