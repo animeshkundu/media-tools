@@ -50,9 +50,11 @@ export function validateManifest(manifest, source) {
     if (!actualValues) {
       throw new Error(`${source}: missing CSP directive ${name}`);
     }
+    const unexpectedValues = actualValues.filter((value) => !expectedValues.includes(value));
     if (
       actualValues.length !== expectedValues.length ||
-      expectedValues.some((value) => !actualValues.includes(value))
+      expectedValues.some((value) => !actualValues.includes(value)) ||
+      unexpectedValues.length > 0
     ) {
       throw new Error(
         `${source}: ${name} must be ${expectedValues.join(' ')}, found ${actualValues.join(' ')}`,
