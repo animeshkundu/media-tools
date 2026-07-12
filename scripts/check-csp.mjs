@@ -17,6 +17,7 @@ const EXPECTED_DIRECTIVES = new Map([
   ['base-uri', ["'none'"]],
 ]);
 
+// CSP parsing treats only ASCII space, tab, CR, LF, and form feed as whitespace.
 const ASCII_CSP_WHITESPACE = '[ \\t\\r\\n\\f]';
 const ASCII_CSP_WHITESPACE_PATTERN = new RegExp(`${ASCII_CSP_WHITESPACE}+`, 'g');
 const ASCII_CSP_TRIM_PATTERN = new RegExp(`^${ASCII_CSP_WHITESPACE}+|${ASCII_CSP_WHITESPACE}+$`, 'g');

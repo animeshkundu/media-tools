@@ -72,7 +72,7 @@ describe('check-csp script', () => {
     );
   });
 
-  it('rejects non-ASCII whitespace in CSP directives', () => {
+  it('rejects non-breaking space in CSP directives', () => {
     const nonBreakingSpaceManifest = cloneManifest();
     nonBreakingSpaceManifest.content_security_policy.extension_pages =
       nonBreakingSpaceManifest.content_security_policy.extension_pages.replace(
@@ -80,6 +80,12 @@ describe('check-csp script', () => {
         "connect-src\u00A0'none'",
       );
 
+    expect(() => validateManifest(nonBreakingSpaceManifest, 'nbsp')).toThrow(
+      /nbsp: content_security_policy\.extension_pages must use ASCII characters and ASCII whitespace only/,
+    );
+  });
+
+  it('rejects byte order mark in CSP directives', () => {
     const byteOrderMarkManifest = cloneManifest();
     byteOrderMarkManifest.content_security_policy.extension_pages =
       byteOrderMarkManifest.content_security_policy.extension_pages.replace(
@@ -87,9 +93,6 @@ describe('check-csp script', () => {
         "default-src\uFEFF'none'",
       );
 
-    expect(() => validateManifest(nonBreakingSpaceManifest, 'nbsp')).toThrow(
-      /nbsp: content_security_policy\.extension_pages must use ASCII characters and ASCII whitespace only/,
-    );
     expect(() => validateManifest(byteOrderMarkManifest, 'bom')).toThrow(
       /bom: content_security_policy\.extension_pages must use ASCII characters and ASCII whitespace only/,
     );
