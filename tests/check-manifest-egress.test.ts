@@ -126,6 +126,11 @@ describe('check-manifest-egress script', () => {
       message: 'is not narrowly scoped',
     },
     {
+      name: 'partial extension globs',
+      entry: { resources: ['assets/icons/*.svg'], matches: ['https://example.com/*'] },
+      message: 'is not narrowly scoped',
+    },
+    {
       name: 'wildcard extension IDs',
       entry: { resources: ['player.js'], extension_ids: ['*'] },
       message: 'extension_ids must not contain wildcards',
