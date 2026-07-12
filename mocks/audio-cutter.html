@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audio Cutter · Media Tools</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #07110f;
+      color: #eefcf7;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; min-height: 100vh; }
+    button, input, select { font: inherit; }
+    main {
+      min-height: 100vh;
+      padding: 40px 20px;
+      background: radial-gradient(circle at top, #123b31 0, #07110f 42rem);
+    }
+    .container { width: 100%; max-width: 1024px; margin: 0 auto; }
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+    .eyebrow {
+      margin: 0 0 12px;
+      color: #6ee7b7;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: .22em;
+      line-height: 20px;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -.025em;
+      line-height: 40px;
+    }
+    .lead {
+      max-width: 672px;
+      margin: 16px 0 0;
+      color: rgba(209, 250, 229, .70);
+      font-size: 18px;
+      line-height: 28px;
+    }
+    .offline-badge {
+      flex: none;
+      padding: 8px 16px;
+      border: 1px solid rgba(110, 231, 183, .20);
+      border-radius: 9999px;
+      background: rgba(110, 231, 183, .10);
+      color: #a7f3d0;
+      font-size: 14px;
+      line-height: 20px;
+    }
+    .editor-card {
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, .10);
+      border-radius: 24px;
+      background: rgba(0, 0, 0, .20);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .30);
+    }
+    .file-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .file-copy { min-width: 0; }
+    h2 {
+      max-width: 576px;
+      margin: 0;
+      overflow: hidden;
+      font-size: 20px;
+      font-weight: 600;
+      line-height: 28px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .metadata { margin: 4px 0 0; color: rgba(209, 250, 229, .60); font-size: 14px; line-height: 20px; }
+    .ghost-button, .cancel-button, .primary-button {
+      border-radius: 12px;
+      cursor: default;
+      transition: background 160ms ease, opacity 160ms ease;
+    }
+    .ghost-button {
+      padding: 8px 16px;
+      border: 1px solid rgba(255, 255, 255, .15);
+      background: transparent;
+      color: #eefcf7;
+      font-size: 14px;
+      line-height: 20px;
+      opacity: .50;
+    }
+    .waveform {
+      position: relative;
+      height: 224px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .10);
+      border-radius: 16px;
+      background: #0d1e1a;
+    }
+    .waveform svg { display: block; width: 100%; height: 100%; }
+    .timecodes {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+      color: #fde68a;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 14px;
+      line-height: 20px;
+    }
+    .settings {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 20px;
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, .10);
+    }
+    label { color: rgba(209, 250, 229, .70); font-size: 14px; font-weight: 500; line-height: 20px; }
+    select {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      padding: 12px 42px 12px 16px;
+      border: 1px solid rgba(255, 255, 255, .15);
+      border-radius: 12px;
+      outline: none;
+      background: #0d1e1a;
+      color: #eefcf7;
+      opacity: .50;
+    }
+    .actions { display: flex; gap: 12px; }
+    .cancel-button {
+      padding: 12px 20px;
+      border: 1px solid rgba(252, 165, 165, .30);
+      background: transparent;
+      color: #fecaca;
+      font-weight: 600;
+      line-height: 24px;
+    }
+    .cancel-button:hover { background: rgba(252, 165, 165, .10); }
+    .primary-button {
+      padding: 12px 20px;
+      border: 0;
+      background: #34d399;
+      color: #022c22;
+      font-weight: 600;
+      line-height: 24px;
+      opacity: .50;
+    }
+    .progress-wrap { margin-top: 20px; }
+    .progress-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 9px;
+      color: rgba(209, 250, 229, .60);
+      font-size: 13px;
+      line-height: 18px;
+    }
+    .progress-track { height: 8px; overflow: hidden; border-radius: 9999px; background: rgba(255, 255, 255, .10); }
+    .progress-fill { width: 62%; height: 100%; border-radius: 9999px; background: #34d399; }
+    .status {
+      margin: 20px 0 0;
+      color: rgba(209, 250, 229, .60);
+      font-size: 14px;
+      line-height: 20px;
+      text-align: center;
+    }
+    @media (min-width: 640px) {
+      h1 { font-size: 60px; line-height: 1; }
+      .editor-card { padding: 32px; }
+    }
+    @media (max-width: 700px) {
+      .settings { grid-template-columns: 1fr; }
+      .actions { justify-content: flex-end; }
+    }
+    @media (max-width: 520px) {
+      .actions { align-items: stretch; flex-direction: column-reverse; }
+      .actions button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="container">
+      <header class="header">
+        <div>
+          <p class="eyebrow">MEDIA TOOLS</p>
+          <h1>Audio Cutter</h1>
+          <p class="lead">Trim audio in your browser. No upload, no account, and no network required.</p>
+        </div>
+        <div class="offline-badge">100% offline</div>
+      </header>
+
+      <section class="editor-card" aria-label="Audio cutter editor">
+        <div class="file-head">
+          <div class="file-copy">
+            <h2>field-recording-saturday.mp3</h2>
+            <p class="metadata">4.2 MB, 3:41, 44,100 Hz</p>
+          </div>
+          <button class="ghost-button" type="button" disabled>Choose another</button>
+        </div>
+
+        <div class="waveform" role="img" aria-label="Audio waveform with gold trim handles">
+          <svg viewBox="0 0 1000 224" preserveAspectRatio="none" aria-hidden="true">
+            <rect width="1000" height="224" fill="#0d1e1a"/>
+            <path d="M3 104V120 M8 101V123 M13 96V128 M18 106V118 M23 93V131 M28 88V136 M33 98V126 M38 82V142 M43 90V134 M48 72V152 M53 87V137 M58 66V158 M63 80V144 M68 58V166 M73 76V148 M78 91V133 M83 84V140 M88 70V154 M93 78V146 M98 62V162 M103 48V176 M108 68V156 M113 74V150 M118 57V167 M123 42V182 M128 63V161 M133 54V170 M138 70V154 M143 37V187 M148 52V172 M153 80V144 M158 65V159 M163 48V176 M168 74V150 M173 69V155 M178 84V140 M183 60V164 M188 44V180 M193 72V152 M198 53V171 M203 36V188 M208 64V160 M213 77V147 M218 69V155 M223 88V136 M228 81V143 M233 57V167 M238 43V181 M243 71V153 M248 61V163 M253 79V145 M258 67V157 M263 51V173 M268 72V152 M273 84V140 M278 58V166 M283 77V147 M288 92V132 M293 73V151 M298 67V157 M303 79V145 M308 96V128 M313 86V138 M318 54V170 M323 66V158 M328 42V182 M333 59V165 M338 74V150 M343 51V173 M348 39V185 M353 65V159 M358 81V143 M363 70V154 M368 87V137 M373 58V166 M378 74V150 M383 46V178 M388 67V157 M393 55V169 M398 76V148 M403 91V133 M408 81V143 M413 69V155 M418 85V139 M423 97V127 M428 78V146 M433 64V160 M438 53V171 M443 70V154 M448 44V180 M453 62V162 M458 77V147 M463 56V168 M468 38V186 M473 59V165 M478 69V155 M483 83V141 M488 66V158 M493 72V152 M498 48V176 M503 62V162 M508 36V188 M513 54V170 M518 73V151 M523 87V137 M528 70V154 M533 58V166 M538 76V148 M543 43V181 M548 63V161 M553 79V145 M558 68V156 M563 89V135 M568 75V149 M573 52V172 M578 65V159 M583 44V180 M588 71V153 M593 82V142 M598 61V163 M603 73V151 M608 91V133 M613 77V147 M618 55V169 M623 69V155 M628 84V140 M633 62V162 M638 47V177 M643 67V157 M648 79V145 M653 56V168 M658 71V153 M663 86V138 M668 75V149 M673 53V171 M678 36V188 M683 58V166 M688 72V152 M693 46V178 M698 66V158 M703 83V141 M708 74V150 M713 91V133 M718 80V144 M723 62V162 M728 77V147 M733 50V174 M738 70V154 M743 84V140 M748 61V163 M753 42V182 M758 55V169 M763 73V151 M768 64V160 M773 48V176 M778 68V156 M783 81V143 M788 72V152 M793 57V167 M798 43V181 M803 66V158 M808 78V146 M813 58V166 M818 37V187 M823 54V170 M828 69V155 M833 82V142 M838 73V151 M843 60V164 M848 46V178 M853 67V157 M858 79V145 M863 92V132 M868 75V149 M873 62V162 M878 85V139 M883 71V153 M888 52V172 M893 66V158 M898 77V147 M903 57V167 M908 80V144 M913 94V130 M918 83V141 M923 69V155 M928 88V136 M933 76V148 M938 61V163 M943 74V150 M948 89V135 M953 81V143 M958 70V154 M963 84V140 M968 97V127 M973 88V136 M978 91V133 M983 101V123 M988 96V128 M993 105V119 M998 108V116" fill="none" stroke="#34d399" stroke-width="1" shape-rendering="crispEdges"/>
+            <rect x="0" y="0" width="126" height="224" fill="rgba(2,6,5,0.62)"/>
+            <rect x="848" y="0" width="152" height="224" fill="rgba(2,6,5,0.62)"/>
+            <rect x="124" y="0" width="4" height="224" fill="#fbbf24"/>
+            <rect x="846" y="0" width="4" height="224" fill="#fbbf24"/>
+            <rect x="118" y="9" width="16" height="28" rx="5" fill="#fbbf24"/>
+            <rect x="840" y="187" width="16" height="28" rx="5" fill="#fbbf24"/>
+            <path d="M128 18h-4v10h4M846 196h4v10h-4" fill="none" stroke="#022c22" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <div class="timecodes">
+          <span>In 0:28</span>
+          <span>2:40 selected</span>
+          <span>Out 3:08</span>
+        </div>
+
+        <div class="settings">
+          <label>
+            Export format
+            <select aria-label="Export format" disabled>
+              <option selected>WAV - lossless PCM</option>
+              <option>MP3 - 192 kbps</option>
+            </select>
+          </label>
+          <div class="actions">
+            <button class="cancel-button" type="button">Cancel</button>
+            <button class="primary-button" type="button" disabled>Cut &amp; download</button>
+          </div>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-label"><span>Encoding WAV on this device</span><span>62%</span></div>
+          <div class="progress-track" role="progressbar" aria-label="Export 62% complete" aria-valuemin="0" aria-valuemax="100" aria-valuenow="62">
+            <div class="progress-fill"></div>
+          </div>
+        </div>
+      </section>
+
+      <p class="status" aria-live="polite">Encoding WAV in a worker…</p>
+    </div>
+  </main>
+</body>
+</html>

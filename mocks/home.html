@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Media Tools</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #07110f;
+      color: #eefcf7;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; min-height: 100vh; }
+    button, input, select { font: inherit; }
+    main {
+      min-height: 100vh;
+      padding: 40px 20px;
+      background: radial-gradient(circle at top, #123b31 0, #07110f 42rem);
+    }
+    .container { width: 100%; max-width: 1024px; margin: 0 auto; }
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+    .header-copy { min-width: 0; }
+    .eyebrow {
+      margin: 0 0 12px;
+      color: #6ee7b7;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: .22em;
+      line-height: 20px;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      color: #eefcf7;
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -.025em;
+      line-height: 40px;
+    }
+    .lead {
+      max-width: 672px;
+      margin: 16px 0 0;
+      color: rgba(209, 250, 229, .70);
+      font-size: 18px;
+      line-height: 28px;
+    }
+    .offline-badge {
+      flex: none;
+      padding: 8px 16px;
+      border: 1px solid rgba(110, 231, 183, .20);
+      border-radius: 9999px;
+      background: rgba(110, 231, 183, .10);
+      color: #a7f3d0;
+      font-size: 14px;
+      line-height: 20px;
+    }
+    .phase + .phase { margin-top: 34px; }
+    .phase-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+    .phase-title { margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; }
+    .phase-note { margin: 0; color: rgba(209, 250, 229, .60); font-size: 13px; line-height: 20px; }
+    .tool-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .tool-card {
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      min-height: 142px;
+      padding: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .10);
+      border-radius: 24px;
+      background: rgba(0, 0, 0, .20);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .30);
+    }
+    .tool-card.live { transition: border-color 160ms ease, background 160ms ease, transform 160ms ease; }
+    .tool-card.live:hover {
+      border-color: rgba(52, 211, 153, .42);
+      background: rgba(255, 255, 255, .03);
+      transform: translateY(-1px);
+    }
+    .tool-card.coming { background: rgba(0, 0, 0, .14); }
+    .tool-card.coming .icon-tile, .tool-card.coming .tool-copy { opacity: .58; }
+    .icon-tile {
+      display: grid;
+      flex: 0 0 56px;
+      width: 56px;
+      height: 56px;
+      place-items: center;
+      border-radius: 16px;
+      background: #34d399;
+      color: #022c22;
+    }
+    .icon-tile svg { width: 27px; height: 27px; stroke: currentColor; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .tool-copy { min-width: 0; padding-top: 2px; }
+    .tool-copy h3 { margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; }
+    .tool-copy p { margin: 6px 0 0; color: rgba(209, 250, 229, .60); font-size: 14px; line-height: 21px; }
+    .card-tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border: 1px solid rgba(255, 255, 255, .10);
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, .04);
+      color: rgba(209, 250, 229, .70);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      line-height: 16px;
+      text-transform: uppercase;
+    }
+    .tag.live-tag {
+      border-color: rgba(110, 231, 183, .20);
+      background: rgba(110, 231, 183, .10);
+      color: #a7f3d0;
+    }
+    .tag.pro-tag {
+      border-color: rgba(251, 191, 36, .20);
+      background: rgba(251, 191, 36, .08);
+      color: #fde68a;
+    }
+    .trust-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      margin: 30px 0 0;
+      color: rgba(209, 250, 229, .60);
+      font-size: 14px;
+      line-height: 20px;
+      text-align: center;
+    }
+    .trust-line svg { width: 16px; height: 16px; color: #6ee7b7; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    @media (max-width: 720px) {
+      .tool-grid { grid-template-columns: 1fr; }
+      .phase-head { align-items: flex-start; flex-direction: column; gap: 2px; }
+    }
+    @media (min-width: 640px) {
+      h1 { font-size: 60px; line-height: 1; }
+      .tool-card { padding: 32px; }
+    }
+    @media (max-width: 480px) {
+      .tool-card { min-height: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="container">
+      <header class="header">
+        <div class="header-copy">
+          <p class="eyebrow">MEDIA TOOLS</p>
+          <h1>Media Tools</h1>
+          <p class="lead">Cut, join, convert, and compress files on this device. No account, ads, or watermark.</p>
+        </div>
+        <div class="offline-badge">100% offline</div>
+      </header>
+
+      <section class="phase" aria-labelledby="audio-tools">
+        <div class="phase-head">
+          <h2 class="phase-title" id="audio-tools">Audio</h2>
+          <p class="phase-note">Available now</p>
+        </div>
+        <div class="tool-grid">
+          <article class="tool-card live">
+            <div class="icon-tile" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M6 4v16M18 4v16M6 9c3.4 0 5.2 1.1 6 3s2.6 3 6 3M6 15c3.4 0 5.2-1.1 6-3s2.6-3 6-3"/></svg>
+            </div>
+            <div class="tool-copy">
+              <h3>Cut audio</h3>
+              <p>Trim a precise clip with a clear waveform and instant download.</p>
+              <div class="card-tags"><span class="tag live-tag">Live</span></div>
+            </div>
+          </article>
+
+          <article class="tool-card live">
+            <div class="icon-tile" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 7h4a4 4 0 0 1 4 4v2a4 4 0 0 0 4 4h4"/><path d="m17 14 3 3-3 3M4 17h4a4 4 0 0 0 3.2-1.6M15.5 7H20m-3-3 3 3-3 3"/></svg>
+            </div>
+            <div class="tool-copy">
+              <h3>Join audio</h3>
+              <p>Combine tracks in order and export one clean audio file.</p>
+              <div class="card-tags"><span class="tag live-tag">Live</span><span class="tag pro-tag">Pro: batch</span></div>
+            </div>
+          </article>
+
+          <article class="tool-card live">
+            <div class="icon-tile" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M7 7h11l-3-3M18 7l-3 3M17 17H6l3 3M6 17l3-3"/><path d="M5 5v5M19 14v5"/></svg>
+            </div>
+            <div class="tool-copy">
+              <h3>Convert audio</h3>
+              <p>Make a WAV or MP3 without sending the source anywhere.</p>
+              <div class="card-tags"><span class="tag live-tag">Live</span><span class="tag pro-tag">Pro: batch presets</span></div>
+            </div>
+          </article>
+
+          <article class="tool-card live">
+            <div class="icon-tile" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M5 16a8 8 0 1 1 14 0"/><path d="m12 13 4-4M4 19h16"/><circle cx="12" cy="13" r="1.2"/></svg>
+            </div>
+            <div class="tool-copy">
+              <h3>Change speed</h3>
+              <p>Speed up or slow down a local file and export the result.</p>
+              <div class="card-tags"><span class="tag live-tag">Live</span></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="phase" aria-labelledby="video-tools">
+        <div class="phase-head">
+          <h2 class="phase-title" id="video-tools">Video</h2>
+          <p class="phase-note">Fast-follow tools, capability checked on this browser</p>
+        </div>
+        <div class="tool-grid">
+          <article class="tool-card coming" aria-disabled="true">
+            <div class="icon-tile" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="m17 10 4-2v8l-4-2M8 15V9l5 3-5 3Z"/></svg>
+            </div>
+            <div class="tool-copy">
+              <h3>Extract audio</h3>
+              <p>Pull a clean audio track from a video, entirely on device.</p>
+              <div class="card-tags"><span class="tag">Coming</span></div>
+            </div>
+          </article>
+
+          <article class="tool-card coming" aria-disabled="true">
+            <div class="icon-tile" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M5 10v4h3l4 4V6L8 10H5Z"/><path d="m16 9 5 5M21 9l-5 5"/></svg>
+            </div>
+            <div class="tool-copy">
+              <h3>Mute audio</h3>
+              <p>Remove the audio track without changing the video quality.</p>
+              <div class="card-tags"><span class="tag">Coming</span></div>
+            </div>
+          </article>
+
+          <article class="tool-card coming" aria-disabled="true">
+            <div class="icon-tile" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 3v4M16 3v4M8 17v4M16 17v4M10 9l5 3-5 3V9Z"/></svg>
+            </div>
+            <div class="tool-copy">
+              <h3>Trim video</h3>
+              <p>Choose a fast lossless cut or an exact frame-accurate cut.</p>
+              <div class="card-tags"><span class="tag">Coming</span></div>
+            </div>
+          </article>
+
+          <article class="tool-card coming" aria-disabled="true">
+            <div class="icon-tile" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M8 3H3v5M16 21h5v-5M3 8l6-6M21 16l-6 6M16 3h5v5M8 21H3v-5M21 8l-6-6M3 16l6 6"/></svg>
+            </div>
+            <div class="tool-copy">
+              <h3>Compress video</h3>
+              <p>Reduce file size with browser-supported hardware encoding.</p>
+              <div class="card-tags"><span class="tag">Coming</span><span class="tag pro-tag">Pro: high bitrate</span></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <footer class="trust-line">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.8 8.1 7 10 4.2-1.9 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+        <span>Your files never leave your device.</span>
+      </footer>
+    </div>
+  </main>
+</body>
+</html>

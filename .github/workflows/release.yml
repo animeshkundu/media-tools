@@ -1,0 +1,84 @@
+# Activates after this local Git repository is pushed to GitHub and repository secrets are configured.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      publish_chrome:
+        description: Optionally publish the Chrome package to the Chrome Web Store
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create Chrome ZIP
+        run: npm run zip
+
+      - name: Create Firefox and source ZIPs
+        run: npm run zip:firefox
+
+      - name: Check optional Chrome credentials
+        id: chrome
+        shell: bash
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: |
+          ready=false
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.publish_chrome }}" == "true" ]]; then
+            if [[ -n "$CHROME_EXTENSION_ID" && -n "$CHROME_CLIENT_ID" && -n "$CHROME_CLIENT_SECRET" && -n "$CHROME_REFRESH_TOKEN" ]]; then
+              ready=true
+            else
+              echo "::warning::Chrome publishing was requested, but one or more Chrome secrets are missing. Continuing with Firefox only."
+            fi
+          fi
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to Firefox AMO
+        if: ${{ steps.chrome.outputs.ready != 'true' }}
+        run: npx wxt submit --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/*-sources.zip
+        env:
+          FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+
+      # Optional and manual only. The exact multi-store call runs only when every Chrome secret is set.
+      - name: Publish to Firefox AMO and Chrome Web Store
+        if: ${{ steps.chrome.outputs.ready == 'true' }}
+        run: npx wxt submit --chrome-zip .output/*-chrome.zip --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/*-sources.zip --chrome-extension-id "$CHROME_EXTENSION_ID" --chrome-client-id "$CHROME_CLIENT_ID" --chrome-client-secret "$CHROME_CLIENT_SECRET" --chrome-refresh-token "$CHROME_REFRESH_TOKEN"
+        env:
+          FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+
+      - name: Attach ZIPs to GitHub Release
+        if: ${{ github.ref_type == 'tag' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: .output/*.zip
