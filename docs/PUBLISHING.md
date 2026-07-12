@@ -59,7 +59,12 @@ Use semantic `N.N.N` versions in `package.json` and the manifest. Every AMO uplo
 - `browser_specific_settings.gecko.id` to `media-tools@local`
 - `data_collection_permissions: { required: ['none'] }`, required by AMO since 2025-11-03
 - no host permissions
-- extension CSP with `wasm-unsafe-eval` for locally bundled WASM
+- default-deny extension CSP:
+
+  `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'self'; base-uri 'none'`
+
+`wasm-unsafe-eval` is intentionally absent today because the shipped build does not bundle WASM. If
+that changes, review the policy and store-review implications before reintroducing it.
 
 Recheck these values in each release review, especially after changing the extension ID or adding capabilities.
 
