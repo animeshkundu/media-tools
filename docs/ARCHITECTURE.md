@@ -208,8 +208,12 @@ hack. The ~30 MB core is fetched and instantiated on first use, so the base inst
 - **No remote code (MV3 requirement, and our own rule).** Every dependency and WASM asset is bundled.
   `FFmpeg.load()` points at packaged files, never a CDN. The self-hosted model/codec assets are cached
   in IndexedDB after first load for offline reuse.
-- **CSP.** `content_security_policy.extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src
-  'self'"` (already set in `wxt.config.ts`) allows WASM instantiation without opening remote script.
+- **CSP.** `content_security_policy.extension_pages` is now default-deny in `wxt.config.ts`:
+  `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:
+  blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none';
+  frame-src 'none'; object-src 'self'; base-uri 'none'`. `wasm-unsafe-eval` is not currently
+  allowed because no bundled WASM ships today; if that changes later, add it back only with the
+  narrowest policy that still preserves the no-upload contract.
 - **AMO data-collection disclosure.** `browser_specific_settings.gecko.id = media-tools@local` and
   `data_collection_permissions: { required: ['none'] }` are set (AMO has required this since
   2025-11-03). The honest answer is "none", because there is no telemetry.
