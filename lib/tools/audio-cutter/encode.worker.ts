@@ -336,6 +336,7 @@ async function decodeMp3(
   let decoder: AudioDecoder | undefined;
   let processing = Promise.resolve();
   let processingError: unknown;
+  let stopped = false;
   let sampleRate = 0;
   let channelCount = 0;
   let decodedFrames = 0;
@@ -343,7 +344,7 @@ async function decodeMp3(
   let pendingOutputCount = 0;
   let pendingOutputBytes = 0;
   const peaks: number[] = [];
-  const selectedChunks: Float32Array[][] = [];
+  const selectedChunks: (Float32Array | null)[][] = [];
 
   const consume = async (audioData: AudioData): Promise<void> => {
     const audioBytes = audioData.numberOfFrames * audioData.numberOfChannels * Float32Array.BYTES_PER_ELEMENT;
@@ -375,7 +376,7 @@ async function decodeMp3(
           const overlapEnd = Math.min(nextDecodedFrames, endFrame);
           if (overlapEnd > overlapStart) {
             selectedChunks[channel] ??= [];
-            selectedChunks[channel].push(
+            selectedChunks[channel]!.push(
               plane.slice(overlapStart - decodedFrames, overlapEnd - decodedFrames),
             );
           }
@@ -392,6 +393,7 @@ async function decodeMp3(
 
   try {
     for await (const frame of streamMp3Frames(file, send)) {
+      if (stopped || processingError) break;
       if (!decoder) {
         sampleRate = frame.sampleRate;
         channelCount = frame.channels;
@@ -401,12 +403,18 @@ async function decodeMp3(
         selectedChunks.push(...Array.from({ length: channelCount }, () => []));
         decoder = new AudioDecoder({
           error: (error) => {
+            stopped = true;
             processingError = error;
           },
           output: (audioData) => {
+            if (stopped) {
+              audioData.close();
+              return;
+            }
             const outputBytes =
               audioData.numberOfFrames * audioData.numberOfChannels * Float32Array.BYTES_PER_ELEMENT;
             if (pendingOutputBytes + outputBytes > MAX_DECODED_BYTES) {
+              stopped = true;
               processingError = new Error(
                 'The decoded audio exceeds the 30 minute or 256 MB processing limit.',
               );
@@ -419,6 +427,7 @@ async function decodeMp3(
               .catch(() => undefined)
               .then(() => consume(audioData))
               .catch((error: unknown) => {
+                stopped = true;
                 processingError = error;
               });
           },
@@ -428,6 +437,17 @@ async function decodeMp3(
         throw new Error('MP3 stream format changes are not supported.');
       }
 
+      // Pre-decode hard cap: project decoded PCM bytes for this frame before feeding the decoder.
+      // This bounds the native decoder's in-flight queue independently of output callback timing.
+      const frameSamples = frame.sampleRate >= 32_000 ? 1152 : 576;
+      const projectedPcmBytes = (frameCount + frameSamples) * channelCount * Float32Array.BYTES_PER_ELEMENT;
+      if (
+        projectedPcmBytes > MAX_DECODED_BYTES ||
+        (frameCount + frameSamples) / sampleRate > MAX_DURATION_SECONDS
+      ) {
+        throw new Error('The decoded audio exceeds the 30 minute or 256 MB processing limit.');
+      }
+
       decoder.decode(
         new EncodedAudioChunk({
           type: 'key',
@@ -435,14 +455,22 @@ async function decodeMp3(
           data: frame.data,
         }),
       );
-      frameCount += frame.sampleRate >= 32_000 ? 1152 : 576;
-      if (pendingOutputCount >= BACKPRESSURE_OUTPUTS || pendingOutputBytes >= MAX_DECODED_BYTES) {
+      frameCount += frameSamples;
+      if (
+        decoder.decodeQueueSize >= BACKPRESSURE_OUTPUTS ||
+        pendingOutputCount >= BACKPRESSURE_OUTPUTS ||
+        pendingOutputBytes >= MAX_DECODED_BYTES
+      ) {
         await processing;
         if (processingError) throw processingError;
       }
     }
     if (!decoder) throw new Error('Only valid PCM WAV or MP3 input is supported.');
-    await decoder.flush();
+    // Only flush if we haven't stopped due to an error; flushing after a cap trip would
+    // process the entire remaining stream.
+    if (!stopped) {
+      await decoder.flush();
+    }
     await processing;
     if (processingError) throw processingError;
     if (decodedFrames < 1) throw new Error('The MP3 file contains no decodable audio.');
@@ -455,14 +483,18 @@ async function decodeMp3(
       };
     }
 
+    // O(N) concat: iterate by index and null each entry after copying to halve peak memory.
     const channels = selectedChunks.map((chunks) => {
-      const length = chunks.reduce((total, chunk) => total + chunk.length, 0);
+      const length = chunks.reduce((acc, chunk) => acc + (chunk?.length ?? 0), 0);
       const channel = new Float32Array(length);
       let offset = 0;
-      while (chunks.length > 0) {
-        const chunk = chunks.shift()!;
-        channel.set(chunk, offset);
-        offset += chunk.length;
+      for (let index = 0; index < chunks.length; index += 1) {
+        const chunk = chunks[index];
+        if (chunk) {
+          channel.set(chunk, offset);
+          offset += chunk.length;
+          chunks[index] = null;
+        }
       }
       return channel;
     });

@@ -171,4 +171,76 @@ describe('audio cutter', () => {
     );
     expect(replies.at(-1)).toMatchObject({ type: 'error' });
   });
+
+  it('MP3 over-cap output triggers error and closes every AudioData', async () => {
+    // AudioDecoder is undefined in Node.js; inject stubs so decodeMp3 actually runs.
+    let closedCount = 0;
+
+    class StubAudioData {
+      // 34 M frames × 2 ch × 4 bytes = ~272 MB > MAX_DECODED_BYTES (256 MB)
+      readonly numberOfFrames = 34_000_000;
+      readonly numberOfChannels = 2;
+      readonly sampleRate = 44_100;
+      close(): void {
+        closedCount += 1;
+      }
+      async copyTo(dest: Float32Array): Promise<void> {
+        dest.fill(0);
+      }
+    }
+
+    let capturedOutput: ((data: StubAudioData) => void) | undefined;
+
+    class StubAudioDecoder {
+      decodeQueueSize = 0;
+      static async isConfigSupported(): Promise<{ supported: boolean }> {
+        return { supported: true };
+      }
+      constructor(init: { output: (data: StubAudioData) => void; error: (e: Error) => void }) {
+        capturedOutput = init.output;
+      }
+      configure(): void {}
+      decode(): void {
+        // Fire output synchronously — simulates a UA that delivers decoded PCM eagerly.
+        capturedOutput?.(new StubAudioData());
+      }
+      flush(): Promise<void> {
+        return Promise.resolve();
+      }
+      close(): void {}
+    }
+
+    class StubEncodedAudioChunk {
+      constructor() {}
+    }
+
+    const g = globalThis as Record<string, unknown>;
+    const savedAudioDecoder = g.AudioDecoder;
+    const savedEncodedAudioChunk = g.EncodedAudioChunk;
+    try {
+      g.AudioDecoder = StubAudioDecoder;
+      g.EncodedAudioChunk = StubEncodedAudioChunk;
+
+      // Minimal valid MP3 frame: MPEG1, Layer3, 32 kbps, 44100 Hz, stereo.
+      // Header: 0xFF 0xFB 0x10 0x00; frame length = floor(144000*32/44100)+0 = 104 bytes.
+      const mp3Data = new Uint8Array(104);
+      mp3Data[0] = 0xff;
+      mp3Data[1] = 0xfb;
+      mp3Data[2] = 0x10;
+      mp3Data[3] = 0x00;
+
+      const replies: WorkerReply[] = [];
+      await processAudioRequest(
+        { type: 'analyze', file: new File([mp3Data], 'test.mp3', { type: 'audio/mpeg' }) },
+        (reply) => replies.push(reply),
+      );
+
+      expect(replies.at(-1)).toMatchObject({ type: 'error', message: expect.stringContaining('256 MB') });
+      // Every AudioData emitted by the decoder must be closed — no leaks.
+      expect(closedCount).toBeGreaterThanOrEqual(1);
+    } finally {
+      g.AudioDecoder = savedAudioDecoder;
+      g.EncodedAudioChunk = savedEncodedAudioChunk;
+    }
+  });
 });
