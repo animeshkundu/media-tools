@@ -29,8 +29,9 @@ or Phase 2/3 engines.
 
 ## Preconditions
 
-- [ ] Grant this unit permission to update `package-lock.json` with the exact root dependency specs,
-      or assign that synchronized change to the lockfile owner. Do not change `package.json` alone.
+- [ ] Grant the future implementation owner permission to update `package-lock.json` with the exact
+      root dependency specs, or assign that synchronized change to the lockfile owner. Do not change
+      `package.json` alone.
 - [ ] Assign a legal/release owner to approve the LGPL notice, corresponding-source, and relink
       material for vendored `lamejs`.
 - [ ] Confirm or reproduce the transformation from `lamejs@1.2.1` to

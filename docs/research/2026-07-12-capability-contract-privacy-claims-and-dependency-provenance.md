@@ -79,9 +79,9 @@ Sources: [`package.json`](../../package.json), the root and package records in
 [`package-lock.json`](../../package-lock.json), and the emitted Chrome and Firefox artifact lists
 from `npm run build` and `npm run build:firefox`.
 
-`THIRD-PARTY.md` incorrectly records React and React DOM as 19.2.4, uses
-`LGPL-3.0-or-later` where the installed `lamejs` package metadata says `LGPL-3.0`, and omits the
-required notices, source/relink obligations, provenance links, and artifact-specific build details
+`THIRD-PARTY.md` incorrectly records React and React DOM as 19.2.4 and uses
+`LGPL-3.0-or-later` where the installed `lamejs` package metadata says `LGPL-3.0`. Manual inspection
+also found no notices, source/relink obligations, provenance links, or artifact-specific build details
 ([`THIRD-PARTY.md`](../../THIRD-PARTY.md);
 [`CLAUDE.md`](../../CLAUDE.md#correctness-and-release-gates)).
 
@@ -142,4 +142,3 @@ No product, package, lockfile, or runtime changes were made as part of this rese
 - [Implementation plan](../plans/2026-07-12-capability-contract-privacy-claims-and-dependency-provenance.md)
 - [`CLAUDE.md`](../../CLAUDE.md)
 - [`docs/PEER-REVIEW.md`](../PEER-REVIEW.md)
-
