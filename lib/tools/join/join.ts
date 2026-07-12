@@ -70,8 +70,8 @@ function resampleChannel(
     const lowerIndex = Math.min(maxIndex, Math.floor(sourcePosition));
     const upperIndex = Math.min(maxIndex, lowerIndex + 1);
     const fraction = sourcePosition - lowerIndex;
-    const lower = source[lowerIndex] ?? 0;
-    output[frame] = lower + ((source[upperIndex] ?? lower) - lower) * fraction;
+    const lower = source[lowerIndex]!;
+    output[frame] = lower + (source[upperIndex]! - lower) * fraction;
   }
   return output;
 }

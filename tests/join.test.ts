@@ -73,7 +73,7 @@ describe('audio join core', () => {
   });
 
   it('rejects aggregate PCM beyond the hard limit before output allocation', () => {
-    // One million float samples occupy 4 MiB; references are repeated to cross the 512 MiB limit.
+    // 1,048,576 float samples occupy 4 MiB; references are repeated to cross the 512 MiB limit.
     const shared = new Float32Array(1024 * 1024);
     const repeatedTracks = Array.from(
       { length: Math.floor(MAX_JOIN_OUTPUT_BYTES / shared.byteLength) + 1 },
