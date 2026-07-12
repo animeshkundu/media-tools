@@ -74,8 +74,9 @@ or Phase 2/3 engines.
 
 ### 3. Pin the shipped dependency set
 
-- [ ] Change direct runtime specs in `package.json` to `react: 19.2.7`, `react-dom: 19.2.7`, and
-      `lamejs: 1.2.1`, matching the current lockfile resolutions and minimizing graph churn.
+- [ ] Change direct runtime specs in `package.json` to `"react": "19.2.7"`,
+      `"react-dom": "19.2.7"`, and `"lamejs": "1.2.1"`, matching the current lockfile resolutions
+      and minimizing graph churn.
 - [ ] With the ownership precondition satisfied, regenerate only synchronized lockfile metadata using
       the existing npm workflow; reject unrelated transitive updates.
 - [ ] Run `npm ci` after the change to prove manifest/lockfile consistency.
