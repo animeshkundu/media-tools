@@ -40,6 +40,35 @@ jobs:
       - name: Build Firefox extension
         run: npm run build:firefox
 
+      - name: Test CSP manifest guard
+        run: |
+          node --input-type=module <<'EOF'
+          import assert from 'node:assert/strict';
+          import { readFile } from 'node:fs/promises';
+          import { validateManifest } from './scripts/check-csp.mjs';
+
+          const manifest = JSON.parse(
+            await readFile('.output/chrome-mv3/manifest.json', 'utf8'),
+          );
+          const policy = manifest.content_security_policy.extension_pages;
+
+          for (const [name, mutate] of [
+            ['missing directive', (value) => value.replace("frame-src 'none'; ", '')],
+            ['network source', (value) => value.replace("connect-src 'none'", "connect-src 'self'")],
+            ['unapproved directive', (value) => `${value}; prefetch-src https://example.com`],
+          ]) {
+            const candidate = structuredClone(manifest);
+            candidate.content_security_policy.extension_pages = mutate(policy);
+            assert.throws(() => validateManifest(candidate, name), { name: 'Error' });
+          }
+          EOF
+
+      - name: Verify extension CSP
+        run: |
+          node scripts/check-csp.mjs \
+            .output/chrome-mv3/manifest.json \
+            .output/firefox-mv3/manifest.json
+
       - name: Upload extension builds
         uses: actions/upload-artifact@v7
         with:

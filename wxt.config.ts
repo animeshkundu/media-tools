@@ -6,11 +6,23 @@ export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
     name: 'Media Tools',
-    description: 'Cut and export audio offline and privately — nothing is uploaded.',
+    description: 'Cut and export audio with local processing and no upload.',
     permissions: [],
     action: {},
     content_security_policy: {
-      extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+      extension_pages: [
+        "default-src 'none'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob:",
+        "media-src 'self' blob:",
+        "worker-src 'self'",
+        "connect-src 'none'",
+        "form-action 'none'",
+        "frame-src 'none'",
+        "object-src 'self'",
+        "base-uri 'none'",
+      ].join('; '),
     },
     browser_specific_settings: {
       gecko: {
