@@ -98,11 +98,11 @@ export default function App() {
 
         {!audio ? (
           <>
-            <Dropzone accept="audio/wav,.wav" disabled={busy} onFile={load}>
+            <Dropzone accept="audio/wav,audio/mpeg,.wav,.mp3" disabled={busy} onFile={load}>
               <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-400 text-2xl text-emerald-950">
                 ♪
               </div>
-              <p className="text-xl font-semibold">Drop a WAV file here</p>
+              <p className="text-xl font-semibold">Drop a WAV or MP3 file here</p>
               <p className="mt-2 text-emerald-100/60">or click to choose a file from this device</p>
             </Dropzone>
             {busy && (
