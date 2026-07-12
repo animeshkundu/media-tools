@@ -79,6 +79,9 @@ jobs:
             .output/chrome-mv3/manifest.json \
             .output/firefox-mv3/manifest.json
 
+      - name: Verify manifest egress keys
+        run: node scripts/check-manifest-egress.mjs
+
       - name: Upload extension builds
         uses: actions/upload-artifact@v7
         with:
