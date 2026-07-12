@@ -35,7 +35,7 @@ describe('change-speed', () => {
     [0.5, 16],
     [1, 8],
     [2, 4],
-  ])('uses input length divided by %sx as the output length', (factor, expectedLength) => {
+  ])('uses input length divided by %s× as the output length', (factor, expectedLength) => {
     const output = changeSpeed({ channelData: [new Float32Array(8)], sampleRate: 8_000 }, factor);
 
     expect(output.channelData[0]).toHaveLength(expectedLength);

@@ -43,8 +43,8 @@ export function changeSpeed(source: PcmAudio, factor: number): PcmAudio {
       const leftIndex = Math.max(0, Math.floor(sourcePosition));
       const rightIndex = Math.min(leftIndex + 1, inputLength - 1);
       const fraction = sourcePosition - leftIndex;
-      const left = input[leftIndex] ?? 0;
-      output[outputIndex] = left + ((input[rightIndex] ?? left) - left) * fraction;
+      const left = input[leftIndex];
+      output[outputIndex] = left + (input[rightIndex] - left) * fraction;
     }
     return output;
   });
@@ -59,7 +59,9 @@ export function startChangeSpeedEncode(
   onProgress: (value: number) => void,
 ): EncodeJob {
   const resampled = changeSpeed(source, factor);
-  const frameCount = resampled.channelData[0].length;
+  const firstChannel = resampled.channelData[0];
+  if (!firstChannel) throw new Error('Audio must contain at least one channel.');
+  const frameCount = firstChannel.length;
   return startEncode(
     {
       channels: resampled.channelData,
