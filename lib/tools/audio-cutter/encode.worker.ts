@@ -466,8 +466,8 @@ async function decodeMp3(
       }
     }
     if (!decoder) throw new Error('Only valid PCM WAV or MP3 input is supported.');
-    // Only flush if we haven't stopped due to an error; flushing after a cap trip would
-    // process the entire remaining stream.
+    // Only flush if we haven't stopped due to a cap trip or error; flushing after stopping
+    // would decode the entire remaining stream.
     if (!stopped) {
       await decoder.flush();
     }

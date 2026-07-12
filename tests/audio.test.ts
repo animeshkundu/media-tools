@@ -177,7 +177,7 @@ describe('audio cutter', () => {
     let closedCount = 0;
 
     class StubAudioData {
-      // 34 M frames × 2 ch × 4 bytes = ~272 MB > MAX_DECODED_BYTES (256 MB)
+      // 34 M frames × 2 ch × 4 bytes = 272,000,000 bytes (~259 MB) > MAX_DECODED_BYTES (256 MB = 268,435,456 bytes)
       readonly numberOfFrames = 34_000_000;
       readonly numberOfChannels = 2;
       readonly sampleRate = 44_100;
