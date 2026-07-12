@@ -15,7 +15,7 @@ afterEach(async () => {
 });
 
 describe('check-manifest-egress script', () => {
-  it('accepts absent or empty permissions', () => {
+  it('accepts absent or empty API and host permissions', () => {
     expect(() => validateManifestEgress({ manifest_version: 3 }, 'absent')).not.toThrow();
     expect(() =>
       validateManifestEgress(
@@ -37,7 +37,7 @@ describe('check-manifest-egress script', () => {
     ['optional_permissions', 'webRequest'],
     ['host_permissions', 'https://example.com/*'],
     ['optional_host_permissions', 'https://example.com/*'],
-  ])('rejects non-empty %s', (key, permission) => {
+  ])('rejects non-empty %s with %s', (key, permission) => {
     expect(() =>
       validateManifestEgress({ manifest_version: 3, [key]: [permission] }, key),
     ).toThrow(new RegExp(`${key}: ${key} must be absent or empty`));
