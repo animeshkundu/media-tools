@@ -29,7 +29,8 @@ Controller marker: `unit-id: fee88d3a-57d3-40c6-8dc7-7404d0b15e45`
 1. Before implementation, run the existing `npm run check`, `npm run build`, and
    `npm run build:firefox` gates and record any pre-existing failures without changing unrelated code.
 2. Define the ordered input and output contract with the exact
-   `{ channelData: Float32Array[]; sampleRate: number }` shape.
+   `{ channelData: Float32Array[]; sampleRate: number }` shape, documenting that `sampleRate` must be
+   finite and greater than zero.
 3. Validate the complete batch before allocation: non-empty batch, finite positive sample rates,
    non-empty channel lists, consistent frame length across each input's channels, and safe normalized
    and aggregate frame counts. Throw stable, actionable errors for invalid input.

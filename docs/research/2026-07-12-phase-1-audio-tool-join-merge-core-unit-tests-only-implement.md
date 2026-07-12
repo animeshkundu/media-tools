@@ -43,7 +43,7 @@ The requested planning artifacts are the only files changed by this research tas
 1. Reject an empty input list and malformed PCM: non-positive/non-finite sample rates, no channels,
    unequal channel lengths within an input, or lengths that cannot be summed safely.
 2. Choose the highest input sample rate as the output sample rate. This is independent of input order
-   and avoids avoidable downsampling.
+   and avoids downsampling.
 3. Choose the highest input channel count as the output channel count, also independent of order.
 4. Resample each channel with deterministic linear interpolation to
    `round(sourceFrames * outputRate / sourceRate)` frames. Clamp the final lookup to the last source
