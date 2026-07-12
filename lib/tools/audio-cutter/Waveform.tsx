@@ -40,7 +40,7 @@ export function moveTrimHandle(
   return [start, Math.min(duration, Math.max(end + delta, start + minimum))];
 }
 
-function formatSeconds(value: number) {
+function formatSecondsForAria(value: number) {
   return `${value.toFixed(2)} seconds`;
 }
 
@@ -90,17 +90,31 @@ export function Waveform({ channel, duration, end, onChange, start }: WaveformPr
     context.fillRect(endX - 2, 0, 4, height);
   }, [channel, duration, end, start]);
 
-  function moveHandle(event: PointerEvent<HTMLCanvasElement>) {
+  function positionFromPointer(event: PointerEvent<HTMLElement>) {
     if (!canvasRef.current) return;
     const bounds = canvasRef.current.getBoundingClientRect();
-    const position = Math.max(
+    return Math.max(
       0,
       Math.min(duration, ((event.clientX - bounds.left) / bounds.width) * duration),
     );
-    const nearestStart = Math.abs(position - start) <= Math.abs(position - end);
+  }
+
+  function moveHandleToPosition(handle: TrimHandle, position: number) {
     const minimum = Math.min(MINIMUM_SELECTION_SECONDS, duration / 2);
-    if (nearestStart) onChange(Math.min(position, end - minimum), end);
+    if (handle === 'start') onChange(Math.min(position, end - minimum), end);
     else onChange(start, Math.max(position, start + minimum));
+  }
+
+  function moveNearestHandle(event: PointerEvent<HTMLCanvasElement>) {
+    const position = positionFromPointer(event);
+    if (position === undefined) return;
+    const nearestStart = Math.abs(position - start) <= Math.abs(position - end);
+    moveHandleToPosition(nearestStart ? 'start' : 'end', position);
+  }
+
+  function moveSelectedHandle(handle: TrimHandle, event: PointerEvent<HTMLDivElement>) {
+    const position = positionFromPointer(event);
+    if (position !== undefined) moveHandleToPosition(handle, position);
   }
 
   function moveHandleWithKeyboard(handle: TrimHandle, event: KeyboardEvent<HTMLDivElement>) {
@@ -116,7 +130,7 @@ export function Waveform({ channel, duration, end, onChange, start }: WaveformPr
     );
     onChange(nextStart, nextEnd);
     const label = handle === 'start' ? 'In point' : 'Out point';
-    setAnnouncement(`${label} ${formatSeconds(handle === 'start' ? nextStart : nextEnd)}`);
+    setAnnouncement(`${label} ${formatSecondsForAria(handle === 'start' ? nextStart : nextEnd)}`);
   }
 
   const minimum = Math.min(MINIMUM_SELECTION_SECONDS, duration / 2);
@@ -140,10 +154,10 @@ export function Waveform({ channel, duration, end, onChange, start }: WaveformPr
           className="h-56 w-full touch-none rounded-2xl border border-white/10"
           onPointerDown={(event) => {
             event.currentTarget.setPointerCapture(event.pointerId);
-            moveHandle(event);
+            moveNearestHandle(event);
           }}
           onPointerMove={(event) => {
-            if (event.currentTarget.hasPointerCapture(event.pointerId)) moveHandle(event);
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) moveNearestHandle(event);
           }}
         />
         {handles.map((handle) => (
@@ -157,10 +171,18 @@ export function Waveform({ channel, duration, end, onChange, start }: WaveformPr
             aria-valuemax={handle.max}
             aria-valuemin={handle.min}
             aria-valuenow={handle.position}
-            aria-valuetext={formatSeconds(handle.position)}
-            className="pointer-events-none absolute inset-y-0 w-11 -translate-x-1/2 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200"
+            aria-valuetext={formatSecondsForAria(handle.position)}
+            className="absolute inset-y-0 w-11 -translate-x-1/2 touch-none rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200"
             style={{ left: `${(handle.position / duration) * 100}%` }}
             onKeyDown={(event) => moveHandleWithKeyboard(handle.type, event)}
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+              moveSelectedHandle(handle.type, event);
+            }}
+            onPointerMove={(event) => {
+              if (event.currentTarget.hasPointerCapture(event.pointerId))
+                moveSelectedHandle(handle.type, event);
+            }}
           >
             <span
               aria-hidden="true"
