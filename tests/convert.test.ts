@@ -82,16 +82,44 @@ describe('audio conversion', () => {
   });
 
   it.each([
-    ['no channels', { channelData: [], sampleRate: 44_100 }],
-    ['empty channel', { channelData: [new Float32Array()], sampleRate: 44_100 }],
+    ['no channels', { channelData: [], sampleRate: 44_100 }, 'Conversion supports mono or stereo audio.'],
+    ['empty channel', { channelData: [new Float32Array()], sampleRate: 44_100 }, 'Audio contains no samples.'],
     [
       'mismatched channels',
       { channelData: [new Float32Array(2), new Float32Array(1)], sampleRate: 44_100 },
+      'Audio channels must contain the same number of samples.',
     ],
-    ['invalid sample rate', { channelData: [new Float32Array(1)], sampleRate: 0 }],
-  ] satisfies [string, DecodedPcm][])('rejects invalid PCM (%s) before encoding', (_name, input) => {
-    expect(() => startConversion(input, 'mp3')).toThrow();
-    expect(startEncodeMock).not.toHaveBeenCalled();
+    [
+      'sparse channels',
+      {
+        channelData: Object.assign(new Array<Float32Array>(2), { 0: Float32Array.of(0) }),
+        sampleRate: 44_100,
+      },
+      'Audio channel data is invalid.',
+    ],
+    ['invalid sample rate', { channelData: [new Float32Array(1)], sampleRate: 0 }, 'Audio sample rate is invalid.'],
+  ] satisfies [string, DecodedPcm, string][])(
+    'rejects invalid PCM (%s) before encoding',
+    (_name, input, message) => {
+      expect(() => startConversion(input, 'mp3')).toThrow(message);
+      expect(startEncodeMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it('snapshots WAV channel selection and sample rate before deferred encoding', async () => {
+    const input = {
+      channelData: [Float32Array.of(0, 0.5)],
+      sampleRate: 44_100,
+    };
+
+    const job = startConversion(input, 'wav');
+    input.channelData = [Float32Array.of(0), Float32Array.of(0)];
+    input.sampleRate = 48_000;
+
+    const view = new DataView(await (await job.result).arrayBuffer());
+    expect(view.getUint16(22, true)).toBe(1);
+    expect(view.getUint32(24, true)).toBe(44_100);
+    expect(view.getUint32(40, true)).toBe(4);
   });
 
   it('validates format selection at runtime', () => {

@@ -26,16 +26,17 @@ function validateInput(input: DecodedPcm, format: EncodeFormat): number {
   if (input.channelData.length < 1 || input.channelData.length > 2) {
     throw new Error('Conversion supports mono or stereo audio.');
   }
-  if (input.channelData.some((channel) => !(channel instanceof Float32Array))) {
-    throw new Error('Audio channel data is invalid.');
+  const frameCount = input.channelData[0]?.length;
+  for (let i = 0; i < input.channelData.length; i += 1) {
+    if (!(i in input.channelData) || !(input.channelData[i] instanceof Float32Array)) {
+      throw new Error('Audio channel data is invalid.');
+    }
+    if (input.channelData[i].length !== frameCount) {
+      throw new Error('Audio channels must contain the same number of samples.');
+    }
   }
-
-  const frameCount = input.channelData[0].length;
   if (frameCount === 0) {
     throw new Error('Audio contains no samples.');
-  }
-  if (input.channelData.some((channel) => channel.length !== frameCount)) {
-    throw new Error('Audio channels must contain the same number of samples.');
   }
 
   const pcmBytes = frameCount * input.channelData.length * Float32Array.BYTES_PER_ELEMENT;
@@ -46,6 +47,8 @@ function validateInput(input: DecodedPcm, format: EncodeFormat): number {
 }
 
 function startWavEncode(input: DecodedPcm, onProgress: (value: number) => void): EncodeJob {
+  const channels = input.channelData.slice();
+  const sampleRate = input.sampleRate;
   let settled = false;
   let rejectJob: (reason: Error) => void = () => undefined;
   const result = new Promise<Blob>((resolve, reject) => {
@@ -55,8 +58,8 @@ function startWavEncode(input: DecodedPcm, onProgress: (value: number) => void):
       try {
         onProgress(0);
         const source: AudioPcm = {
-          channels: input.channelData,
-          sampleRate: input.sampleRate,
+          channels,
+          sampleRate,
         };
         const buffer = encodeWav(source);
         if (settled) return;
