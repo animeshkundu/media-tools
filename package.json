@@ -1,0 +1,44 @@
+{
+  "name": "media-tools",
+  "description": "Cut and export audio offline and privately — nothing is uploaded.",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "compile": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier -w .",
+    "check": "npm run compile && npm run lint && npm run test",
+    "postinstall": "wxt prepare"
+  },
+  "dependencies": {
+    "lamejs": "^1.2.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.3.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@wxt-dev/module-react": "^1.1.5",
+    "eslint": "^10.7.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.5",
+    "tailwindcss": "^4.3.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.63.0",
+    "vitest": "^4.1.10",
+    "wxt": "^0.20.27"
+  }
+}
