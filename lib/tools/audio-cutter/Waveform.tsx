@@ -19,6 +19,7 @@ type TrimHandle = 'start' | 'end';
 
 const FINE_STEP_SECONDS = 0.01;
 const COARSE_STEP_SECONDS = 0.1;
+const MINIMUM_SELECTION_SECONDS = 0.05;
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function moveTrimHandle(
@@ -29,7 +30,7 @@ export function moveTrimHandle(
   end: number,
   duration: number,
 ): [start: number, end: number] {
-  const minimum = Math.min(0.05, duration / 2);
+  const minimum = Math.min(MINIMUM_SELECTION_SECONDS, duration / 2);
   const delta = direction * (coarse ? COARSE_STEP_SECONDS : FINE_STEP_SECONDS);
 
   if (handle === 'start') {
@@ -97,7 +98,7 @@ export function Waveform({ channel, duration, end, onChange, start }: WaveformPr
       Math.min(duration, ((event.clientX - bounds.left) / bounds.width) * duration),
     );
     const nearestStart = Math.abs(position - start) <= Math.abs(position - end);
-    const minimum = Math.min(0.05, duration / 2);
+    const minimum = Math.min(MINIMUM_SELECTION_SECONDS, duration / 2);
     if (nearestStart) onChange(Math.min(position, end - minimum), end);
     else onChange(start, Math.max(position, start + minimum));
   }
@@ -118,7 +119,7 @@ export function Waveform({ channel, duration, end, onChange, start }: WaveformPr
     setAnnouncement(`${label} ${formatSeconds(handle === 'start' ? nextStart : nextEnd)}`);
   }
 
-  const minimum = Math.min(0.05, duration / 2);
+  const minimum = Math.min(MINIMUM_SELECTION_SECONDS, duration / 2);
   const handles = [
     { label: 'In point', position: start, type: 'start' as const, min: 0, max: end - minimum },
     {
@@ -157,7 +158,7 @@ export function Waveform({ channel, duration, end, onChange, start }: WaveformPr
             aria-valuemin={handle.min}
             aria-valuenow={handle.position}
             aria-valuetext={formatSeconds(handle.position)}
-            className="pointer-events-none absolute inset-y-0 w-11 -translate-x-1/2 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200 motion-reduce:transition-none"
+            className="pointer-events-none absolute inset-y-0 w-11 -translate-x-1/2 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200"
             style={{ left: `${(handle.position / duration) * 100}%` }}
             onKeyDown={(event) => moveHandleWithKeyboard(handle.type, event)}
           >
