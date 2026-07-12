@@ -1,129 +1,173 @@
-# Standing stream discovery: audio-editing competitors
+# Audio Cutter competitor findings
 
 - **Date:** 2026-07-12
 - **Owner:** Media Tools maintainers
-- **Correlation marker:** `unit-id: 89153391-8562-4dee-9145-f0e4242776c3`
-- **Scope:** Named audio-cutting, joining, conversion, and speed competitors; patterns worth
-  turning into focused Media Tools work items.
+- **Scope:** Audio-cutting features and flows that can improve the shipped Audio Cutter while
+  preserving local processing, no upload.
 
 ## Research question
 
-Which competitor patterns are worth adapting for the privacy-first, offline Audio Cutter and the
-remaining Phase 1 tools, without importing upload funnels, account gates, advertising, remote code,
-or Phase 2/3 scope?
+Which interaction patterns from 123apps Online Audio Cutter (`mp3cut.net`), Audio Trimmer, Clideo,
+ocenaudio, and Audacity are worth adapting into the focused, offline Audio Cutter?
 
-## Evidence boundary
+## Method and evidence boundary
 
-This entry consolidates the repository's dated market research rather than presenting a new live
-store census. Store counts are snapshots and should not be treated as current install totals. The
-primary evidence is:
+This is a comparative UX review, not a code or asset audit. Findings were checked on 2026-07-12
+against public first-party product pages, help pages, or manuals linked in
+[Sources](#first-party-sources). Product claims are reported as claims unless the first-party source
+describes the concrete workflow.
 
-- [Media Tools market research](../../.docs/ext-2-media-tools.md), retrieved 2026-07-12.
-- [Vision](../VISION.md), especially the incumbent positioning and Phase 1 wedge.
-- [Product specification](../PRODUCT-SPEC.md), especially the Phase 1 acceptance criteria.
-- [Design system](../DESIGN.md) and the [Audio Cutter mock](../../mocks/audio-cutter.html).
-- Current implementation in
-  [`entrypoints/app/App.tsx`](../../entrypoints/app/App.tsx),
-  [`lib/tools/audio-cutter/Waveform.tsx`](../../lib/tools/audio-cutter/Waveform.tsx), and
-  [`lib/tools/audio-cutter/encode.worker.ts`](../../lib/tools/audio-cutter/encode.worker.ts).
+No competitor code, visual assets, text, or proprietary implementation is proposed for reuse. The
+recommendations are independently implemented interaction patterns using the existing Media Tools
+design system.
 
 ## Named competitor findings
 
-| Competitor | Evidence-backed role | Worth adapting | Do not copy |
-| --- | --- | --- | --- |
-| 123apps Audio Cutter / `mp3cut.net` | The old Chrome listing is a launcher; the website supplies the actual editor. Basic cutting is already client-side. | Drop-first start, immediate waveform, visible region handles and time feedback, nearby format controls, direct completion flow. | Website redirect, ads, sign-in, upsells, cross-sell clutter, or an overstated uniqueness claim about local cutting. |
-| 123apps Audio Joiner / `audio-joiner.com` | Demonstrates demand, but the researched workflow uploads and has free-tier restrictions. | A visible ordered input list and an obvious single-output action. | Upload, service caps, Premium gating of the basic job, or hidden reordering. |
-| 123apps Audio Converter / `online-audio-converter.com` | The strongest demand signal in the pinned Chrome snapshot; the researched workflow uploads. | Explicit input/output summary, visible format and quality settings, early validation. | Server transfer, daily limits, account friction, or a success state before a playable output exists. |
-| Clideo, VEED, and Kapwing | Named web rivals whose free funnels add watermark or paid friction. | Concise task-focused screens and settings disclosed before work starts. | Watermarks, account gates, remote processing, and ambiguous free-tier limits. |
-| CloudConvert | Named as part of the dominant website conversion funnel. | Familiar conversion language: source, target, settings, convert. | Treating a local file as an upload or requiring connectivity for core conversion. |
-| EZGIF | Named as a dominant single-purpose web-tool funnel. Its video/GIF focus is outside this work unit. | Single-job clarity only. | Starting Phase 2 video or Phase 3 GIF work from this discovery stream. |
-| Firefox Media Converter and Muxer (`media-conversion-tool`) | A genuine local converter with meaningful AMO usage; proves demand for in-browser conversion. | Real in-extension execution, local processing, and capability-aware format choices. | A broad ffmpeg-based engine in the Phase 1 base bundle or UI breadth ahead of quality. |
-| EZConvert Audio Trimmer and MP3 Cutter | Genuine Firefox local trimmers with very low researched usage. | Treat Firefox as a first-class target and keep the cutter discoverable as one focused job. | Assuming low competition removes the need for editor polish, tests, or accessibility. |
-| Audio Joiner Merge DASH | Narrow Firefox joining competitor. | Preserve visible order and make the result one predictable file. | Narrowing the product to a streaming/container-specific workflow. |
-| Speed Pitch Changer, Capo, and Transpose | Existing tools mainly modify playback/stream media rather than exporting a transformed local file. | Label coupled speed and pitch honestly and make durable export the differentiator. | Implying independent pitch preservation or starting the gated Phase 3 time-stretch tool. |
+### 123apps Online Audio Cutter / mp3cut.net
 
-The source research also names format-specific extensions and a silence-removal tool as evidence of
-fragmented demand. They support a coherent suite, but they do not justify adding more formats or
-silence detection to Phase 1.
+**Flow:** upload a file, choose a fragment with two sliders, optionally apply fades, cut, then save.
+The product page also advertises broad format support, audio extraction from video, and one-click
+M4R ringtone output.
 
-## Repository gap analysis
+**Best patterns**
 
-The current app already has the right high-level shape: durable tab host, local dropzone, always
-visible offline badge, amber trim range, determinate worker encode progress, cancellation, and
-WAV/MP3 output. The important gaps are functional rather than cosmetic:
+- Keep the trim task linear: choose file → select one range → choose options → cut.
+- Put fade-in and fade-out beside the range rather than behind a general effects panel.
+- Keep output choice close to the final action.
 
-1. Decode still uses `AudioContext` and `file.arrayBuffer()` on the UI thread.
-2. No hard input or decoded-PCM limit is enforced before allocation.
-3. The waveform is one pointer-driven canvas; it has no independently focusable, named,
-   value-bearing keyboard handles.
-4. Selection conversion uses floor/ceil frame rounding but has no decode round-trip proof that the
-   exported span is within one source frame.
-5. The manifest CSP does not yet default-deny connection, form, and frame sinks, and CI does not
-   inspect both production manifests.
-6. Dependencies use drifting ranges even though shipped versions must be exact and the software
-   bill of materials needs artifact-level provenance.
-7. Phase 1 join, conversion, and coupled speed tools do not exist.
-8. Existing tests cover WAV structure and basic slice length only; they do not cover worker
-   lifecycle, malformed input, cancellation, browser artifacts, accessibility, or real playback.
+**Boundary for Media Tools:** 123apps' privacy policy says users can upload data, that provided data
+is stored on its servers as needed, and that it is deleted no later than 12 hours after use. Its
+flow is therefore not evidence of an offline or no-upload implementation. Broad format support,
+video extraction, cloud providers, advertising, and ringtone-specific behavior are outside this
+Audio Cutter discovery slice.
 
-## Borrow-worthy work items
+### Audio Trimmer
 
-These are intentionally PR-sized. Each item must preserve the durable app-page host, keep processing
-local, and avoid Phase 2 video and Phase 3 independent pitch/time-stretch. Acceptance-criteria
-numbers refer to the mission criteria defined in the companion plan's
-[verification matrix](../plans/2026-07-12-standing-stream-discovery-research-named-audio-editing-compe.md#acceptance-criterion-verification-matrix).
+**Flow:** choose a local file, let supported browsers begin playback, drag two handles, optionally
+choose fade-in/fade-out and M4R for a ringtone, crop, then download.
 
-| ID | Work item | Competitor lesson adapted | Acceptance criteria |
-| --- | --- | --- | --- |
-| PRIV-1 | Ship a default-deny extension-page CSP and inspect both built manifests in CI; narrow privacy copy to claims enforced by the artifact. | Trust must be visible and verifiable, not merely asserted. | 3, 5, 8 |
-| SUPPLY-1 | Exact-pin shipped dependencies and expand `THIRD-PARTY.md` with license, purpose, notices, source/relink obligations, and build details for the vendored MP3 encoder. | Local execution is not enough without reproducible provenance. | 6, 8 |
-| AUDIO-CORE-1 | Establish a cross-browser worker-owned decode contract, preflight file and metadata ceilings before allocation, transfer bounded PCM/chunks, clamp progress, and terminate/clean up on cancel, crash, and error. | Real in-extension processing should stay responsive and predictable. | 4, 5, 6 |
-| CUT-1 | Make selection boundaries frame-based end to end and add WAV/MP3 decode round-trip fixtures for non-frame-aligned ranges and edge selections. | Match editor immediacy while beating it on measurable precision. | 1, 6 |
-| CUT-A11Y-1 | Overlay two semantic trim controls on the waveform with accessible names/values, documented coarse/fine arrow increments, visible focus, live value feedback, non-color status, and reduced-motion behavior. | Keep polished handles without making the canvas a pointer-only control. | 2, 9 |
-| CUT-E2E-1 | Drive built Chrome and Firefox artifacts offline with real WAV and MP3 fixtures; cover success, undecodable input, progress, cancellation, worker failure, no request, no partial download, and output playback. | A direct completion flow is valuable only when the downloaded artifact is real. | 4, 5, 6, 8 |
-| JOIN-1 | Add ordered multi-file join with accessible reorder/remove controls, normalization policy, no introduced gap, WAV/MP3 output, progress, cancellation, and aggregate limits. | Adapt the joiner's visible ordering without its upload funnel. | 4, 5, 7, 9 |
-| CONVERT-1 | Add one-file WAV/MP3 conversion with early decode rejection and visible target settings. | Adapt familiar source-to-target language and early validation. | 4, 5, 6, 7, 9 |
-| SPEED-1 | Add coupled speed-and-pitch export with visible multiplier and predicted duration; explicitly direct independent pitch needs to the later gated tool. | Exporting a local result differentiates it from playback modifiers. | 4, 5, 7, 9 |
+**Best patterns**
 
-## Priority and scope decision
+- Explain the complete four-step flow on the empty state.
+- Treat touch-sized handles and a compact layout as requirements, not desktop enhancements.
+- Offer immediate playback before committing a cut.
 
-Execute the binding foundation before adding tools:
+**Boundary for Media Tools:** the official page repeatedly calls the operation an upload and does
+not promise offline operation or no upload. Media Tools should adapt the small-screen clarity, not
+the service model or copy.
 
-1. `PRIV-1` and `SUPPLY-1`.
-2. `AUDIO-CORE-1`.
-3. `CUT-1`, `CUT-A11Y-1`, and `CUT-E2E-1`.
-4. `JOIN-1`.
-5. `CONVERT-1`.
-6. `SPEED-1`.
+### Clideo Cut Audio
 
-Join, conversion, and speed remain separate pull requests. Shared audio infrastructure may be
-introduced only by the smallest preceding foundation change needed by all three. No work item in
-this stream starts video, GIF, exotic conversion, or independent pitch/time-stretch.
+**Flow:** upload from a device or cloud provider; select a region with yellow handles or exact
+timestamps; choose either **Extract Selected** or **Delete Selected**; optionally apply fades or a
+crossfade; choose a format; export; then preview, download, return to edit, or continue in another
+tool.
 
-## Risks and unresolved decisions
+**Best patterns**
 
-- **Worker decode:** Web Audio contexts are unavailable in worker scope. A compatibility spike must
-  prove the exact Chrome/Firefox decode path and supported input contract before implementation.
-  If browser `AudioDecoder` plus demux is insufficient, any bundled decoder must be exact-pinned,
-  offline, license-reviewed, size-measured, and recorded in `THIRD-PARTY.md`.
-- **Bounded memory:** A file-size cap alone does not bound decoded PCM. Limits must include channels,
-  sample rate, frame count, duration, per-file bytes, aggregate join bytes, and output size using
-  overflow-safe arithmetic.
-- **MP3 timing:** Encoder delay/padding can make naive duration assertions misleading. Tests must
-  decode the produced file and define frame-accurate comparison semantics rather than relying only
-  on container length.
-- **Cancellation:** Worker termination prevents a result message, but tests must also prove no object
-  URL/download is created and all retained references and temporary state are released.
-- **Accessibility:** Semantic controls over a canvas must remain spatially aligned when resized and
-  must not create duplicate or confusing announcements.
-- **Scope pressure:** Competitors expose fades, zoom, batch, many formats, and video features. None
-  belongs in the acceptance-critical path unless separately approved.
-- **Claims:** “Local processing, no upload” is the precise contract. Avoid stronger mechanical-proof
-  language unless production artifacts and runtime tests establish it.
+- Pair direct manipulation with exact start/end fields.
+- Name whether the selected region is kept or removed.
+- Provide a review loop after processing: preview, download, or edit again.
+- Reveal only options that apply to the selected operation.
 
-## Follow-ups
+**Boundary for Media Tools:** Clideo describes files as uploaded and its workflow includes cloud
+storage and subscription-only continuation. Media Tools should retain one local **keep selection**
+operation for now; delete-and-crossfade is a separate editing model, not a small cutter addition.
 
-- Implementation plan:
-  [standing-stream discovery plan](../plans/2026-07-12-standing-stream-discovery-research-named-audio-editing-compe.md).
-- Future changes should update `ROADMAP.md`, relevant specifications, and durable learnings only when
-  behavior or an architectural decision actually lands.
+### ocenaudio
+
+**Flow:** open files in a native desktop editor, select and edit in the waveform, apply effects, and
+save while longer opening, saving, and effect operations run in the background.
+
+**Best patterns**
+
+- Keep the editor responsive while expensive work runs away from the interaction surface.
+- Present waveform editing as the primary task and advanced analysis as optional depth.
+- Keep behavior and visual structure consistent across operating systems.
+
+**Boundary for Media Tools:** spectral analysis, multiple open documents, and a full effects suite
+would turn the focused cutter into a general editor. The transferable lesson is responsiveness and
+cross-platform consistency, already aligned with the durable app-page and worker architecture.
+
+### Audacity
+
+**Flow:** select a waveform region by pointer or keyboard, refine it through exact Selection Toolbar
+values, listen to the selection or a cut preview, apply an edit or fade, undo if needed, and export.
+
+**Best patterns**
+
+- Make start and end values directly editable, with a clear time format.
+- Give each selection boundary complete keyboard operation, not just a keyboard-reachable canvas.
+- Support quick selection playback and a cut-preview loop before export.
+- Make experimentation recoverable through a visible return-to-edit path.
+
+**Boundary for Media Tools:** multi-track editing, project history, labels, plug-ins, spectral
+selection, and configurable fade curves exceed the single-job product. Media Tools can borrow
+precision and auditioning without recreating a desktop digital audio workstation.
+
+## Comparative flow
+
+| Product              | Input wording/model                | Range control                   | Precision/review                               | Completion                      | Fit                                  |
+| -------------------- | ---------------------------------- | ------------------------------- | ---------------------------------------------- | ------------------------------- | ------------------------------------ |
+| 123apps / mp3cut.net | Upload; server retention disclosed | Two sliders                     | Fades                                          | Cut then save                   | Borrow linearity only                |
+| Audio Trimmer        | Upload from device                 | Two handles                     | Immediate playback; optional fades             | Crop then download              | Borrow mobile clarity                |
+| Clideo               | Device/cloud upload                | Handles or timestamps           | Extract/delete modes; post-export preview/edit | Export then download/cloud save | Borrow exact fields and review loop  |
+| ocenaudio            | Native local file                  | Desktop waveform selection      | Background tasks keep UI responsive            | Save locally                    | Borrow responsiveness                |
+| Audacity             | Native local file                  | Pointer, keyboard, exact values | Selection/cut preview; undo                    | Export locally                  | Borrow precision and keyboard parity |
+
+## Decision: features worth borrowing now
+
+Only two patterns are both high-value and small enough for deterministic cloud-worker issues:
+
+1. **Keyboard-operable trim boundaries.** This closes the current pointer-only interaction gap and
+   adapts Audacity's keyboard parity without adding editor scope.
+2. **Exact In/Out time fields.** This adapts Clideo's dual handle/timestamp approach and Audacity's
+   Selection Toolbar precision while retaining the existing single-range model.
+
+Selection preview, simple fades, and a post-export preview/edit loop are worthwhile follow-ups, but
+they are deliberately not filed here. Each crosses playback or worker/export state currently
+centralized in `entrypoints/app/App.tsx`; splitting them into sub-hour issues would create overlapping
+ownership or incomplete UI. Delete-selected, crossfade, ringtone output, cloud import/export, broad
+format expansion, multi-track editing, and spectral tools are rejected for this slice.
+
+## Filed work items
+
+The two issues are independent, have disjoint file ownership, and are each scoped for less than one
+hour of cloud-worker implementation. Their acceptance criteria require existing design tokens,
+local processing with no network path, and independent implementation without copied code or assets.
+
+| Issue                                                    | Borrowed pattern                              | Exclusive file ownership                                                                                              | Overlap |
+| -------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------- |
+| _Pending issue link_ — keyboard-operable trim boundaries | Audacity keyboard selection                   | `lib/tools/audio-cutter/Waveform.tsx`; `tests/waveform.test.tsx` (new)                                                | None    |
+| _Pending issue link_ — exact In/Out time fields          | Clideo timestamps; Audacity Selection Toolbar | `entrypoints/app/App.tsx`; `lib/tools/audio-cutter/TrimTimeFields.tsx` (new); `tests/trim-time-fields.test.tsx` (new) | None    |
+
+No other issue in this discovery batch may modify those files. If a task needs a listed file, it
+must be sequenced after the owning issue rather than expanded in parallel.
+
+## First-party sources
+
+Accessed 2026-07-12:
+
+- 123apps, [Online MP3 Cutter](https://mp3cut.net/).
+- 123apps, [Privacy Policy](https://123apps.com/legal).
+- Audio Trimmer, [MP3 Cutter Online](https://audiotrimmer.com/).
+- Clideo, [Cut Audio](https://clideo.com/cut-audio).
+- Clideo Help, [How to trim my audio file](https://help.clideo.com/hc/en-us/articles/4413306580498-How-to-trim-my-audio-file).
+- ocenaudio, [About ocenaudio](https://www.ocenaudio.com/en/whatis).
+- ocenaudio, [Features](https://www.ocenaudio.com/en/features).
+- Audacity Manual, [Audacity Selection](https://manual.audacityteam.org/man/audacity_selection.html).
+- Audacity Manual, [Selection Toolbar](https://manual.audacityteam.org/man/selection_toolbar.html).
+- Audacity Manual, [Playing and Recording](https://manual.audacityteam.org/man/playing_and_recording.html).
+- Audacity Manual, [Fades](https://manual.audacityteam.org/man/fades.html).
+- Audacity Manual, [Undo, Redo and History](https://manual.audacityteam.org/man/undo_redo_and_history.html).
+
+## Verification
+
+- Every named competitor in the request has a first-party source and an explicit adopt/reject
+  boundary.
+- Recommendations preserve the repository's local processing, no upload contract and current
+  worker/durable-host architecture.
+- Proposed issue ownership is file-disjoint and does not require changes in this research pull
+  request outside `docs/research/**`.
+- External ideas are reduced to generic interaction patterns; no code, assets, or protected copy is
+  reused.
