@@ -31,6 +31,12 @@ describe('check-manifest-egress script', () => {
     ).not.toThrow();
   });
 
+  it('rejects non-MV3 manifests', () => {
+    expect(() => validateManifestEgress({ manifest_version: 2 }, 'mv2')).toThrow(
+      /mv2: manifest_version must be 3/,
+    );
+  });
+
   it.each([
     ['permissions', ['nativeMessaging']],
     ['permissions', ['proxy']],
@@ -78,7 +84,7 @@ describe('check-manifest-egress script', () => {
           manifest_version: 3,
           web_accessible_resources: [
             {
-              resources: ['assets/player.js', 'assets/icons/*.svg'],
+              resources: ['assets/player.js', 'assets/icons/player.svg'],
               matches: ['https://media.example.com/tools/*'],
               use_dynamic_url: true,
             },
@@ -107,6 +113,16 @@ describe('check-manifest-egress script', () => {
     {
       name: 'global resource wildcards',
       entry: { resources: ['**/*'], matches: ['https://example.com/*'] },
+      message: 'is not narrowly scoped',
+    },
+    {
+      name: 'partial filename globs',
+      entry: { resources: ['*.js'], matches: ['https://example.com/*'] },
+      message: 'is not narrowly scoped',
+    },
+    {
+      name: 'partial path globs',
+      entry: { resources: ['assets/*'], matches: ['https://example.com/*'] },
       message: 'is not narrowly scoped',
     },
     {
@@ -172,6 +188,29 @@ describe('check-manifest-egress script', () => {
     expect(stderr).toBe('');
     expect(stdout).toContain('.output/chrome-mv3/manifest.json: manifest egress guard verified');
     expect(stdout).toContain('.output/firefox-mv3/manifest.json: manifest egress guard verified');
+  });
+
+  it('exits non-zero for a non-MV3 built manifest', async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), 'check-manifest-egress-mv2-'));
+    tempDirsToCleanup.push(tempDir);
+    const chromeDir = join(tempDir, '.output/chrome-mv3');
+    const firefoxDir = join(tempDir, '.output/firefox-mv3');
+    await Promise.all([
+      mkdir(chromeDir, { recursive: true }),
+      mkdir(firefoxDir, { recursive: true }),
+    ]);
+    await Promise.all([
+      writeFile(join(chromeDir, 'manifest.json'), JSON.stringify({ manifest_version: 2 })),
+      writeFile(join(firefoxDir, 'manifest.json'), JSON.stringify({ manifest_version: 3 })),
+    ]);
+
+    const scriptPath = resolve('scripts/check-manifest-egress.mjs');
+    await expect(execFileAsync(process.execPath, [scriptPath], { cwd: tempDir })).rejects.toMatchObject(
+      {
+        code: 1,
+        stderr: expect.stringContaining('manifest_version must be 3'),
+      },
+    );
   });
 
   it('fails when either built browser manifest broadens egress', async () => {

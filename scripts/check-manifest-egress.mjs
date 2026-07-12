@@ -49,10 +49,10 @@ function validateMatchPattern(pattern, source) {
 
 function validateResource(resource, source) {
   if (
+    resource.includes('*') ||
     resource.includes('\\') ||
     resource.split('/').includes('..') ||
-    /^[a-z][a-z\d+.-]*:/i.test(resource) ||
-    ['*', '/*', '**', '/**', '**/*', '/**/*'].includes(resource)
+    /^[a-z][a-z\d+.-]*:/i.test(resource)
   ) {
     throw new Error(
       `${source}: web_accessible_resources resource ${JSON.stringify(resource)} is not narrowly scoped`,
@@ -107,6 +107,9 @@ function validateWebAccessibleResources(value, source) {
 export function validateManifestEgress(manifest, source) {
   if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
     throw new Error(`${source}: manifest must be an object`);
+  }
+  if (manifest.manifest_version !== 3) {
+    throw new Error(`${source}: manifest_version must be 3`);
   }
 
   for (const key of [
