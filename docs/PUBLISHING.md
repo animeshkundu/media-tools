@@ -69,14 +69,14 @@ Recheck these values in each release review, especially after changing the exten
 - Screenshots, using the existing mocks as a basis
 - Short and long descriptions
 - Categories
-- Privacy-policy copy: "No data collected. Nothing leaves the device."
+- Privacy-policy copy: "no data collected, nothing leaves the device"
 - Support URL
 
 Make screenshots and descriptions match the current shipped feature set.
 
 ## Chrome Web Store
 
-The release workflow includes a manual, optional Chrome publishing step. Enable it only after adding these repository secrets:
+The release workflow includes a manual, optional Chrome publishing job. Enable it only after adding these repository secrets:
 
 - `CHROME_EXTENSION_ID`
 - `CHROME_CLIENT_ID`

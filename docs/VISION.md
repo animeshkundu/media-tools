@@ -8,7 +8,7 @@ The media tools you reach for when the file must stay on your device: cut, join,
 
 ## The vision in 3 years
 
-Media Tools is the default privacy-first offline media toolkit across Chrome and Firefox. It grows from the shipped audio cutter into a complete audio and video workspace for everyday local-file jobs, while keeping the interaction simple: choose a file, make the change, and download the result.
+Media Tools is the default privacy-first offline media toolkit across Chrome and Firefox. It grows from the shipped audio cutter into full video and a complete workspace for everyday local-file jobs, while keeping the interaction simple: choose a file, make the change, and download the result.
 
 It also becomes one part of a focused "offline tools" suite alongside File Tools and Photo Tools. Each product stays single-purpose, but all three share a recognizable promise: local processing, minimal permissions, no account, and no monetization that compromises trust.
 
