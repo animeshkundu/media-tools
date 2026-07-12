@@ -37,7 +37,24 @@ function parsePolicy(policy, source) {
 }
 
 export function validateManifest(manifest, source) {
-  const policy = manifest?.content_security_policy?.extension_pages;
+  const contentSecurityPolicy = manifest?.content_security_policy;
+  if (
+    contentSecurityPolicy &&
+    typeof contentSecurityPolicy === 'object' &&
+    !Array.isArray(contentSecurityPolicy)
+  ) {
+    const contentSecurityPolicyKeys = Object.keys(contentSecurityPolicy);
+    if (
+      contentSecurityPolicyKeys.length !== 1 ||
+      contentSecurityPolicyKeys[0] !== 'extension_pages'
+    ) {
+      throw new Error(
+        `${source}: content_security_policy keys must be extension_pages, found ${contentSecurityPolicyKeys.join(', ') || '(none)'}`,
+      );
+    }
+  }
+
+  const policy = contentSecurityPolicy?.extension_pages;
   const directives = parsePolicy(policy, source);
 
   for (const name of directives.keys()) {

@@ -61,6 +61,17 @@ describe('check-csp script', () => {
     );
   });
 
+  it('rejects sibling content_security_policy keys', () => {
+    const siblingKeyManifest = cloneManifest() as typeof validManifest & {
+      content_security_policy: typeof validManifest.content_security_policy & { sandbox: string };
+    };
+    siblingKeyManifest.content_security_policy.sandbox = "sandbox allow-scripts; connect-src *";
+
+    expect(() => validateManifest(siblingKeyManifest, 'sibling-key')).toThrow(
+      /sibling-key: content_security_policy keys must be extension_pages, found extension_pages, sandbox/,
+    );
+  });
+
   it('validates manifests when the CLI script path in argv[1] is relative', async () => {
     const tempDir = await mkdtemp(join(tmpdir(), 'check-csp-'));
     tempDirsToCleanup.push(tempDir);
