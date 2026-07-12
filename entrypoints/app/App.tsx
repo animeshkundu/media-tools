@@ -4,14 +4,19 @@ import { Progress } from '@/components/Progress';
 import { downloadBlob } from '@/lib/core/download';
 import { Dropzone } from '@/lib/core/dropzone';
 import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
-import { startEncode, type EncodeFormat, type EncodeJob } from '@/lib/core/worker';
+import {
+  startAnalyze,
+  startEncode,
+  type AudioJob,
+  type EncodeFormat,
+} from '@/lib/core/worker';
 import { Waveform } from '@/lib/tools/audio-cutter/Waveform';
 
 type LoadedAudio = {
-  channels: Float32Array[];
   duration: number;
   file: File;
   sampleRate: number;
+  waveform: Float32Array;
 };
 
 export default function App() {
@@ -22,26 +27,25 @@ export default function App() {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('Drop an audio file to begin.');
   const [busy, setBusy] = useState(false);
-  const jobRef = useRef<EncodeJob | undefined>(undefined);
+  const jobRef = useRef<AudioJob<unknown> | undefined>(undefined);
 
   async function load(file: File) {
     setBusy(true);
-    setStatus('Decoding audio locally…');
+    setProgress(0);
+    setStatus('Reading audio in a worker…');
     try {
-      const context = new AudioContext();
-      const decoded = await context.decodeAudioData(await file.arrayBuffer());
-      const channels = Array.from({ length: decoded.numberOfChannels }, (_, channel) =>
-        decoded.getChannelData(channel).slice(),
-      );
-      await context.close();
-      setAudio({ channels, duration: decoded.duration, file, sampleRate: decoded.sampleRate });
+      const job = startAnalyze(file, setProgress);
+      jobRef.current = job;
+      const analysis = await job.result;
+      setAudio({ ...analysis, file });
       setStart(0);
-      setEnd(decoded.duration);
+      setEnd(analysis.duration);
       setStatus('Drag the gold handles to choose the part you want.');
-    } catch {
+    } catch (error) {
       setAudio(undefined);
-      setStatus('This browser could not decode that audio file. Try WAV, MP3, M4A, or OGG.');
+      setStatus(error instanceof Error ? error.message : 'This audio file could not be read.');
     } finally {
+      jobRef.current = undefined;
       setBusy(false);
     }
   }
@@ -53,8 +57,7 @@ export default function App() {
     setStatus(`Encoding ${format.toUpperCase()} in a worker…`);
     const job = startEncode(
       {
-        channels: audio.channels,
-        sampleRate: audio.sampleRate,
+        file: audio.file,
         startSeconds: start,
         endSeconds: end,
         format,
@@ -94,13 +97,26 @@ export default function App() {
         </header>
 
         {!audio ? (
-          <Dropzone accept="audio/*" disabled={busy} onFile={load}>
-            <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-400 text-2xl text-emerald-950">
-              ♪
-            </div>
-            <p className="text-xl font-semibold">Drop an audio file here</p>
-            <p className="mt-2 text-emerald-100/60">or click to choose a file from this device</p>
-          </Dropzone>
+          <>
+            <Dropzone accept="audio/wav,.wav" disabled={busy} onFile={load}>
+              <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-400 text-2xl text-emerald-950">
+                ♪
+              </div>
+              <p className="text-xl font-semibold">Drop a WAV file here</p>
+              <p className="mt-2 text-emerald-100/60">or click to choose a file from this device</p>
+            </Dropzone>
+            {busy && (
+              <div className="mt-5">
+                <Progress value={progress} />
+                <button
+                  className="mx-auto mt-4 block rounded-xl border border-red-300/30 px-5 py-3 font-semibold text-red-200 hover:bg-red-300/10"
+                  onClick={() => jobRef.current?.cancel()}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <section className="rounded-3xl border border-white/10 bg-black/20 p-5 shadow-2xl shadow-black/30 sm:p-8">
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -121,7 +137,7 @@ export default function App() {
             </div>
 
             <Waveform
-              channel={audio.channels[0]}
+              channel={audio.waveform}
               duration={audio.duration}
               start={start}
               end={end}
