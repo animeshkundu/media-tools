@@ -59,9 +59,7 @@ export function startChangeSpeedEncode(
   onProgress: (value: number) => void,
 ): EncodeJob {
   const resampled = changeSpeed(source, factor);
-  const firstChannel = resampled.channelData[0];
-  if (!firstChannel) throw new Error('Audio must contain at least one channel.');
-  const frameCount = firstChannel.length;
+  const frameCount = resampled.channelData[0].length;
   return startEncode(
     {
       channels: resampled.channelData,
