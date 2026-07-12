@@ -59,7 +59,8 @@ Use semantic `N.N.N` versions in `package.json` and the manifest. Every AMO uplo
 - `browser_specific_settings.gecko.id` to `media-tools@local`
 - `data_collection_permissions: { required: ['none'] }`, required by AMO since 2025-11-03
 - no host permissions
-- extension CSP with `wasm-unsafe-eval` for locally bundled WASM
+- extension CSP that default-denies egress (`default-src 'none'`, `connect-src 'none'`,
+  `form-action 'none'`, `frame-src 'none'`, and only packaged extension-page assets)
 
 Recheck these values in each release review, especially after changing the extension ID or adding capabilities.
 
@@ -69,7 +70,7 @@ Recheck these values in each release review, especially after changing the exten
 - Screenshots, using the existing mocks as a basis
 - Short and long descriptions
 - Categories
-- Privacy-policy copy: "no data collected, nothing leaves the device"
+- Privacy-policy copy: "local processing, no upload"
 - Support URL
 
 Make screenshots and descriptions match the current shipped feature set.

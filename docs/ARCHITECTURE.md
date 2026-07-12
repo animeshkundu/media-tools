@@ -7,8 +7,8 @@ context in [`../.docs/ext-2-media-tools.md`](../.docs/ext-2-media-tools.md) firs
 
 ## 1. Principles that shape every decision
 
-1. **Nothing leaves the device.** No upload, no network for processing, no remote code. The manifest
-   is the proof: no host permissions, a strict CSP, and every dependency bundled. A user can read it.
+1. **Local processing, no upload.** No network for processing, no remote code. The manifest is the
+   proof: no host permissions, a strict CSP, and every dependency bundled. A user can read it.
 2. **The extension page is the workhorse, the background is glue.** MV3 backgrounds are ephemeral and
    have no DOM. All UI and all heavy compute live in a durable page opened in a tab.
 3. **One codebase, both browsers.** WXT compiles a single MV3 source to Chrome and Firefox. Anything
@@ -208,8 +208,11 @@ hack. The ~30 MB core is fetched and instantiated on first use, so the base inst
 - **No remote code (MV3 requirement, and our own rule).** Every dependency and WASM asset is bundled.
   `FFmpeg.load()` points at packaged files, never a CDN. The self-hosted model/codec assets are cached
   in IndexedDB after first load for offline reuse.
-- **CSP.** `content_security_policy.extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src
-  'self'"` (already set in `wxt.config.ts`) allows WASM instantiation without opening remote script.
+- **CSP.** `content_security_policy.extension_pages` now default-denies extension egress with
+  `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:
+  blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none';
+  frame-src 'none'; object-src 'self'; base-uri 'none'`. If bundled WASM is introduced later, add
+  only the minimum CSP needed for that packaged asset and document the reason explicitly.
 - **AMO data-collection disclosure.** `browser_specific_settings.gecko.id = media-tools@local` and
   `data_collection_permissions: { required: ['none'] }` are set (AMO has required this since
   2025-11-03). The honest answer is "none", because there is no telemetry.

@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 
@@ -63,6 +64,10 @@ export function validateManifest(manifest, source) {
   }
 }
 
+export function isDirectExecution(entryPath, metaUrl = import.meta.url) {
+  return Boolean(entryPath) && metaUrl === pathToFileURL(resolve(entryPath)).href;
+}
+
 async function main(paths) {
   if (paths.length === 0) {
     throw new Error('Usage: node scripts/check-csp.mjs <manifest.json> [...]');
@@ -80,7 +85,7 @@ async function main(paths) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectExecution(process.argv[1])) {
   main(process.argv.slice(2)).catch((error) => {
     process.stderr.write(`${error.message}\n`);
     process.exitCode = 1;
