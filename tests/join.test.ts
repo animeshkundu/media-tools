@@ -15,7 +15,7 @@ vi.mock('../lib/core/worker', () => ({
   })),
 }));
 
-function createTrack(samples: number[][], sampleRate = 4): DecodedPcmTrack {
+function createTrack(samples: number[][], sampleRate = 8_000): DecodedPcmTrack {
   return {
     channelData: samples.map((channel) => Float32Array.from(channel)),
     sampleRate,

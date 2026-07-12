@@ -24,8 +24,10 @@ function orderedTracks(
     if (!Number.isInteger(index) || index < 0 || index >= tracks.length || seen.has(index)) {
       throw new Error('Track order must include every input exactly once.');
     }
+    const track = tracks[index];
+    if (!track) throw new Error('Track order references a missing input.');
     seen.add(index);
-    return tracks[index] as DecodedPcmTrack;
+    return track;
   });
 }
 
@@ -62,10 +64,11 @@ function resampleChannel(
   if (sourceRate === outputRate) return source.slice();
 
   const output = new Float32Array(outputFrames);
+  const maxIndex = source.length - 1;
   for (let frame = 0; frame < outputFrames; frame += 1) {
     const sourcePosition = (frame * sourceRate) / outputRate;
-    const lowerIndex = Math.min(source.length - 1, Math.floor(sourcePosition));
-    const upperIndex = Math.min(source.length - 1, lowerIndex + 1);
+    const lowerIndex = Math.min(maxIndex, Math.floor(sourcePosition));
+    const upperIndex = Math.min(maxIndex, lowerIndex + 1);
     const fraction = sourcePosition - lowerIndex;
     const lower = source[lowerIndex] ?? 0;
     output[frame] = lower + ((source[upperIndex] ?? lower) - lower) * fraction;
@@ -100,7 +103,7 @@ export function joinPcm(
   arrangedTracks.forEach((track, trackIndex) => {
     const outputFrames = normalizedLengths[trackIndex] ?? 0;
     for (let channelIndex = 0; channelIndex < channelCount; channelIndex += 1) {
-      // Mono inputs are duplicated when the joined output is stereo.
+      // Falling back to channel zero intentionally duplicates mono input into stereo output.
       const source = track.channelData[channelIndex] ?? track.channelData[0];
       if (!source) throw new Error('Track contains no channel data.');
       channelData[channelIndex]?.set(
