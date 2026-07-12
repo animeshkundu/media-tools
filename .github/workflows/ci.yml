@@ -64,6 +64,8 @@ jobs:
             ],
             ['network source', replaceDirective('connect-src', "'self'")],
             ['unapproved directive', `${policy}; prefetch-src https://example.com`],
+            ['non-ascii no-break space', policy.replace("connect-src 'none'", "connect-src\u00A0'none'")],
+            ['non-ascii bom', policy.replace("default-src 'none'", "default-src\uFEFF'none'")],
           ]) {
             const candidate = structuredClone(manifest);
             candidate.content_security_policy.extension_pages = candidatePolicy;

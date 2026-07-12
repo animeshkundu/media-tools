@@ -17,14 +17,30 @@ const EXPECTED_DIRECTIVES = new Map([
   ['base-uri', ["'none'"]],
 ]);
 
+const ASCII_CSP_WHITESPACE = '[ \\t\\r\\n\\f]';
+const ASCII_CSP_WHITESPACE_PATTERN = new RegExp(`${ASCII_CSP_WHITESPACE}+`, 'g');
+const ASCII_CSP_TRIM_PATTERN = new RegExp(`^${ASCII_CSP_WHITESPACE}+|${ASCII_CSP_WHITESPACE}+$`, 'g');
+const NON_ASCII_OR_INVALID_CSP_CHARACTER_PATTERN = /[^\x20-\x7E\t\r\n\f]/;
+
+function trimAsciiWhitespace(value) {
+  return value.replace(ASCII_CSP_TRIM_PATTERN, '');
+}
+
 function parsePolicy(policy, source) {
   if (typeof policy !== 'string') {
     throw new Error(`${source}: content_security_policy.extension_pages must be a string`);
   }
+  if (NON_ASCII_OR_INVALID_CSP_CHARACTER_PATTERN.test(policy)) {
+    throw new Error(
+      `${source}: content_security_policy.extension_pages must use ASCII characters and ASCII whitespace only`,
+    );
+  }
 
   const directives = new Map();
   for (const entry of policy.split(';')) {
-    const tokens = entry.trim().split(/\s+/).filter(Boolean);
+    const tokens = trimAsciiWhitespace(entry)
+      .split(ASCII_CSP_WHITESPACE_PATTERN)
+      .filter(Boolean);
     if (tokens.length === 0) continue;
 
     const [name, ...values] = tokens;
