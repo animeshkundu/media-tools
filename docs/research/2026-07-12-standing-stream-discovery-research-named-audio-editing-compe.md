@@ -69,7 +69,9 @@ WAV/MP3 output. The important gaps are functional rather than cosmetic:
 ## Borrow-worthy work items
 
 These are intentionally PR-sized. Each item must preserve the durable app-page host, keep processing
-local, and avoid Phase 2 video and Phase 3 independent pitch/time-stretch.
+local, and avoid Phase 2 video and Phase 3 independent pitch/time-stretch. Acceptance-criteria
+numbers refer to the mission criteria defined in the companion plan's
+[verification matrix](../plans/2026-07-12-standing-stream-discovery-research-named-audio-editing-compe.md#acceptance-criterion-verification-matrix).
 
 | ID | Work item | Competitor lesson adapted | Acceptance criteria |
 | --- | --- | --- | --- |
@@ -125,4 +127,3 @@ this stream starts video, GIF, exotic conversion, or independent pitch/time-stre
   [standing-stream discovery plan](../plans/2026-07-12-standing-stream-discovery-research-named-audio-editing-compe.md).
 - Future changes should update `ROADMAP.md`, relevant specifications, and durable learnings only when
   behavior or an architectural decision actually lands.
-
