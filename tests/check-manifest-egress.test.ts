@@ -32,26 +32,30 @@ describe('check-manifest-egress script', () => {
   });
 
   it.each([
-    ['permissions', 'nativeMessaging'],
-    ['permissions', 'proxy'],
-    ['optional_permissions', 'webRequest'],
-    ['host_permissions', 'https://example.com/*'],
-    ['optional_host_permissions', 'https://example.com/*'],
-  ])('rejects non-empty %s with %s', (key, permission) => {
+    ['permissions', ['nativeMessaging']],
+    ['permissions', ['proxy']],
+    ['permissions', ['nativeMessaging', 'proxy']],
+    ['optional_permissions', ['webRequest']],
+    ['host_permissions', ['https://example.com/*']],
+    ['optional_host_permissions', ['https://example.com/*']],
+  ])('rejects non-empty %s with %s', (key, permissions) => {
     expect(() =>
-      validateManifestEgress({ manifest_version: 3, [key]: [permission] }, key),
+      validateManifestEgress({ manifest_version: 3, [key]: permissions }, key),
     ).toThrow(new RegExp(`${key}: ${key} must be absent or empty`));
   });
 
-  it.each([
-    [],
-    [{ matches: ['https://example.com/*'], js: ['content.js'] }],
-  ])('rejects content_scripts whenever the key is present', (contentScripts) => {
+  it('rejects an empty content_scripts key', () => {
+    expect(() =>
+      validateManifestEgress({ manifest_version: 3, content_scripts: [] }, 'content'),
+    ).toThrow(/content: content_scripts must be absent/);
+  });
+
+  it('rejects configured content_scripts', () => {
     expect(() =>
       validateManifestEgress(
         {
           manifest_version: 3,
-          content_scripts: contentScripts,
+          content_scripts: [{ matches: ['https://example.com/*'], js: ['content.js'] }],
         },
         'content',
       ),
