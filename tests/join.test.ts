@@ -76,7 +76,7 @@ describe('audio join core', () => {
     // One million float samples occupy 4 MiB; references are repeated to cross the 512 MiB limit.
     const shared = new Float32Array(1024 * 1024);
     const repeatedTracks = Array.from(
-      { length: MAX_JOIN_OUTPUT_BYTES / shared.byteLength + 1 },
+      { length: Math.floor(MAX_JOIN_OUTPUT_BYTES / shared.byteLength) + 1 },
       () => ({ channelData: [shared], sampleRate: 48_000 }),
     );
 

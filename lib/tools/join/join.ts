@@ -86,9 +86,11 @@ export function joinPcm(
   const frameCounts = arrangedTracks.map(validateTrack);
   const sampleRate = Math.max(...arrangedTracks.map((track) => track.sampleRate));
   const channelCount = Math.max(...arrangedTracks.map((track) => track.channelData.length));
-  const normalizedLengths = arrangedTracks.map((track, index) =>
-    normalizedFrameCount(frameCounts[index] ?? 0, track.sampleRate, sampleRate),
-  );
+  const normalizedLengths = arrangedTracks.map((track, index) => {
+    const frameCount = frameCounts[index];
+    if (frameCount === undefined) throw new Error('Track frame count is unavailable.');
+    return normalizedFrameCount(frameCount, track.sampleRate, sampleRate);
+  });
   const totalFrames = normalizedLengths.reduce((total, length) => {
     const next = total + length;
     if (!Number.isSafeInteger(next) || next * channelCount * Float32Array.BYTES_PER_ELEMENT > MAX_JOIN_OUTPUT_BYTES) {
@@ -101,7 +103,8 @@ export function joinPcm(
   let outputOffset = 0;
 
   arrangedTracks.forEach((track, trackIndex) => {
-    const outputFrames = normalizedLengths[trackIndex] ?? 0;
+    const outputFrames = normalizedLengths[trackIndex];
+    if (outputFrames === undefined) throw new Error('Normalized track length is unavailable.');
     for (let channelIndex = 0; channelIndex < channelCount; channelIndex += 1) {
       // Falling back to channel zero intentionally duplicates mono input into stereo output.
       const source = track.channelData[channelIndex] ?? track.channelData[0];
