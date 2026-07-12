@@ -21,6 +21,10 @@ const FINE_STEP_SECONDS = 0.01;
 const COARSE_STEP_SECONDS = 0.1;
 const MINIMUM_SELECTION_SECONDS = 0.05;
 
+function minimumSelection(duration: number) {
+  return Math.min(MINIMUM_SELECTION_SECONDS, duration / 2);
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function moveTrimHandle(
   handle: TrimHandle,
@@ -30,7 +34,7 @@ export function moveTrimHandle(
   end: number,
   duration: number,
 ): [start: number, end: number] {
-  const minimum = Math.min(MINIMUM_SELECTION_SECONDS, duration / 2);
+  const minimum = minimumSelection(duration);
   const delta = direction * (coarse ? COARSE_STEP_SECONDS : FINE_STEP_SECONDS);
 
   if (handle === 'start') {
@@ -100,7 +104,7 @@ export function Waveform({ channel, duration, end, onChange, start }: WaveformPr
   }
 
   function moveHandleToPosition(handle: TrimHandle, position: number) {
-    const minimum = Math.min(MINIMUM_SELECTION_SECONDS, duration / 2);
+    const minimum = minimumSelection(duration);
     if (handle === 'start') onChange(Math.min(position, end - minimum), end);
     else onChange(start, Math.max(position, start + minimum));
   }
@@ -133,7 +137,7 @@ export function Waveform({ channel, duration, end, onChange, start }: WaveformPr
     setAnnouncement(`${label} ${formatSecondsForAria(handle === 'start' ? nextStart : nextEnd)}`);
   }
 
-  const minimum = Math.min(MINIMUM_SELECTION_SECONDS, duration / 2);
+  const minimum = minimumSelection(duration);
   const handles = [
     { label: 'In point', position: start, type: 'start' as const, min: 0, max: end - minimum },
     {
