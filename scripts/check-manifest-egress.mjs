@@ -109,10 +109,19 @@ export function validateManifestEgress(manifest, source) {
     throw new Error(`${source}: manifest must be an object`);
   }
 
-  for (const key of ['host_permissions', 'optional_host_permissions']) {
+  for (const key of [
+    'permissions',
+    'optional_permissions',
+    'host_permissions',
+    'optional_host_permissions',
+  ]) {
     if (Object.hasOwn(manifest, key) && (!Array.isArray(manifest[key]) || manifest[key].length > 0)) {
       throw new Error(`${source}: ${key} must be absent or empty`);
     }
+  }
+
+  if (Object.hasOwn(manifest, 'content_scripts')) {
+    throw new Error(`${source}: content_scripts must be absent`);
   }
 
   if (Object.hasOwn(manifest, 'externally_connectable')) {
