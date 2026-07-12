@@ -15,7 +15,7 @@ vi.mock('../lib/core/worker', () => ({
   })),
 }));
 
-function track(samples: number[][], sampleRate = 4): DecodedPcmTrack {
+function createTrack(samples: number[][], sampleRate = 4): DecodedPcmTrack {
   return {
     channelData: samples.map((channel) => Float32Array.from(channel)),
     sampleRate,
@@ -28,7 +28,7 @@ describe('audio join core', () => {
   });
 
   it('copies a single track without aliasing its samples', () => {
-    const input = track([[0.25, -0.5]]);
+    const input = createTrack([[0.25, -0.5]]);
     const joined = joinPcm([input]);
 
     expect(Array.from(joined.channelData[0] ?? [])).toEqual([0.25, -0.5]);
@@ -36,7 +36,7 @@ describe('audio join core', () => {
   });
 
   it('preserves the requested order and introduces no silent boundary frames', () => {
-    const tracks = [track([[1, 0.75]]), track([[-0.5, -1]])];
+    const tracks = [createTrack([[1, 0.75]]), createTrack([[-0.5, -1]])];
     const visibleOrder = joinPcm(tracks);
     const reordered = joinPcm(tracks, [1, 0]);
 
@@ -48,8 +48,8 @@ describe('audio join core', () => {
 
   it('resamples to the highest rate and reconciles mono and stereo channels', () => {
     const joined = joinPcm([
-      track([[0, 1]], 2),
-      track(
+      createTrack([[0, 1]], 2),
+      createTrack(
         [
           [0.25, 0.5, 0.75, 1],
           [-0.25, -0.5, -0.75, -1],
@@ -65,14 +65,15 @@ describe('audio join core', () => {
   });
 
   it('rejects malformed tracks and invalid explicit order', () => {
-    expect(() => joinPcm([track([[1], [1, 2]])])).toThrow('same non-zero frame count');
-    expect(() => joinPcm([track([[1]], 0)])).toThrow('positive finite');
-    expect(() => joinPcm([track([[1]]), track([[2]])], [0, 0])).toThrow(
+    expect(() => joinPcm([createTrack([[1], [1, 2]])])).toThrow('same non-zero frame count');
+    expect(() => joinPcm([createTrack([[1]], 0)])).toThrow('positive finite');
+    expect(() => joinPcm([createTrack([[1]]), createTrack([[2]])], [0, 0])).toThrow(
       'include every input exactly once',
     );
   });
 
   it('rejects aggregate PCM beyond the hard limit before output allocation', () => {
+    // One million float samples occupy 4 MiB; references are repeated to cross the 512 MiB limit.
     const shared = new Float32Array(1024 * 1024);
     const repeatedTracks = Array.from(
       { length: MAX_JOIN_OUTPUT_BYTES / shared.byteLength + 1 },
@@ -83,7 +84,7 @@ describe('audio join core', () => {
   });
 
   it('encodes joined PCM as native WAV', () => {
-    const wav = encodeJoinedWav([track([[0.25, -0.25]], 8_000)]);
+    const wav = encodeJoinedWav([createTrack([[0.25, -0.25]], 8_000)]);
     const view = new DataView(wav);
 
     expect(String.fromCharCode(...new Uint8Array(wav, 0, 4))).toBe('RIFF');
@@ -93,7 +94,7 @@ describe('audio join core', () => {
 
   it('routes MP3 export through the existing bundled encoder path', () => {
     const onProgress = vi.fn();
-    startJoinedEncode([track([[0.25, -0.25]], 8_000)], 'mp3', onProgress);
+    startJoinedEncode([createTrack([[0.25, -0.25]], 8_000)], 'mp3', onProgress);
 
     expect(startEncode).toHaveBeenCalledWith(
       expect.objectContaining({

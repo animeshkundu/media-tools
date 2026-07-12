@@ -58,6 +58,7 @@ function resampleChannel(
   outputRate: number,
   outputFrames: number,
 ): Float32Array {
+  if (source.length === 0) throw new Error('Track channels must contain audio frames.');
   if (sourceRate === outputRate) return source.slice();
 
   const output = new Float32Array(outputFrames);
@@ -99,6 +100,7 @@ export function joinPcm(
   arrangedTracks.forEach((track, trackIndex) => {
     const outputFrames = normalizedLengths[trackIndex] ?? 0;
     for (let channelIndex = 0; channelIndex < channelCount; channelIndex += 1) {
+      // Mono inputs are duplicated when the joined output is stereo.
       const source = track.channelData[channelIndex] ?? track.channelData[0];
       if (!source) throw new Error('Track contains no channel data.');
       channelData[channelIndex]?.set(
