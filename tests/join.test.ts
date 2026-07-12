@@ -33,6 +33,7 @@ describe('audio join core', () => {
 
     expect(Array.from(joined.channelData[0] ?? [])).toEqual([0.25, -0.5]);
     expect(joined.channelData[0]).not.toBe(input.channelData[0]);
+    expect(joined.sampleRate).toBe(input.sampleRate);
   });
 
   it('preserves the requested order and introduces no silent boundary frames', () => {
@@ -95,14 +96,15 @@ describe('audio join core', () => {
 
   it('routes MP3 export through the existing bundled encoder path', () => {
     const onProgress = vi.fn();
-    startJoinedEncode([createTrack([[0.25, -0.25]], 8_000)], 'mp3', onProgress);
+    const input = createTrack([[0.25, -0.25]], 8_000);
+    startJoinedEncode([input], 'mp3', onProgress);
 
     expect(startEncode).toHaveBeenCalledWith(
       expect.objectContaining({
         channels: [expect.any(Float32Array)],
         sampleRate: 8_000,
         startSeconds: 0,
-        endSeconds: 2 / 8_000,
+        endSeconds: input.channelData[0]!.length / input.sampleRate,
         format: 'mp3',
       }),
       onProgress,

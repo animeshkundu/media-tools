@@ -58,7 +58,6 @@ function resampleChannel(
   outputRate: number,
   outputFrames: number,
 ): Float32Array {
-  if (source.length === 0) throw new Error('Track channels must contain audio frames.');
   if (sourceRate === outputRate) return source.slice();
 
   const output = new Float32Array(outputFrames);
@@ -89,7 +88,8 @@ export function joinPcm(
   });
   const totalFrames = normalizedLengths.reduce((total, length) => {
     const next = total + length;
-    if (!Number.isSafeInteger(next) || next * channelCount * Float32Array.BYTES_PER_ELEMENT > MAX_JOIN_OUTPUT_BYTES) {
+    const outputBytes = next * channelCount * Float32Array.BYTES_PER_ELEMENT;
+    if (!Number.isSafeInteger(next) || outputBytes > MAX_JOIN_OUTPUT_BYTES) {
       throw new Error('Joined audio exceeds the 512 MiB decoded PCM limit.');
     }
     return next;
