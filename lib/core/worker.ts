@@ -96,7 +96,10 @@ export function startAnalyze(
     { type: 'analyze', file },
     file,
     onProgress,
-    (message) => (message.type === 'analyzed' ? message : undefined),
+    (message) =>
+      message.type === 'analyzed'
+        ? { duration: message.duration, sampleRate: message.sampleRate, waveform: message.waveform }
+        : undefined,
   );
 }
 

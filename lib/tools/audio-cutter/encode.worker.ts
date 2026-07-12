@@ -44,13 +44,16 @@ type Mp3Frame = {
   sampleRate: number;
 };
 
+const BACKPRESSURE_OUTPUTS = 4;
 const HEADER_LIMIT_BYTES = 1024 * 1024;
 const MAX_CHANNELS = 2;
 const MAX_DECODED_BYTES = 256 * 1024 * 1024;
 const MAX_DURATION_SECONDS = 30 * 60;
 const MAX_SAMPLE_RATE = 192_000;
 const READ_FRAMES = 16_384;
+const WATCHDOG_MS = 30_000;
 const WAVEFORM_POINTS = 2_048;
+const WORKER_MAX_INPUT_BYTES = 64 * 1024 * 1024;
 
 function ascii(view: DataView, offset: number, length: number): string {
   let value = '';
@@ -337,10 +340,13 @@ async function decodeMp3(
   let channelCount = 0;
   let decodedFrames = 0;
   let frameCount = 0;
+  let pendingOutputCount = 0;
+  let pendingOutputBytes = 0;
   const peaks: number[] = [];
   const selectedChunks: Float32Array[][] = [];
 
   const consume = async (audioData: AudioData): Promise<void> => {
+    const audioBytes = audioData.numberOfFrames * audioData.numberOfChannels * Float32Array.BYTES_PER_ELEMENT;
     try {
       const nextDecodedFrames = decodedFrames + audioData.numberOfFrames;
       const decodedBytes = nextDecodedFrames * audioData.numberOfChannels * Float32Array.BYTES_PER_ELEMENT;
@@ -379,6 +385,8 @@ async function decodeMp3(
       decodedFrames = nextDecodedFrames;
     } finally {
       audioData.close();
+      pendingOutputCount -= 1;
+      pendingOutputBytes -= audioBytes;
     }
   };
 
@@ -396,6 +404,17 @@ async function decodeMp3(
             processingError = error;
           },
           output: (audioData) => {
+            const outputBytes =
+              audioData.numberOfFrames * audioData.numberOfChannels * Float32Array.BYTES_PER_ELEMENT;
+            if (pendingOutputBytes + outputBytes > MAX_DECODED_BYTES) {
+              processingError = new Error(
+                'The decoded audio exceeds the 30 minute or 256 MB processing limit.',
+              );
+              audioData.close();
+              return;
+            }
+            pendingOutputCount += 1;
+            pendingOutputBytes += outputBytes;
             processing = processing
               .catch(() => undefined)
               .then(() => consume(audioData))
@@ -417,8 +436,7 @@ async function decodeMp3(
         }),
       );
       frameCount += frame.sampleRate >= 32_000 ? 1152 : 576;
-      if (decoder.decodeQueueSize >= 16) {
-        await decoder.flush();
+      if (pendingOutputCount >= BACKPRESSURE_OUTPUTS || pendingOutputBytes >= MAX_DECODED_BYTES) {
         await processing;
         if (processingError) throw processingError;
       }
@@ -441,7 +459,8 @@ async function decodeMp3(
       const length = chunks.reduce((total, chunk) => total + chunk.length, 0);
       const channel = new Float32Array(length);
       let offset = 0;
-      for (const chunk of chunks) {
+      while (chunks.length > 0) {
+        const chunk = chunks.shift()!;
         channel.set(chunk, offset);
         offset += chunk.length;
       }
@@ -460,8 +479,9 @@ function writeAscii(view: DataView, offset: number, value: string): void {
 }
 
 async function encodeWav(source: AudioPcm, send: SendReply): Promise<ArrayBuffer> {
-  const frames = source.channels[0]?.length ?? 0;
   const channelCount = source.channels.length;
+  if (channelCount < 1) throw new Error('No audio channels to encode.');
+  const frames = source.channels.reduce((min, ch) => Math.min(min, ch.length), Infinity);
   const dataBytes = frames * channelCount * 2;
   const buffer = new ArrayBuffer(44 + dataBytes);
   const view = new DataView(buffer);
@@ -504,7 +524,8 @@ function toInt16(source: Float32Array, start: number, end: number): Int16Array {
 
 async function encodeMp3(source: AudioPcm, send: SendReply): Promise<ArrayBuffer> {
   const channels = source.channels.slice(0, 2);
-  const frames = channels[0]?.length ?? 0;
+  if (channels.length < 1 || !channels[0]?.length) throw new Error('No audio data to encode.');
+  const frames = channels.reduce((min, ch) => Math.min(min, ch.length), Infinity);
   const encoder = new lamejs.Mp3Encoder(channels.length, source.sampleRate, 192);
   const chunks: Uint8Array[] = [];
   const blockSize = 1152;
@@ -531,74 +552,42 @@ async function encodeMp3(source: AudioPcm, send: SendReply): Promise<ArrayBuffer
   return output.buffer;
 }
 
-export async function processAudioRequest(request: AudioRequest, send: SendReply): Promise<void> {
-  try {
-    send({ type: 'progress', value: 0 });
-    const signature = new Uint8Array(await request.file.slice(0, 12).arrayBuffer());
-    const isWav =
-      signature.length >= 12 &&
-      String.fromCharCode(...signature.subarray(0, 4)) === 'RIFF' &&
-      String.fromCharCode(...signature.subarray(8, 12)) === 'WAVE';
-    if (!isWav) {
-      const decoded = await decodeMp3(request.file, request, send);
-      if (request.type === 'analyze') {
-        const waveform = decoded.waveform!;
-        send({ type: 'progress', value: 1 });
-        send(
-          {
-            type: 'analyzed',
-            duration: decoded.duration,
-            sampleRate: decoded.sampleRate,
-            waveform,
-          },
-          [waveform.buffer],
-        );
-        return;
-      }
-      const pcm = decoded.pcm!;
-      try {
-        const buffer = request.format === 'wav' ? await encodeWav(pcm, send) : await encodeMp3(pcm, send);
-        send({ type: 'progress', value: 1 });
-        send(
-          {
-            type: 'result',
-            buffer,
-            mime: request.format === 'wav' ? 'audio/wav' : 'audio/mpeg',
-          },
-          [buffer],
-        );
-      } finally {
-        pcm.channels.length = 0;
-      }
-      return;
+async function runAudioRequest(request: AudioRequest, send: SendReply): Promise<void> {
+  if (!(request.file instanceof Blob)) throw new Error('Invalid audio request.');
+  if (request.file.size === 0) throw new Error('Choose a non-empty audio file.');
+  if (request.file.size > WORKER_MAX_INPUT_BYTES) throw new Error('Choose an audio file smaller than 64 MB.');
+  if (request.type === 'encode') {
+    if (!Number.isFinite(request.startSeconds) || !Number.isFinite(request.endSeconds)) {
+      throw new Error('The selected audio region is invalid.');
     }
+    if (request.format !== 'wav' && request.format !== 'mp3') throw new Error('Unsupported output format.');
+  }
 
-    const metadata = await readWavMetadata(request.file);
+  send({ type: 'progress', value: 0 });
+  const signature = new Uint8Array(await request.file.slice(0, 12).arrayBuffer());
+  const isWav =
+    signature.length >= 12 &&
+    String.fromCharCode(...signature.subarray(0, 4)) === 'RIFF' &&
+    String.fromCharCode(...signature.subarray(8, 12)) === 'WAVE';
+  if (!isWav) {
+    const decoded = await decodeMp3(request.file, request, send);
     if (request.type === 'analyze') {
-      const waveform = await analyzeWav(request.file, metadata, send);
+      const waveform = decoded.waveform!;
       send({ type: 'progress', value: 1 });
       send(
         {
           type: 'analyzed',
-          duration: metadata.frames / metadata.sampleRate,
-          sampleRate: metadata.sampleRate,
+          duration: decoded.duration,
+          sampleRate: decoded.sampleRate,
           waveform,
         },
         [waveform.buffer],
       );
       return;
     }
-
-    const decoded = await decodeWavRegion(
-      request.file,
-      metadata,
-      request.startSeconds,
-      request.endSeconds,
-      send,
-    );
+    const pcm = decoded.pcm!;
     try {
-      const buffer =
-        request.format === 'wav' ? await encodeWav(decoded, send) : await encodeMp3(decoded, send);
+      const buffer = request.format === 'wav' ? await encodeWav(pcm, send) : await encodeMp3(pcm, send);
       send({ type: 'progress', value: 1 });
       send(
         {
@@ -609,10 +598,75 @@ export async function processAudioRequest(request: AudioRequest, send: SendReply
         [buffer],
       );
     } finally {
-      decoded.channels.length = 0;
+      pcm.channels.length = 0;
     }
+    return;
+  }
+
+  const metadata = await readWavMetadata(request.file);
+  if (request.type === 'analyze') {
+    const waveform = await analyzeWav(request.file, metadata, send);
+    send({ type: 'progress', value: 1 });
+    send(
+      {
+        type: 'analyzed',
+        duration: metadata.frames / metadata.sampleRate,
+        sampleRate: metadata.sampleRate,
+        waveform,
+      },
+      [waveform.buffer],
+    );
+    return;
+  }
+
+  const decoded = await decodeWavRegion(
+    request.file,
+    metadata,
+    request.startSeconds,
+    request.endSeconds,
+    send,
+  );
+  try {
+    const buffer =
+      request.format === 'wav' ? await encodeWav(decoded, send) : await encodeMp3(decoded, send);
+    send({ type: 'progress', value: 1 });
+    send(
+      {
+        type: 'result',
+        buffer,
+        mime: request.format === 'wav' ? 'audio/wav' : 'audio/mpeg',
+      },
+      [buffer],
+    );
+  } finally {
+    decoded.channels.length = 0;
+  }
+}
+
+export async function processAudioRequest(request: AudioRequest, send: SendReply): Promise<void> {
+  let watchdogId: ReturnType<typeof setTimeout> | undefined;
+  let watchdogReject: ((error: Error) => void) | undefined;
+  const watchdog = new Promise<never>((_, reject) => {
+    watchdogReject = reject;
+  });
+  const resetWatchdog = (): void => {
+    clearTimeout(watchdogId);
+    watchdogId = setTimeout(
+      () => watchdogReject?.(new Error('Audio processing timed out.')),
+      WATCHDOG_MS,
+    );
+  };
+  const watchedSend: SendReply = (reply, transfer) => {
+    if (reply.type === 'progress') resetWatchdog();
+    send(reply, transfer);
+  };
+  resetWatchdog();
+  try {
+    await Promise.race([runAudioRequest(request, watchedSend), watchdog]);
   } catch (error) {
     send({ type: 'error', message: error instanceof Error ? error.message : 'Audio processing failed.' });
+  } finally {
+    clearTimeout(watchdogId);
   }
 }
 
