@@ -45,8 +45,8 @@ export function validateManifest(manifest, source) {
   ) {
     const contentSecurityPolicyKeys = Object.keys(contentSecurityPolicy);
     if (
-      contentSecurityPolicyKeys.length !== 1 ||
-      contentSecurityPolicyKeys[0] !== 'extension_pages'
+      contentSecurityPolicyKeys[0] !== 'extension_pages' ||
+      contentSecurityPolicyKeys.length !== 1
     ) {
       throw new Error(
         `${source}: content_security_policy keys must be extension_pages, found ${contentSecurityPolicyKeys.join(', ') || '(none)'}`,

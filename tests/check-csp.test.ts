@@ -65,7 +65,7 @@ describe('check-csp script', () => {
     const siblingKeyManifest = cloneManifest() as typeof validManifest & {
       content_security_policy: typeof validManifest.content_security_policy & { sandbox: string };
     };
-    siblingKeyManifest.content_security_policy.sandbox = "sandbox allow-scripts; connect-src *";
+    siblingKeyManifest.content_security_policy.sandbox = 'sandbox allow-scripts';
 
     expect(() => validateManifest(siblingKeyManifest, 'sibling-key')).toThrow(
       /sibling-key: content_security_policy keys must be extension_pages, found extension_pages, sandbox/,
