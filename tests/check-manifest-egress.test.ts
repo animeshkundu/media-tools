@@ -43,12 +43,15 @@ describe('check-manifest-egress script', () => {
     ).toThrow(new RegExp(`${key}: ${key} must be absent or empty`));
   });
 
-  it('rejects content scripts even when narrowly matched', () => {
+  it.each([
+    [],
+    [{ matches: ['https://example.com/*'], js: ['content.js'] }],
+  ])('rejects content_scripts whenever the key is present', (contentScripts) => {
     expect(() =>
       validateManifestEgress(
         {
           manifest_version: 3,
-          content_scripts: [{ matches: ['https://example.com/*'], js: ['content.js'] }],
+          content_scripts: contentScripts,
         },
         'content',
       ),
