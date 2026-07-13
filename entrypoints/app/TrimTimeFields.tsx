@@ -28,7 +28,16 @@ export function TrimTimeFields({
   validation,
 }: TrimTimeFieldsProps) {
   function updateRange(field: 'start' | 'end', rawValue: string) {
-    const nextValue = Number.parseFloat(rawValue);
+    if (![start, end, duration].every(Number.isFinite)) {
+      onValidationChange({
+        field,
+        message: `${field === 'start' ? 'In' : 'Out'} could not be read. Reload the audio and try again.`,
+      });
+      return;
+    }
+
+    const trimmed = rawValue.trim();
+    const nextValue = trimmed === '' ? Number.NaN : Number(trimmed);
 
     if (!Number.isFinite(nextValue)) {
       onValidationChange({

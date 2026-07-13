@@ -138,6 +138,53 @@ describe('TrimTimeFields', () => {
       message: 'In must be earlier than Out.',
     });
   });
+
+  it('rejects prefix-tolerant and blank strings, and NaN props, before emitting a change', () => {
+    const onChange = vi.fn();
+    const onValidationChange = vi.fn();
+
+    const element = TrimTimeFields({
+      disabled: false,
+      duration: 10,
+      end: 8.75,
+      start: 1.25,
+      onChange,
+      onValidationChange,
+    });
+
+    const inputs = findElements(element, 'input');
+
+    // Number.parseFloat would accept "1abc" as 1; strict Number() must reject it.
+    inputs[0].props.onChange?.({ target: { value: '1abc' } } as ChangeEvent<HTMLInputElement>);
+    // A blank or whitespace-only value must not silently coerce to 0.
+    inputs[0].props.onChange?.({ target: { value: '' } } as ChangeEvent<HTMLInputElement>);
+    inputs[1].props.onChange?.({ target: { value: '   ' } } as ChangeEvent<HTMLInputElement>);
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onValidationChange).toHaveBeenCalledTimes(3);
+    expect(onValidationChange).toHaveBeenNthCalledWith(1, {
+      field: 'start',
+      message: 'In must be a valid number of seconds (for example 2.50).',
+    });
+
+    // NaN props must be treated as unreadable, never bypass range/order checks.
+    const brokenElement = TrimTimeFields({
+      disabled: false,
+      duration: Number.NaN,
+      end: 8.75,
+      start: 1.25,
+      onChange,
+      onValidationChange,
+    });
+    const brokenInputs = findElements(brokenElement, 'input');
+    onValidationChange.mockClear();
+    brokenInputs[0].props.onChange?.({ target: { value: '2.50' } } as ChangeEvent<HTMLInputElement>);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onValidationChange).toHaveBeenCalledWith({
+      field: 'start',
+      message: 'In could not be read. Reload the audio and try again.',
+    });
+  });
 });
 
 describe('App trim validation', () => {
