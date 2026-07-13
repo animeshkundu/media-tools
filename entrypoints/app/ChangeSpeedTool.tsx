@@ -38,7 +38,7 @@ export function ChangeSpeedTool() {
   const [validation, setValidation] = useState<string>();
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const jobRef = useRef<AudioJob<unknown> | undefined>(undefined);
+  const jobRef = useRef<AudioJob<unknown> | null>(null);
 
   async function loadFile(file: File) {
     setBusy(true);
@@ -62,7 +62,7 @@ export function ChangeSpeedTool() {
       setValidation(error instanceof Error ? error.message : 'This audio file could not be read.');
       setStatus('Loading failed.');
     } finally {
-      jobRef.current = undefined;
+      jobRef.current = null;
       setBusy(false);
       setProgress(0);
     }
@@ -96,7 +96,7 @@ export function ChangeSpeedTool() {
         setStatus('Export failed.');
       }
     } finally {
-      jobRef.current = undefined;
+      jobRef.current = null;
       setBusy(false);
     }
   }
