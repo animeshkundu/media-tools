@@ -3,7 +3,7 @@ import { Button } from '@/components/Button';
 import { Progress } from '@/components/Progress';
 import { downloadBlob } from '@/lib/core/download';
 import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
-import { MAX_INPUT_BYTES, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
+import { MAX_INPUT_BYTES, MAX_PCM_ENCODE_BYTES, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
 import { startJoinedEncode, type DecodedPcmTrack } from '@/lib/tools/join/join';
 
 type JoinTrack = DecodedPcmTrack & {
@@ -12,6 +12,42 @@ type JoinTrack = DecodedPcmTrack & {
 };
 
 const ACCEPTED_AUDIO = 'audio/wav,audio/mpeg,.wav,.mp3';
+export const AGGREGATE_PCM_LIMIT_MESSAGE =
+  'Decoded audio size is invalid or exceeds the 256 MB processing limit. Remove tracks before adding more.';
+
+type TrackWithChannelData = {
+  channelData: Float32Array[];
+};
+
+export function decodedPcmBytesForTrack(track: TrackWithChannelData): number {
+  let totalBytes = 0;
+  for (const channel of track.channelData) {
+    totalBytes += channel.byteLength;
+    if (!Number.isSafeInteger(totalBytes)) throw new Error(AGGREGATE_PCM_LIMIT_MESSAGE);
+  }
+  return totalBytes;
+}
+
+export function decodedPcmBytesForTracks(tracks: readonly TrackWithChannelData[]): number {
+  let totalBytes = 0;
+  for (const track of tracks) {
+    totalBytes += decodedPcmBytesForTrack(track);
+    if (!Number.isSafeInteger(totalBytes)) throw new Error(AGGREGATE_PCM_LIMIT_MESSAGE);
+  }
+  return totalBytes;
+}
+
+export function tryRetainDecodedTrack(
+  retainedBytes: number,
+  track: TrackWithChannelData,
+): { ok: true; retainedBytes: number } | { ok: false; validation: string } {
+  const trackBytes = decodedPcmBytesForTrack(track);
+  const projected = retainedBytes + trackBytes;
+  if (!Number.isSafeInteger(projected) || projected > MAX_PCM_ENCODE_BYTES) {
+    return { ok: false, validation: AGGREGATE_PCM_LIMIT_MESSAGE };
+  }
+  return { ok: true, retainedBytes: projected };
+}
 
 async function decodeTrack(file: File, context: AudioContext): Promise<JoinTrack> {
   if (file.size === 0) throw new Error('Choose non-empty audio files.');
@@ -48,10 +84,34 @@ export function JoinMergeTool() {
 
     const context = new AudioContext();
     try {
+      let retainedBytes = decodedPcmBytesForTracks(tracks);
+      let rejectedByLimit = false;
       const loaded: JoinTrack[] = [];
-      for (const file of selected) loaded.push(await decodeTrack(file, context));
+      for (const file of selected) {
+        const track = await decodeTrack(file, context);
+        const retained = tryRetainDecodedTrack(retainedBytes, track);
+        if (!retained.ok) {
+          setValidation(retained.validation);
+          rejectedByLimit = true;
+          break;
+        }
+        retainedBytes = retained.retainedBytes;
+        loaded.push(track);
+      }
+      if (loaded.length === 0) {
+        setStatus(
+          rejectedByLimit
+            ? 'No tracks were added because decoded audio would exceed the 256 MB processing limit.'
+            : 'No tracks were added.',
+        );
+        return;
+      }
       setTracks((current) => current.concat(loaded));
-      setStatus(`Ready. ${loaded.length} track${loaded.length === 1 ? '' : 's'} added.`);
+      setStatus(
+        rejectedByLimit
+          ? `Ready. ${loaded.length} track${loaded.length === 1 ? '' : 's'} added before reaching the 256 MB processing limit.`
+          : `Ready. ${loaded.length} track${loaded.length === 1 ? '' : 's'} added.`,
+      );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'These audio files could not be read.');
     } finally {
