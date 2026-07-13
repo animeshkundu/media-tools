@@ -1,5 +1,6 @@
 import { type AudioPcm, encodeWav } from '../audio-cutter/audio';
 import {
+  MAX_PCM_ENCODE_BYTES,
   startEncode,
   type EncodeFormat,
   type EncodeJob,
@@ -13,8 +14,6 @@ export type DecodedPcm = {
 };
 
 export const CONVERT_FORMATS = ['wav', 'mp3'] as const satisfies readonly EncodeFormat[];
-
-const MAX_PCM_BYTES = 512 * 1024 * 1024;
 
 function validateInput(input: DecodedPcm, format: EncodeFormat): number {
   if (!CONVERT_FORMATS.includes(format)) {
@@ -38,12 +37,18 @@ function validateInput(input: DecodedPcm, format: EncodeFormat): number {
   if (frameCount === 0) {
     throw new Error('Audio contains no samples.');
   }
-
-  const pcmBytes = frameCount * input.channelData.length * Float32Array.BYTES_PER_ELEMENT;
-  if (!Number.isSafeInteger(pcmBytes) || pcmBytes > MAX_PCM_BYTES) {
-    throw new Error('Decoded audio exceeds the conversion size limit.');
-  }
   return frameCount;
+}
+
+function assertProjectedPcmWithinLimit(frameCount: number, channelCount: number): void {
+  const projectedSamples = frameCount * channelCount;
+  const projectedBytes = projectedSamples * Float32Array.BYTES_PER_ELEMENT;
+  if (!Number.isSafeInteger(projectedSamples) || !Number.isSafeInteger(projectedBytes)) {
+   throw new Error('Decoded audio exceeds the 256 MB processing limit.');
+  }
+  if (projectedBytes > MAX_PCM_ENCODE_BYTES) {
+   throw new Error('Decoded audio exceeds the 256 MB processing limit.');
+  }
 }
 
 function startWavEncode(input: DecodedPcm, onProgress: (value: number) => void): EncodeJob {
@@ -90,6 +95,7 @@ export function startConversion(
   onProgress: (value: number) => void = () => undefined,
 ): EncodeJob {
   const frameCount = validateInput(input, format);
+  assertProjectedPcmWithinLimit(frameCount, input.channelData.length);
   if (format === 'wav') {
     return startWavEncode(input, onProgress);
   }

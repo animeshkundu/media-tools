@@ -12,6 +12,7 @@ import {
 } from '@/lib/core/worker';
 import { Waveform } from '@/lib/tools/audio-cutter/Waveform';
 import { ChangeSpeedTool } from './ChangeSpeedTool';
+import { ConvertTool } from './ConvertTool';
 import { JoinMergeTool } from './JoinMergeTool';
 
 type LoadedAudio = {
@@ -22,7 +23,7 @@ type LoadedAudio = {
 };
 
 export default function App() {
-  const [tool, setTool] = useState<'cut' | 'join' | 'speed'>('cut');
+  const [tool, setTool] = useState<'cut' | 'join' | 'speed' | 'convert'>('cut');
   const [audio, setAudio] = useState<LoadedAudio>();
   const [start, setStart] = useState(0);
   const [end, setEnd] = useState(0);
@@ -90,14 +91,22 @@ export default function App() {
               Media Tools
             </p>
             <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
-              {tool === 'cut' ? 'Audio Cutter' : tool === 'join' ? 'Audio Join / Merge' : 'Change Speed'}
+              {tool === 'cut'
+                ? 'Audio Cutter'
+                : tool === 'join'
+                  ? 'Audio Join / Merge'
+                  : tool === 'speed'
+                    ? 'Change Speed'
+                    : 'Convert WAV / MP3'}
             </h1>
             <p className="mt-4 max-w-2xl text-lg text-emerald-100/70">
               {tool === 'cut'
                 ? 'Trim audio in your browser. No upload, no account, and no network required.'
                 : tool === 'join'
                   ? 'Combine audio tracks in order. Local processing, no upload, and no account required.'
-                  : 'Adjust audio playback speed. Local processing, no upload, and no account required.'}
+                  : tool === 'speed'
+                    ? 'Adjust audio playback speed. Local processing, no upload, and no account required.'
+                    : 'Convert audio between WAV and MP3. Local processing, no upload, and no account required.'}
             </p>
           </div>
           <div className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-sm text-emerald-200">
@@ -142,12 +151,26 @@ export default function App() {
           >
             Change speed
           </button>
+          <button
+            role="tab"
+            aria-selected={tool === 'convert'}
+            className={`rounded-xl border px-4 py-2 text-sm font-semibold transition motion-reduce:transition-none ${
+              tool === 'convert'
+                ? 'border-emerald-300/50 bg-emerald-300/20 text-emerald-100'
+                : 'border-white/15 text-emerald-100/70 hover:bg-white/5'
+            } focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300`}
+            onClick={() => setTool('convert')}
+          >
+            Convert WAV / MP3
+          </button>
         </div>
 
         {tool === 'join' ? (
           <JoinMergeTool />
         ) : tool === 'speed' ? (
           <ChangeSpeedTool />
+        ) : tool === 'convert' ? (
+          <ConvertTool />
         ) : !audio ? (
           <>
             <Dropzone accept="audio/wav,audio/mpeg,.wav,.mp3" disabled={busy} onFile={load}>
