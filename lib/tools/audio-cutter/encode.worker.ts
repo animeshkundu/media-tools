@@ -11,6 +11,7 @@ declare const lamejs: { Mp3Encoder: Mp3EncoderConstructor };
 
 export type AudioRequest =
   | { type: 'analyze'; file: File }
+  | { type: 'decode-file'; file: File }
   | {
       type: 'encode';
       file: File;
@@ -30,6 +31,7 @@ export type AudioRequest =
 export type WorkerReply =
   | { type: 'progress'; value: number }
   | { type: 'analyzed'; duration: number; sampleRate: number; waveform: Float32Array }
+  | { type: 'decoded'; channelData: Float32Array[]; sampleRate: number }
   | { type: 'result'; buffer: ArrayBuffer; mime: string }
   | { type: 'error'; message: string };
 
@@ -370,9 +372,11 @@ async function decodeMp3(
       const startFrame =
         request.type === 'encode' ? Math.max(0, Math.round(request.startSeconds * audioData.sampleRate)) : 0;
       const endFrame =
-        request.type === 'encode'
-          ? Math.max(startFrame, Math.round(request.endSeconds * audioData.sampleRate))
-          : 0;
+        request.type === 'decode-file'
+          ? Infinity
+          : request.type === 'encode'
+            ? Math.max(startFrame, Math.round(request.endSeconds * audioData.sampleRate))
+            : 0;
       let peak = 0;
       for (let channel = 0; channel < audioData.numberOfChannels; channel += 1) {
         const plane = new Float32Array(audioData.numberOfFrames);
@@ -665,6 +669,14 @@ async function runAudioRequest(request: AudioRequest, send: SendReply): Promise<
       return;
     }
     const pcm = decoded.pcm!;
+    if (request.type === 'decode-file') {
+      send({ type: 'progress', value: 1 });
+      send(
+        { type: 'decoded', channelData: pcm.channels, sampleRate: pcm.sampleRate },
+        pcm.channels.map((channel) => channel.buffer),
+      );
+      return;
+    }
     try {
       const buffer = request.format === 'wav' ? await encodeWav(pcm, send) : await encodeMp3(pcm, send);
       send({ type: 'progress', value: 1 });
@@ -694,6 +706,17 @@ async function runAudioRequest(request: AudioRequest, send: SendReply): Promise<
         waveform,
       },
       [waveform.buffer],
+    );
+    return;
+  }
+
+  if (request.type === 'decode-file') {
+    const endSeconds = metadata.frames / metadata.sampleRate;
+    const decoded = await decodeWavRegion(request.file, metadata, 0, endSeconds, send);
+    send({ type: 'progress', value: 1 });
+    send(
+      { type: 'decoded', channelData: decoded.channels, sampleRate: decoded.sampleRate },
+      decoded.channels.map((channel) => channel.buffer),
     );
     return;
   }

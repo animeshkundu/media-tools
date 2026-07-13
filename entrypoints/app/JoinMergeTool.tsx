@@ -3,7 +3,7 @@ import { Button } from '@/components/Button';
 import { Progress } from '@/components/Progress';
 import { downloadBlob } from '@/lib/core/download';
 import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
-import { MAX_INPUT_BYTES, MAX_PCM_ENCODE_BYTES, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
+import { MAX_PCM_ENCODE_BYTES, startDecodeFile, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
 import { startJoinedEncode, type DecodedPcmTrack } from '@/lib/tools/join/join';
 
 type JoinTrack = DecodedPcmTrack & {
@@ -49,21 +49,6 @@ export function tryRetainDecodedTrack(
   return { ok: true, retainedBytes: projected };
 }
 
-async function decodeTrack(file: File, context: AudioContext): Promise<JoinTrack> {
-  if (file.size === 0) throw new Error('Choose non-empty audio files.');
-  if (file.size > MAX_INPUT_BYTES) throw new Error('Choose audio files smaller than 64 MB.');
-  const source = await file.arrayBuffer();
-  const audio = await context.decodeAudioData(source);
-  return {
-    duration: audio.duration,
-    file,
-    sampleRate: audio.sampleRate,
-    channelData: Array.from({ length: audio.numberOfChannels }, (_, channel) =>
-      audio.getChannelData(channel).slice(),
-    ),
-  };
-}
-
 export function JoinMergeTool() {
   const [tracks, setTracks] = useState<JoinTrack[]>([]);
   const [format, setFormat] = useState<EncodeFormat>('wav');
@@ -82,13 +67,26 @@ export function JoinMergeTool() {
     setProgress(0);
     setStatus(`Reading ${selected.length} file${selected.length === 1 ? '' : 's'} on this device…`);
 
-    const context = new AudioContext();
     try {
       let retainedBytes = decodedPcmBytesForTracks(tracks);
       let rejectedByLimit = false;
       const loaded: JoinTrack[] = [];
-      for (const file of selected) {
-        const track = await decodeTrack(file, context);
+      for (let fileIndex = 0; fileIndex < selected.length; fileIndex += 1) {
+        const file = selected[fileIndex]!;
+        if (selected.length > 1) {
+          setStatus(`Reading file ${fileIndex + 1} of ${selected.length} on this device…`);
+        }
+        const job = startDecodeFile(file, (p) => {
+          setProgress((fileIndex + p) / selected.length);
+        });
+        jobRef.current = job;
+        const decoded = await job.result;
+        const track: JoinTrack = {
+          duration: decoded.channelData[0]!.length / decoded.sampleRate,
+          file,
+          sampleRate: decoded.sampleRate,
+          channelData: decoded.channelData,
+        };
         const retained = tryRetainDecodedTrack(retainedBytes, track);
         if (!retained.ok) {
           setValidation(retained.validation);
@@ -115,7 +113,7 @@ export function JoinMergeTool() {
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'These audio files could not be read.');
     } finally {
-      await context.close().catch(() => undefined);
+      jobRef.current = undefined;
       setBusy(false);
       setProgress(0);
     }

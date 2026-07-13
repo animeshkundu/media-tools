@@ -22,6 +22,7 @@ type FileEncodeInput = {
 type WorkerMessage =
   | { type: 'progress'; value: number }
   | { type: 'analyzed'; duration: number; sampleRate: number; waveform: Float32Array }
+  | { type: 'decoded'; channelData: Float32Array[]; sampleRate: number }
   | { type: 'result'; buffer: ArrayBuffer; mime: string }
   | { type: 'error'; message: string };
 
@@ -37,6 +38,7 @@ export type AudioJob<T> = {
 };
 
 export type EncodeJob = AudioJob<Blob>;
+export type DecodeJob = AudioJob<{ channelData: Float32Array[]; sampleRate: number }>;
 
 function validateFile(file: File): void {
   if (file.size > MAX_INPUT_BYTES) {
@@ -136,6 +138,21 @@ export function startFileEncode(
     onProgress,
     (message) =>
       message.type === 'result' ? new Blob([message.buffer], { type: message.mime }) : undefined,
+  );
+}
+
+export function startDecodeFile(
+  file: File,
+  onProgress: (value: number) => void,
+): DecodeJob {
+  return startFileWorker(
+    { type: 'decode-file', file },
+    file,
+    onProgress,
+    (message) =>
+      message.type === 'decoded'
+        ? { channelData: message.channelData, sampleRate: message.sampleRate }
+        : undefined,
   );
 }
 
