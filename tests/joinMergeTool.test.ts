@@ -37,8 +37,8 @@ function makeTrack(frames: number): { channelData: Float32Array[] } {
 describe('JoinMergeTool aggregate decoded PCM cap', () => {
   it('rejects retaining an added track when cumulative decoded PCM exceeds 256 MB', () => {
     const bytesPerFrame = Float32Array.BYTES_PER_ELEMENT;
-    const framesJustBelowLimit = Math.floor(MAX_PCM_ENCODE_BYTES / bytesPerFrame) - 2;
-    const retainedTracks = [makeTrack(framesJustBelowLimit)];
+    const framesForNearCapTrack = Math.floor(MAX_PCM_ENCODE_BYTES / bytesPerFrame) - 2;
+    const retainedTracks = [makeTrack(framesForNearCapTrack)];
     const retainedBefore = retainedTracks.length;
     const retainedBytes = decodedPcmBytesForTracks(retainedTracks);
     const overLimitTrack = makeTrack(3);

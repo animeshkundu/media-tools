@@ -85,23 +85,33 @@ export function JoinMergeTool() {
     const context = new AudioContext();
     try {
       let retainedBytes = decodedPcmBytesForTracks(tracks);
+      let rejectedByLimit = false;
       const loaded: JoinTrack[] = [];
       for (const file of selected) {
         const track = await decodeTrack(file, context);
         const retained = tryRetainDecodedTrack(retainedBytes, track);
         if (!retained.ok) {
           setValidation(retained.validation);
+          rejectedByLimit = true;
           break;
         }
         retainedBytes = retained.retainedBytes;
         loaded.push(track);
       }
       if (loaded.length === 0) {
-        setStatus('No tracks were added.');
+        setStatus(
+          rejectedByLimit
+            ? 'No tracks were added because decoded audio would exceed the 256 MB processing limit.'
+            : 'No tracks were added.',
+        );
         return;
       }
       setTracks((current) => current.concat(loaded));
-      setStatus(`Ready. ${loaded.length} track${loaded.length === 1 ? '' : 's'} added.`);
+      setStatus(
+        rejectedByLimit
+          ? `Ready. ${loaded.length} track${loaded.length === 1 ? '' : 's'} added before reaching the 256 MB processing limit.`
+          : `Ready. ${loaded.length} track${loaded.length === 1 ? '' : 's'} added.`,
+      );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'These audio files could not be read.');
     } finally {
