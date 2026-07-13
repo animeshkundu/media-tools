@@ -1,6 +1,8 @@
 export type EncodeFormat = 'wav' | 'mp3';
 
 export const MAX_INPUT_BYTES = 64 * 1024 * 1024;
+export const MAX_PCM_CHANNELS = 2;
+export const MAX_PCM_ENCODE_BYTES = 256 * 1024 * 1024;
 
 type PcmEncodeInput = {
   channels: Float32Array[];
@@ -41,6 +43,19 @@ function validateFile(file: File): void {
     throw new Error('Choose an audio file smaller than 64 MB.');
   }
   if (file.size === 0) throw new Error('Choose a non-empty audio file.');
+}
+
+function validatePcmEncodeInput(input: PcmEncodeInput): void {
+  if (input.channels.length < 1 || input.channels.length > MAX_PCM_CHANNELS) {
+    throw new Error('The selected audio exceeds mono/stereo channel limits.');
+  }
+  let totalBytes = 0;
+  for (const channel of input.channels) {
+    totalBytes += channel.byteLength;
+    if (!Number.isSafeInteger(totalBytes) || totalBytes > MAX_PCM_ENCODE_BYTES) {
+      throw new Error('The selected audio exceeds the 256 MB processing limit.');
+    }
+  }
 }
 
 function startFileWorker<T>(
@@ -125,6 +140,7 @@ export function startFileEncode(
 }
 
 export function startEncode(input: PcmEncodeInput, onProgress: (value: number) => void): EncodeJob {
+  validatePcmEncodeInput(input);
   const worker = new Worker(new URL('../tools/audio-cutter/encode.worker.ts', import.meta.url));
   let settled = false;
   let rejectJob: (reason: Error) => void = () => undefined;

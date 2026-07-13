@@ -11,6 +11,7 @@ import {
   type EncodeFormat,
 } from '@/lib/core/worker';
 import { Waveform } from '@/lib/tools/audio-cutter/Waveform';
+import { JoinMergeTool } from './JoinMergeTool';
 
 type LoadedAudio = {
   duration: number;
@@ -20,6 +21,7 @@ type LoadedAudio = {
 };
 
 export default function App() {
+  const [tool, setTool] = useState<'cut' | 'join'>('cut');
   const [audio, setAudio] = useState<LoadedAudio>();
   const [start, setStart] = useState(0);
   const [end, setEnd] = useState(0);
@@ -86,9 +88,13 @@ export default function App() {
             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-emerald-300">
               Media Tools
             </p>
-            <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">Audio Cutter</h1>
+            <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
+              {tool === 'cut' ? 'Audio Cutter' : 'Audio Join / Merge'}
+            </h1>
             <p className="mt-4 max-w-2xl text-lg text-emerald-100/70">
-              Trim audio in your browser. No upload, no account, and no network required.
+              {tool === 'cut'
+                ? 'Trim audio in your browser. No upload, no account, and no network required.'
+                : 'Combine audio tracks in order. Local processing, no upload, and no account required.'}
             </p>
           </div>
           <div className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-sm text-emerald-200">
@@ -96,7 +102,36 @@ export default function App() {
           </div>
         </header>
 
-        {!audio ? (
+        <div className="mb-6 flex gap-3" role="tablist" aria-label="Audio tools">
+          <button
+            role="tab"
+            aria-selected={tool === 'cut'}
+            className={`rounded-xl border px-4 py-2 text-sm font-semibold transition motion-reduce:transition-none ${
+              tool === 'cut'
+                ? 'border-emerald-300/50 bg-emerald-300/20 text-emerald-100'
+                : 'border-white/15 text-emerald-100/70 hover:bg-white/5'
+            } focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300`}
+            onClick={() => setTool('cut')}
+          >
+            Cut audio
+          </button>
+          <button
+            role="tab"
+            aria-selected={tool === 'join'}
+            className={`rounded-xl border px-4 py-2 text-sm font-semibold transition motion-reduce:transition-none ${
+              tool === 'join'
+                ? 'border-emerald-300/50 bg-emerald-300/20 text-emerald-100'
+                : 'border-white/15 text-emerald-100/70 hover:bg-white/5'
+            } focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300`}
+            onClick={() => setTool('join')}
+          >
+            Join / merge
+          </button>
+        </div>
+
+        {tool === 'join' ? (
+          <JoinMergeTool />
+        ) : !audio ? (
           <>
             <Dropzone accept="audio/wav,audio/mpeg,.wav,.mp3" disabled={busy} onFile={load}>
               <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-400 text-2xl text-emerald-950">
@@ -186,9 +221,11 @@ export default function App() {
             )}
           </section>
         )}
-        <p aria-live="polite" className="mt-5 text-center text-sm text-emerald-100/60">
-          {status}
-        </p>
+        {tool === 'cut' && (
+          <p aria-live="polite" className="mt-5 text-center text-sm text-emerald-100/60">
+            {status}
+          </p>
+        )}
       </div>
     </main>
   );
