@@ -50,4 +50,15 @@ describe('JoinMergeTool aggregate decoded PCM cap', () => {
     expect(AGGREGATE_PCM_LIMIT_MESSAGE).toMatch(/\b256\b.*\bMB\b/);
     expect(retainedTracks).toHaveLength(retainedBefore);
   });
+
+  it('rejects unsafe integer math while totaling decoded PCM bytes', () => {
+    const almostOverflow = {
+      byteLength: Number.MAX_SAFE_INTEGER,
+      length: 1,
+    } as unknown as Float32Array;
+
+    expect(() => decodedPcmBytesForTracks([{ channelData: [almostOverflow, new Float32Array(1)] }])).toThrow(
+      AGGREGATE_PCM_LIMIT_MESSAGE,
+    );
+  });
 });

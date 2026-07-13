@@ -13,7 +13,7 @@ type JoinTrack = DecodedPcmTrack & {
 
 const ACCEPTED_AUDIO = 'audio/wav,audio/mpeg,.wav,.mp3';
 export const AGGREGATE_PCM_LIMIT_MESSAGE =
-  'Decoded audio exceeds the 256 MB processing limit. Remove tracks before adding more.';
+  'Decoded audio size is invalid or exceeds the 256 MB processing limit. Remove tracks before adding more.';
 
 type TrackWithChannelData = {
   channelData: Float32Array[];
