@@ -14,6 +14,7 @@ export type DecodedPcm = {
 };
 
 export const CONVERT_FORMATS = ['wav', 'mp3'] as const satisfies readonly EncodeFormat[];
+const CONVERT_PCM_LIMIT_ERROR_MESSAGE = 'Decoded audio exceeds the 256 MB processing limit.';
 
 function validateInput(input: DecodedPcm, format: EncodeFormat): number {
   if (!CONVERT_FORMATS.includes(format)) {
@@ -44,10 +45,10 @@ function assertProjectedPcmWithinLimit(frameCount: number, channelCount: number)
   const projectedSamples = frameCount * channelCount;
   const projectedBytes = projectedSamples * Float32Array.BYTES_PER_ELEMENT;
   if (!Number.isSafeInteger(projectedSamples) || !Number.isSafeInteger(projectedBytes)) {
-   throw new Error('Decoded audio exceeds the 256 MB processing limit.');
+    throw new Error(CONVERT_PCM_LIMIT_ERROR_MESSAGE);
   }
   if (projectedBytes > MAX_PCM_ENCODE_BYTES) {
-   throw new Error('Decoded audio exceeds the 256 MB processing limit.');
+    throw new Error(CONVERT_PCM_LIMIT_ERROR_MESSAGE);
   }
 }
 

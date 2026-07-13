@@ -38,7 +38,7 @@ export function ConvertTool() {
   const [validation, setValidation] = useState<string>();
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const jobRef = useRef<AudioJob<unknown> | undefined>(undefined);
+  const jobRef = useRef<AudioJob<Blob> | null>(null);
 
   async function loadFile(file: File) {
     setBusy(true);
@@ -89,7 +89,7 @@ export function ConvertTool() {
         setStatus('Export failed.');
       }
     } finally {
-      jobRef.current = undefined;
+      jobRef.current = null;
       setBusy(false);
     }
   }

@@ -171,4 +171,25 @@ describe('audio conversion', () => {
     expect(encodeWavSpy).not.toHaveBeenCalled();
     encodeWavSpy.mockRestore();
   });
+
+  it('rejects MP3 conversion above the shared 256 MB cap before worker encode starts', () => {
+    const framesPastLimit = Math.floor(MAX_PCM_ENCODE_BYTES / Float32Array.BYTES_PER_ELEMENT) + 1;
+    const oversizedChannel = new Proxy(new Float32Array(1), {
+      get(target, property, receiver) {
+        if (property === 'length') return framesPastLimit;
+        return Reflect.get(target, property, receiver);
+      },
+    }) as unknown as Float32Array;
+
+    expect(() =>
+      startConversion(
+        {
+          channelData: [oversizedChannel],
+          sampleRate: 44_100,
+        },
+        'mp3',
+      ),
+    ).toThrow('Decoded audio exceeds the 256 MB processing limit.');
+    expect(startEncodeMock).not.toHaveBeenCalled();
+  });
 });
