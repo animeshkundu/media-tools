@@ -598,6 +598,16 @@ async function runAudioRequest(request: AudioRequest, send: SendReply): Promise<
       throw new Error('The selected audio region is invalid.');
     }
     if (request.format !== 'wav' && request.format !== 'mp3') throw new Error('Unsupported output format.');
+    if (request.channels.length < 1 || request.channels.length > MAX_CHANNELS) {
+      throw new Error('The selected audio exceeds mono/stereo channel limits.');
+    }
+    let decodedBytes = 0;
+    for (const channel of request.channels) {
+      decodedBytes += channel.byteLength;
+      if (!Number.isSafeInteger(decodedBytes) || decodedBytes > MAX_DECODED_BYTES) {
+        throw new Error('The selected audio exceeds the 256 MB processing limit.');
+      }
+    }
     send({ type: 'progress', value: 0.05 });
     const cut = cutPcm(
       { channels: request.channels, sampleRate: request.sampleRate },
