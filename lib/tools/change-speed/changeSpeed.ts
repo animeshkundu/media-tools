@@ -1,4 +1,4 @@
-import { startEncode, type EncodeFormat, type EncodeJob } from '../../core/worker';
+import { MAX_PCM_ENCODE_BYTES, startEncode, type EncodeFormat, type EncodeJob } from '../../core/worker';
 
 export const MIN_SPEED_FACTOR = 0.25;
 export const MAX_SPEED_FACTOR = 4;
@@ -32,6 +32,13 @@ export function changeSpeed(source: PcmAudio, factor: number): PcmAudio {
   const outputLength = inputLength === 0 ? 0 : Math.max(1, Math.round(inputLength / effectiveFactor));
   if (!Number.isSafeInteger(outputLength)) {
     throw new Error('Resampled audio is too large.');
+  }
+
+  const channels = source.channelData.length;
+  const projectedBytes = outputLength * channels * Float32Array.BYTES_PER_ELEMENT;
+  if (!Number.isSafeInteger(projectedBytes) || projectedBytes > MAX_PCM_ENCODE_BYTES) {
+    const limitMb = MAX_PCM_ENCODE_BYTES / (1024 * 1024);
+    throw new Error(`Resampled audio exceeds the ${limitMb} MB processing limit.`);
   }
 
   const channelData = source.channelData.map((input) => {
