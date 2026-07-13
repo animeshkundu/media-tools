@@ -250,6 +250,7 @@ export function JoinMergeTool() {
         </div>
       )}
 
+      {tracks.length > 0 && (
       <div className="mt-8 grid gap-5 border-t border-white/10 pt-6 sm:grid-cols-[1fr_auto] sm:items-end">
         <label className="text-sm font-medium text-emerald-100/70">
           Export format
@@ -280,6 +281,7 @@ export function JoinMergeTool() {
           </Button>
         </div>
       </div>
+      )}
 
       {validation && (
         <p role="alert" className="mt-4 rounded-xl border border-red-300/30 bg-red-300/10 px-4 py-3 text-sm text-red-200">
