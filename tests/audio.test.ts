@@ -4,6 +4,7 @@ import {
   MAX_PCM_CHANNELS,
   MAX_PCM_ENCODE_BYTES,
   startAnalyze,
+  startDecodeFile,
   startEncode,
   startFileEncode,
 } from '../lib/core/worker';
@@ -441,6 +442,159 @@ describe('audio cutter', () => {
       expect(result.mime).toBe('audio/mpeg');
     } finally {
       g.lamejs = savedLamejs;
+    }
+  });
+
+  it('decode-file: decodes a WAV file and returns all PCM channels and sampleRate', async () => {
+    const sampleRate = 8_000;
+    const samples = Float32Array.from({ length: sampleRate }, (_, i) => i / sampleRate);
+    const file = wavFile(samples, sampleRate);
+    const replies: WorkerReply[] = [];
+
+    await processAudioRequest({ type: 'decode-file', file }, (reply) => replies.push(reply));
+
+    const decoded = replies.find((reply) => reply.type === 'decoded');
+    expect(decoded?.type).toBe('decoded');
+    if (decoded?.type !== 'decoded') throw new Error('Expected decoded reply.');
+    expect(decoded.sampleRate).toBe(sampleRate);
+    expect(decoded.channelData).toHaveLength(1);
+    expect(decoded.channelData[0]).toHaveLength(sampleRate);
+    // Verify round-trip fidelity within 16-bit quantization tolerance
+    const tolerance = 1 / 0x7fff;
+    expect(Math.abs((decoded.channelData[0]?.[100] ?? 0) - samples[100]!)).toBeLessThanOrEqual(tolerance);
+  });
+
+  it('decode-file: deterministically rejects a WAV exceeding the 30-minute / 256-MB PCM cap from header metadata, before any allocation', async () => {
+    // A WAV declaring > 30 minutes of 8-bit mono at 8 kHz: ~13.7 MB raw, well within the 64 MB
+    // input cap, but readWavMetadata throws from the header BEFORE decodeWavRegion allocates
+    // any Float32Array.
+    const sampleRate = 8_000;
+    const channels = 1;
+    const bitsPerSample = 8;
+    const blockAlign = channels * (bitsPerSample / 8);
+    const frames = 30 * 60 * sampleRate + 1; // 1 frame past the 30-minute limit
+    const dataSize = frames * blockAlign;
+
+    const headerBuf = new ArrayBuffer(44);
+    const hv = new DataView(headerBuf);
+    const wa = (offset: number, text: string): void =>
+      text.split('').forEach((c, i) => hv.setUint8(offset + i, c.charCodeAt(0)));
+    wa(0, 'RIFF');
+    hv.setUint32(4, 36 + dataSize, true);
+    wa(8, 'WAVE');
+    wa(12, 'fmt ');
+    hv.setUint32(16, 16, true);
+    hv.setUint16(20, 1, true); // PCM
+    hv.setUint16(22, channels, true);
+    hv.setUint32(24, sampleRate, true);
+    hv.setUint32(28, sampleRate * blockAlign, true);
+    hv.setUint16(32, blockAlign, true);
+    hv.setUint16(34, bitsPerSample, true);
+    wa(36, 'data');
+    hv.setUint32(40, dataSize, true);
+    // Include actual audio bytes so the file-size truncation check in readWavMetadata passes.
+    const audioData = new Uint8Array(dataSize);
+    const file = new File([headerBuf, audioData], 'long.wav', { type: 'audio/wav' });
+
+    const replies: WorkerReply[] = [];
+    await processAudioRequest({ type: 'decode-file', file }, (reply) => replies.push(reply));
+
+    const last = replies.at(-1);
+    expect(last?.type).toBe('error');
+    if (last?.type !== 'error') throw new Error('Expected error reply.');
+    expect(last.message).toMatch(/30 minute|256 MB/);
+  });
+
+  it('decode-file: over-cap MP3 is deterministically rejected via the projected-PCM cap before consolidating decoded data', async () => {
+    // Stub AudioDecoder whose first decoded output has > 256 MB worth of PCM.
+    // The cap fires before any large consolidated Float32Array is built.
+    let closedCount = 0;
+
+    class StubAudioData {
+      // 34 M frames × 2 ch × 4 bytes = ~260 MB > MAX_DECODED_BYTES
+      readonly numberOfFrames = 34_000_000;
+      readonly numberOfChannels = 2;
+      readonly sampleRate = 44_100;
+      close(): void {
+        closedCount += 1;
+      }
+      async copyTo(dest: Float32Array): Promise<void> {
+        dest.fill(0);
+      }
+    }
+
+    let capturedOutput: ((data: StubAudioData) => void) | undefined;
+
+    class StubAudioDecoder {
+      decodeQueueSize = 0;
+      static async isConfigSupported(): Promise<{ supported: boolean }> {
+        return { supported: true };
+      }
+      constructor(init: { output: (data: StubAudioData) => void; error: (e: Error) => void }) {
+        capturedOutput = init.output;
+      }
+      configure(): void {}
+      decode(): void {
+        capturedOutput?.(new StubAudioData());
+      }
+      flush(): Promise<void> {
+        return Promise.resolve();
+      }
+      close(): void {}
+    }
+
+    class StubEncodedAudioChunk {
+      constructor() {}
+    }
+
+    const g = globalThis as Record<string, unknown>;
+    const savedAudioDecoder = g.AudioDecoder;
+    const savedEncodedAudioChunk = g.EncodedAudioChunk;
+    try {
+      g.AudioDecoder = StubAudioDecoder;
+      g.EncodedAudioChunk = StubEncodedAudioChunk;
+
+      // Minimal valid MP3 frame: MPEG1, Layer3, 32 kbps, 44100 Hz, stereo.
+      const mp3Data = new Uint8Array(104);
+      mp3Data[0] = 0xff;
+      mp3Data[1] = 0xfb;
+      mp3Data[2] = 0x10;
+      mp3Data[3] = 0x00;
+
+      const replies: WorkerReply[] = [];
+      await processAudioRequest(
+        { type: 'decode-file', file: new File([mp3Data], 'test.mp3', { type: 'audio/mpeg' }) },
+        (reply) => replies.push(reply),
+      );
+
+      expect(replies.at(-1)).toMatchObject({ type: 'error', message: expect.stringContaining('256 MB') });
+      expect(closedCount).toBeGreaterThanOrEqual(1);
+    } finally {
+      g.AudioDecoder = savedAudioDecoder;
+      g.EncodedAudioChunk = savedEncodedAudioChunk;
+    }
+  });
+
+  it('decode-file: startDecodeFile enforces the 64 MB input cap before spawning a worker', () => {
+    const originalWorker = globalThis.Worker;
+    let workersCreated = 0;
+    class FakeWorker {
+      onerror: ((event: Event) => void) | null = null;
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      constructor() {
+        workersCreated += 1;
+      }
+      postMessage() {}
+      terminate() {}
+    }
+    globalThis.Worker = FakeWorker as unknown as typeof Worker;
+    try {
+      const oversized = new File([], 'too-large.wav');
+      Object.defineProperty(oversized, 'size', { value: MAX_INPUT_BYTES + 1 });
+      expect(() => startDecodeFile(oversized, () => undefined)).toThrow(/smaller than/);
+      expect(workersCreated).toBe(0);
+    } finally {
+      globalThis.Worker = originalWorker;
     }
   });
 });

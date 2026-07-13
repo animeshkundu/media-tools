@@ -15,8 +15,8 @@ vi.mock(
 vi.mock(
   '@/lib/core/worker',
   () => ({
-    MAX_INPUT_BYTES: 64 * 1024 * 1024,
     MAX_PCM_ENCODE_BYTES,
+    startDecodeFile: () => ({ cancel: () => undefined, result: Promise.resolve({ channelData: [new Float32Array(8000)], sampleRate: 8000 }) }),
   }),
 );
 vi.mock(
