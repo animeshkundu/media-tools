@@ -1,7 +1,5 @@
 import { encodeWav } from '../audio-cutter/audio';
-import { startEncode, type EncodeFormat, type EncodeJob } from '../../core/worker';
-
-export const MAX_JOIN_OUTPUT_BYTES = 512 * 1024 * 1024;
+import { MAX_PCM_ENCODE_BYTES, startEncode, type EncodeFormat, type EncodeJob } from '../../core/worker';
 
 export type DecodedPcmTrack = {
   channelData: Float32Array[];
@@ -88,12 +86,15 @@ export function joinPcm(
   });
   const totalFrames = normalizedLengths.reduce((total, length) => {
     const next = total + length;
-    const outputBytes = next * channelCount * Float32Array.BYTES_PER_ELEMENT;
-    if (!Number.isSafeInteger(next) || outputBytes > MAX_JOIN_OUTPUT_BYTES) {
-      throw new Error('Joined audio exceeds the 512 MiB decoded PCM limit.');
+    if (!Number.isSafeInteger(next)) {
+      throw new Error('Joined audio frame count exceeds safe integer range.');
     }
     return next;
   }, 0);
+  const projectedBytes = totalFrames * channelCount * Float32Array.BYTES_PER_ELEMENT;
+  if (!Number.isSafeInteger(projectedBytes) || projectedBytes > MAX_PCM_ENCODE_BYTES) {
+    throw new Error('Joined audio exceeds the 256 MB processing limit.');
+  }
 
   const channelData = Array.from({ length: channelCount }, () => new Float32Array(totalFrames));
   let outputOffset = 0;
