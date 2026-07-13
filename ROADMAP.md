@@ -5,9 +5,9 @@
 - [x] Audio cutter with draggable waveform trim handles
 - [x] WAV export
 - [x] MP3 export through a cancellable worker
-- [ ] Audio join / merge
-- [ ] Audio format conversion
-- [ ] Coupled speed and pitch change
+- [x] Audio join / merge
+- [x] Audio format conversion
+- [x] Coupled speed and pitch change
 
 ## Phase 2 — Video with WebCodecs + mediabunny
 
