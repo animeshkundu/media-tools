@@ -1,4 +1,4 @@
-import type { AudioPcm } from './audio';
+import { cutPcm, type AudioPcm } from './audio';
 
 interface Mp3EncoderInstance {
   encodeBuffer(left: Int16Array, right?: Int16Array): Int8Array;
@@ -16,6 +16,14 @@ export type AudioRequest =
       file: File;
       endSeconds: number;
       format: 'wav' | 'mp3';
+      startSeconds: number;
+    }
+  | {
+      type: 'encode-pcm';
+      channels: Float32Array[];
+      endSeconds: number;
+      format: 'wav' | 'mp3';
+      sampleRate: number;
       startSeconds: number;
     };
 
@@ -585,6 +593,35 @@ async function encodeMp3(source: AudioPcm, send: SendReply): Promise<ArrayBuffer
 }
 
 async function runAudioRequest(request: AudioRequest, send: SendReply): Promise<void> {
+  if (request.type === 'encode-pcm') {
+    if (!Number.isFinite(request.startSeconds) || !Number.isFinite(request.endSeconds)) {
+      throw new Error('The selected audio region is invalid.');
+    }
+    if (request.format !== 'wav' && request.format !== 'mp3') throw new Error('Unsupported output format.');
+    send({ type: 'progress', value: 0.05 });
+    const cut = cutPcm(
+      { channels: request.channels, sampleRate: request.sampleRate },
+      request.startSeconds,
+      request.endSeconds,
+    );
+    send({ type: 'progress', value: 0.15 });
+    try {
+      const buffer = request.format === 'wav' ? await encodeWav(cut, send) : await encodeMp3(cut, send);
+      send({ type: 'progress', value: 1 });
+      send(
+        {
+          type: 'result',
+          buffer,
+          mime: request.format === 'wav' ? 'audio/wav' : 'audio/mpeg',
+        },
+        [buffer],
+      );
+    } finally {
+      cut.channels.length = 0;
+    }
+    return;
+  }
+
   if (!(request.file instanceof Blob)) throw new Error('Invalid audio request.');
   if (request.file.size === 0) throw new Error('Choose a non-empty audio file.');
   if (request.file.size > WORKER_MAX_INPUT_BYTES) throw new Error('Choose an audio file smaller than 64 MB.');

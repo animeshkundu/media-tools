@@ -2,7 +2,15 @@ export type EncodeFormat = 'wav' | 'mp3';
 
 export const MAX_INPUT_BYTES = 64 * 1024 * 1024;
 
-type EncodeInput = {
+type PcmEncodeInput = {
+  channels: Float32Array[];
+  endSeconds: number;
+  format: EncodeFormat;
+  sampleRate: number;
+  startSeconds: number;
+};
+
+type FileEncodeInput = {
   endSeconds: number;
   file: File;
   format: EncodeFormat;
@@ -35,7 +43,7 @@ function validateFile(file: File): void {
   if (file.size === 0) throw new Error('Choose a non-empty audio file.');
 }
 
-function startWorker<T>(
+function startFileWorker<T>(
   request: object,
   file: File,
   onProgress: (value: number) => void,
@@ -92,7 +100,7 @@ export function startAnalyze(
   file: File,
   onProgress: (value: number) => void,
 ): AudioJob<AudioAnalysis> {
-  return startWorker(
+  return startFileWorker(
     { type: 'analyze', file },
     file,
     onProgress,
@@ -103,15 +111,65 @@ export function startAnalyze(
   );
 }
 
-export function startEncode(
-  input: EncodeInput,
+export function startFileEncode(
+  input: FileEncodeInput,
   onProgress: (value: number) => void,
 ): EncodeJob {
-  return startWorker(
+  return startFileWorker(
     { type: 'encode', ...input },
     input.file,
     onProgress,
     (message) =>
       message.type === 'result' ? new Blob([message.buffer], { type: message.mime }) : undefined,
   );
+}
+
+export function startEncode(input: PcmEncodeInput, onProgress: (value: number) => void): EncodeJob {
+  const worker = new Worker(new URL('../tools/audio-cutter/encode.worker.ts', import.meta.url));
+  let settled = false;
+  let rejectJob: (reason: Error) => void = () => undefined;
+
+  const result = new Promise<Blob>((resolve, reject) => {
+    rejectJob = reject;
+    worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
+      if (settled) return;
+      if (event.data.type === 'progress') {
+        onProgress(Math.max(0, Math.min(1, event.data.value)));
+        return;
+      }
+      settled = true;
+      worker.terminate();
+      if (event.data.type === 'result') resolve(new Blob([event.data.buffer], { type: event.data.mime }));
+      else if (event.data.type === 'error') reject(new Error(event.data.message));
+    };
+    worker.onerror = () => {
+      if (settled) return;
+      settled = true;
+      worker.terminate();
+      reject(new Error('The audio worker stopped unexpectedly.'));
+    };
+    const channels = input.channels.map((channel) => channel.slice());
+    worker.postMessage(
+      {
+        type: 'encode-pcm',
+        channels,
+        sampleRate: input.sampleRate,
+        startSeconds: input.startSeconds,
+        endSeconds: input.endSeconds,
+        format: input.format,
+      },
+      channels.map((channel) => channel.buffer),
+    );
+  });
+
+  return {
+    result,
+    cancel: () => {
+      if (!settled) {
+        settled = true;
+        worker.terminate();
+        rejectJob(new Error('Export cancelled.'));
+      }
+    },
+  };
 }

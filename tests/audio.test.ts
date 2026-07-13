@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_INPUT_BYTES, startAnalyze, startEncode } from '../lib/core/worker';
+import { MAX_INPUT_BYTES, startAnalyze, startFileEncode } from '../lib/core/worker';
 import { cutPcm, encodeWav } from '../lib/tools/audio-cutter/audio';
 import { processAudioRequest, type WorkerReply } from '../lib/tools/audio-cutter/encode.worker';
 
@@ -137,7 +137,7 @@ describe('audio cutter', () => {
       expect(() => startAnalyze(oversized, () => undefined)).toThrow(/smaller than/);
       expect(workersCreated).toBe(0);
 
-      const job = startEncode(
+      const job = startFileEncode(
         {
           file: new File([new Uint8Array(1)], 'fixture.wav'),
           startSeconds: 0,
@@ -241,6 +241,76 @@ describe('audio cutter', () => {
     } finally {
       g.AudioDecoder = savedAudioDecoder;
       g.EncodedAudioChunk = savedEncodedAudioChunk;
+    }
+  });
+
+  it('encode-pcm path cuts and encodes pre-decoded channels as a valid WAV', async () => {
+    const sampleRate = 8_000;
+    const samples = Float32Array.from({ length: sampleRate }, (_, index) => index / sampleRate);
+    const replies: WorkerReply[] = [];
+
+    await processAudioRequest(
+      {
+        type: 'encode-pcm',
+        channels: [samples],
+        sampleRate,
+        startSeconds: 0.1,
+        endSeconds: 0.6,
+        format: 'wav',
+      },
+      (reply) => replies.push(reply),
+    );
+
+    const result = replies.find((reply) => reply.type === 'result');
+    expect(result?.type).toBe('result');
+    if (result?.type !== 'result') throw new Error('Expected encoded WAV result.');
+
+    const view = new DataView(result.buffer);
+    const frames = view.getUint32(40, true) / 2;
+    expect(Math.abs(frames / sampleRate - (0.6 - 0.1))).toBeLessThanOrEqual(1 / sampleRate);
+    expect(ascii(view, 0, 4)).toBe('RIFF');
+    expect(ascii(view, 8, 4)).toBe('WAVE');
+  });
+
+  it('encode-pcm path encodes as MP3 and returns a non-empty result', async () => {
+    const sampleRate = 8_000;
+    const samples = Float32Array.from({ length: sampleRate }, (_, index) => Math.sin((2 * Math.PI * 440 * index) / sampleRate));
+    const replies: WorkerReply[] = [];
+
+    // lamejs is loaded via importScripts in the real worker; inject a minimal stub for Node.js tests.
+    const g = globalThis as Record<string, unknown>;
+    const savedLamejs = g.lamejs;
+    g.lamejs = {
+      Mp3Encoder: class {
+        encodeBuffer(): Int8Array {
+          return new Int8Array([0xff, 0xfb, 0x00]);
+        }
+        flush(): Int8Array {
+          return new Int8Array(0);
+        }
+      },
+    };
+
+    try {
+      await processAudioRequest(
+        {
+          type: 'encode-pcm',
+          channels: [samples],
+          sampleRate,
+          startSeconds: 0,
+          endSeconds: 1,
+          format: 'mp3',
+        },
+        (reply) => replies.push(reply),
+      );
+
+      const result = replies.find((reply) => reply.type === 'result');
+      expect(result?.type).toBe('result');
+      if (result?.type !== 'result') throw new Error('Expected encoded MP3 result.');
+      expect(result.buffer.byteLength).toBeGreaterThan(0);
+      expect(result.mime).toBe('audio/mpeg');
+    } finally {
+      g.lamejs = savedLamejs;
     }
   });
 });

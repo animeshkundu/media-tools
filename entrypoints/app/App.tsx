@@ -6,7 +6,7 @@ import { Dropzone } from '@/lib/core/dropzone';
 import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
 import {
   startAnalyze,
-  startEncode,
+  startFileEncode,
   type AudioJob,
   type EncodeFormat,
 } from '@/lib/core/worker';
@@ -55,7 +55,7 @@ export default function App() {
     setBusy(true);
     setProgress(0);
     setStatus(`Encoding ${format.toUpperCase()} in a worker…`);
-    const job = startEncode(
+    const job = startFileEncode(
       {
         file: audio.file,
         startSeconds: start,
