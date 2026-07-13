@@ -33,7 +33,7 @@ export function TrimTimeFields({
     if (!Number.isFinite(nextValue)) {
       onValidationChange({
         field,
-        message: `${field === 'start' ? 'In' : 'Out'} must be a number of seconds.`,
+        message: `${field === 'start' ? 'In' : 'Out'} must be a valid number of seconds (for example 2.50).`,
       });
       return;
     }
