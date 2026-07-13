@@ -49,8 +49,12 @@ test.afterAll(async () => {
   });
 });
 
-async function createWav(testInfo: TestInfo, durationSeconds: number): Promise<string> {
-  const sampleCount = Math.round(sampleRate * durationSeconds);
+async function createWav(
+  testInfo: TestInfo,
+  durationSeconds: number,
+  fixtureSampleRate = sampleRate,
+): Promise<string> {
+  const sampleCount = Math.round(fixtureSampleRate * durationSeconds);
   const buffer = Buffer.alloc(44 + sampleCount * 2);
   buffer.write('RIFF', 0);
   buffer.writeUInt32LE(buffer.length - 8, 4);
@@ -58,15 +62,15 @@ async function createWav(testInfo: TestInfo, durationSeconds: number): Promise<s
   buffer.writeUInt32LE(16, 16);
   buffer.writeUInt16LE(1, 20);
   buffer.writeUInt16LE(1, 22);
-  buffer.writeUInt32LE(sampleRate, 24);
-  buffer.writeUInt32LE(sampleRate * 2, 28);
+  buffer.writeUInt32LE(fixtureSampleRate, 24);
+  buffer.writeUInt32LE(fixtureSampleRate * 2, 28);
   buffer.writeUInt16LE(2, 32);
   buffer.writeUInt16LE(16, 34);
   buffer.write('data', 36);
   buffer.writeUInt32LE(sampleCount * 2, 40);
   for (let index = 0; index < sampleCount; index += 1) {
     buffer.writeInt16LE(
-      Math.round(Math.sin((2 * Math.PI * 440 * index) / sampleRate) * 0x3fff),
+      Math.round(Math.sin((2 * Math.PI * 440 * index) / fixtureSampleRate) * 0x3fff),
       44 + index * 2,
     );
   }
@@ -75,8 +79,13 @@ async function createWav(testInfo: TestInfo, durationSeconds: number): Promise<s
   return filePath;
 }
 
-async function openAudio(page: Page, testInfo: TestInfo, durationSeconds = 2): Promise<string> {
-  const fixture = await createWav(testInfo, durationSeconds);
+async function openAudio(
+  page: Page,
+  testInfo: TestInfo,
+  durationSeconds = 2,
+  fixtureSampleRate = sampleRate,
+): Promise<string> {
+  const fixture = await createWav(testInfo, durationSeconds, fixtureSampleRate);
   await page.goto(`${extensionUrl}/app.html`);
   await page.locator('input[type="file"]').setInputFiles(fixture);
   await expect(page.getByRole('heading', { name: path.basename(fixture) })).toBeVisible();
@@ -149,7 +158,7 @@ test('exports MP3 from the built artifact', async ({ page }, testInfo) => {
 });
 
 test('cancels an active export without emitting a partial download', async ({ page }, testInfo) => {
-  await openAudio(page, testInfo, 300);
+  await openAudio(page, testInfo, 600, 44_100);
   await page.getByLabel('Export format').selectOption('mp3');
   let downloads = 0;
   page.on('download', () => {
@@ -175,7 +184,7 @@ test('rejects corrupt input and returns to the file picker', async ({ page }, te
   await page.goto(`${extensionUrl}/app.html`);
   await page.locator('input[type="file"]').setInputFiles(corrupt);
 
-  await expect(page.getByText(/could not decode that audio file/i)).toBeVisible();
-  await expect(page.getByText('Drop an audio file here')).toBeVisible();
+  await expect(page.getByText('Only valid PCM WAV or MP3 input is supported.')).toBeVisible();
+  await expect(page.getByText('Drop a WAV or MP3 file here')).toBeVisible();
   await expect(page.getByLabel(/audio waveform/i)).toHaveCount(0);
 });
