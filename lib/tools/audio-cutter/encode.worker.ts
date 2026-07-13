@@ -371,12 +371,14 @@ async function decodeMp3(
 
       const startFrame =
         request.type === 'encode' ? Math.max(0, Math.round(request.startSeconds * audioData.sampleRate)) : 0;
-      const endFrame =
-        request.type === 'decode-file'
-          ? Infinity
-          : request.type === 'encode'
-            ? Math.max(startFrame, Math.round(request.endSeconds * audioData.sampleRate))
-            : 0;
+      let endFrame: number;
+      if (request.type === 'decode-file') {
+        endFrame = Infinity;
+      } else if (request.type === 'encode') {
+        endFrame = Math.max(startFrame, Math.round(request.endSeconds * audioData.sampleRate));
+      } else {
+        endFrame = 0;
+      }
       let peak = 0;
       for (let channel = 0; channel < audioData.numberOfChannels; channel += 1) {
         const plane = new Float32Array(audioData.numberOfFrames);

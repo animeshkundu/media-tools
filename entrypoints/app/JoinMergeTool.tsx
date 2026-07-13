@@ -81,6 +81,7 @@ export function JoinMergeTool() {
         });
         jobRef.current = job;
         const decoded = await job.result;
+        if (decoded.channelData.length === 0) throw new Error('The audio file contains no decodable audio channels.');
         const track: JoinTrack = {
           duration: decoded.channelData[0]!.length / decoded.sampleRate,
           file,
