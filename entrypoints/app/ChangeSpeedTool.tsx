@@ -1,0 +1,246 @@
+import { useRef, useState, type DragEvent } from 'react';
+import { Button } from '@/components/Button';
+import { Progress } from '@/components/Progress';
+import { downloadBlob } from '@/lib/core/download';
+import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
+import { MAX_INPUT_BYTES, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
+import { startChangeSpeedEncode } from '@/lib/tools/change-speed/changeSpeed';
+
+const ACCEPTED_AUDIO = 'audio/wav,audio/mpeg,.wav,.mp3';
+
+type LoadedTrack = {
+  channelData: Float32Array[];
+  duration: number;
+  file: File;
+  sampleRate: number;
+};
+
+async function decodeTrack(file: File, context: AudioContext): Promise<LoadedTrack> {
+  if (file.size === 0) throw new Error('Choose a non-empty audio file.');
+  if (file.size > MAX_INPUT_BYTES) throw new Error('Choose an audio file smaller than 64 MB.');
+  const source = await file.arrayBuffer();
+  const audio = await context.decodeAudioData(source);
+  return {
+    duration: audio.duration,
+    file,
+    sampleRate: audio.sampleRate,
+    channelData: Array.from({ length: audio.numberOfChannels }, (_, channel) =>
+      audio.getChannelData(channel).slice(),
+    ),
+  };
+}
+
+export function ChangeSpeedTool() {
+  const [track, setTrack] = useState<LoadedTrack>();
+  const [speedFactor, setSpeedFactor] = useState(1);
+  const [format, setFormat] = useState<EncodeFormat>('wav');
+  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState('Drop an audio file to adjust its speed.');
+  const [validation, setValidation] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const jobRef = useRef<AudioJob<unknown> | undefined>(undefined);
+
+  async function loadFile(file: File) {
+    setBusy(true);
+    setProgress(0);
+    setValidation(undefined);
+    setStatus('Reading audio on this device…');
+    let context: AudioContext | undefined;
+    try {
+      context = new AudioContext();
+      const loaded = await decodeTrack(file, context);
+      setTrack(loaded);
+      setStatus('Set the speed factor and export.');
+    } catch (error) {
+      setTrack(undefined);
+      setStatus(error instanceof Error ? error.message : 'This audio file could not be read.');
+    } finally {
+      await context?.close().catch(() => undefined);
+      setBusy(false);
+      setProgress(0);
+    }
+  }
+
+  async function exportAudio() {
+    if (!track) return;
+    setValidation(undefined);
+
+    const job = startChangeSpeedEncode(
+      { channelData: track.channelData, sampleRate: track.sampleRate },
+      speedFactor,
+      format,
+      setProgress,
+    );
+    jobRef.current = job;
+    setBusy(true);
+    setProgress(0);
+    setStatus(`Encoding ${format.toUpperCase()} at ${speedFactor}× in a worker…`);
+    try {
+      const blob = await job.result;
+      downloadBlob(blob, outputName(track.file.name, format));
+      setProgress(1);
+      setStatus('Done. Your download was created without uploading the file.');
+    } catch (error) {
+      setProgress(0);
+      if (error instanceof Error && error.message.includes('cancel')) {
+        setStatus('Export cancelled. No file was downloaded.');
+      } else {
+        setValidation(error instanceof Error ? error.message : 'Export failed.');
+        setStatus('Export failed.');
+      }
+    } finally {
+      jobRef.current = undefined;
+      setBusy(false);
+    }
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const file = event.dataTransfer.files[0];
+    if (file) void loadFile(file);
+  }
+
+  const outputDuration = track ? track.duration / speedFactor : 0;
+
+  return (
+    <section className="rounded-3xl border border-white/10 bg-black/20 p-5 shadow-2xl shadow-black/30 sm:p-8">
+      {!track ? (
+        <div
+          className={`rounded-3xl border border-dashed p-8 text-center transition motion-reduce:transition-none ${
+            busy
+              ? 'cursor-not-allowed border-white/20 bg-white/[0.03] opacity-50'
+              : 'cursor-pointer border-white/20 bg-white/[0.03] hover:border-emerald-400/70'
+          }`}
+          onClick={() => !busy && inputRef.current?.click()}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={handleDrop}
+          onKeyDown={(event) => {
+            if (!busy && (event.key === 'Enter' || event.key === ' ')) inputRef.current?.click();
+          }}
+          role="button"
+          tabIndex={busy ? -1 : 0}
+          aria-label="Drop an audio file or press Enter to choose"
+        >
+          <input
+            ref={inputRef}
+            accept={ACCEPTED_AUDIO}
+            className="hidden"
+            disabled={busy}
+            type="file"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void loadFile(file);
+              event.target.value = '';
+            }}
+          />
+          <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-400 text-2xl text-emerald-950">
+            ⏩
+          </div>
+          <p className="text-xl font-semibold">Drop a WAV or MP3 file here</p>
+          <p className="mt-2 text-emerald-100/60">or click to choose a file from this device</p>
+        </div>
+      ) : (
+        <>
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="max-w-xl truncate text-xl font-semibold">{track.file.name}</h2>
+              <p className="mt-1 text-sm text-emerald-100/60">
+                {formatBytes(track.file.size)} · {formatDuration(track.duration)} ·{' '}
+                {track.sampleRate.toLocaleString()} Hz
+              </p>
+            </div>
+            <button
+              className="rounded-xl border border-white/15 px-4 py-2 text-sm hover:bg-white/5 disabled:opacity-50"
+              disabled={busy}
+              onClick={() => {
+                setTrack(undefined);
+                setStatus('Drop an audio file to adjust its speed.');
+                setValidation(undefined);
+              }}
+            >
+              Choose another
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <label className="block text-sm font-medium text-emerald-100/70">
+              Speed factor
+              <div className="mt-3 flex items-center gap-4">
+                <input
+                  aria-label="Speed factor"
+                  className="h-2 w-full cursor-pointer appearance-none rounded-full accent-emerald-400 disabled:opacity-50 motion-reduce:transition-none"
+                  disabled={busy}
+                  max={4}
+                  min={0.25}
+                  step={0.05}
+                  type="range"
+                  value={speedFactor}
+                  onChange={(event) => setSpeedFactor(Number(event.target.value))}
+                />
+                <span className="w-14 text-right font-mono text-emerald-100">{speedFactor.toFixed(2)}×</span>
+              </div>
+            </label>
+            <p className="mt-3 text-sm text-emerald-100/60">
+              Input: {formatDuration(track.duration)} → Output: ~{formatDuration(outputDuration)}
+              {speedFactor < 1 && (
+                <span className="ml-2 text-amber-300/80">(slower, longer)</span>
+              )}
+              {speedFactor > 1 && (
+                <span className="ml-2 text-amber-300/80">(faster, shorter)</span>
+              )}
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-5 border-t border-white/10 pt-6 sm:grid-cols-[1fr_auto] sm:items-end">
+            <label className="text-sm font-medium text-emerald-100/70">
+              Export format
+              <select
+                className="mt-2 block w-full rounded-xl border border-white/15 bg-[#0d1e1a] px-4 py-3 text-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
+                disabled={busy}
+                value={format}
+                onChange={(event) => setFormat(event.target.value as EncodeFormat)}
+              >
+                <option value="wav">WAV — lossless PCM</option>
+                <option value="mp3">MP3 — 192 kbps</option>
+              </select>
+            </label>
+            <div className="flex gap-3">
+              {busy && (
+                <button
+                  className="rounded-xl border border-red-300/30 px-5 py-3 font-semibold text-red-200 hover:bg-red-300/10"
+                  onClick={() => {
+                    setStatus('Cancelling…');
+                    jobRef.current?.cancel();
+                  }}
+                >
+                  Cancel
+                </button>
+              )}
+              <Button disabled={busy} onClick={exportAudio}>
+                Change speed & download
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {validation && (
+        <p
+          role="alert"
+          className="mt-4 rounded-xl border border-red-300/30 bg-red-300/10 px-4 py-3 text-sm text-red-200"
+        >
+          {validation}
+        </p>
+      )}
+      {busy && (
+        <div className="mt-5">
+          <Progress value={progress} />
+        </div>
+      )}
+      <p aria-live="polite" className="mt-5 text-center text-sm text-emerald-100/60">
+        {status}
+      </p>
+    </section>
+  );
+}
