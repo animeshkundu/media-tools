@@ -65,6 +65,7 @@ function startFileWorker<T>(
   file: File,
   onProgress: (value: number) => void,
   readResult: (message: WorkerMessage) => T | undefined,
+  cancelMessage = 'Audio processing cancelled.',
 ): AudioJob<T> {
   validateFile(file);
   const worker = new Worker(new URL('../tools/audio-cutter/encode.worker.ts', import.meta.url));
@@ -107,7 +108,7 @@ function startFileWorker<T>(
       if (!settled) {
         settled = true;
         worker.terminate();
-        rejectJob(new Error('Audio processing cancelled.'));
+        rejectJob(new Error(cancelMessage));
       }
     },
   };
@@ -138,6 +139,7 @@ export function startFileEncode(
     onProgress,
     (message) =>
       message.type === 'result' ? new Blob([message.buffer], { type: message.mime }) : undefined,
+    'Export cancelled.',
   );
 }
 
