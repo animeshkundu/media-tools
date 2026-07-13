@@ -227,6 +227,172 @@ describe('audio cutter', () => {
     expect(replies.at(-1)).toMatchObject({ type: 'error' });
   });
 
+  it('decode-file: keeps near-cap MP3 PCM to one preallocated backing', async () => {
+    const maxDecodedBytes = 256 * 1024 * 1024;
+    const sampleRate = 44_100;
+    const samplesPerFrame = 1_152;
+    const frameCount = Math.floor(maxDecodedBytes / Float32Array.BYTES_PER_ELEMENT / samplesPerFrame);
+    const decodedFrames = frameCount * samplesPerFrame;
+    const decodedBytes = decodedFrames * Float32Array.BYTES_PER_ELEMENT;
+    const firstChunkFrames = decodedFrames / 2;
+    const numericAllocations: number[] = [];
+    let livePcmBytes = 0;
+    let peakLivePcmBytes = 0;
+    let closedCount = 0;
+    let flushCount = 0;
+    const copyCalls: {
+      destinationOffset: number;
+      frameCount: number | undefined;
+      frameOffset: number | undefined;
+      planeIndex: number | undefined;
+    }[] = [];
+
+    class StubAudioData {
+      readonly numberOfChannels = 1;
+      readonly sampleRate = sampleRate;
+      constructor(
+        readonly numberOfFrames: number,
+        private readonly value: number,
+      ) {}
+      close(): void {
+        closedCount += 1;
+      }
+      copyTo(
+        destination: Float32Array,
+        options: { frameCount?: number; frameOffset?: number; planeIndex?: number },
+      ): void {
+        copyCalls.push({
+          destinationOffset: destination.byteOffset / Float32Array.BYTES_PER_ELEMENT,
+          frameCount: options.frameCount,
+          frameOffset: options.frameOffset,
+          planeIndex: options.planeIndex,
+        });
+        destination.fill(this.value);
+      }
+    }
+
+    let capturedOutput: ((data: StubAudioData) => void) | undefined;
+
+    class StubAudioDecoder {
+      decodeQueueSize = 0;
+      state = 'configured';
+      ondequeue: (() => void) | null = null;
+      static async isConfigSupported(): Promise<{ supported: boolean }> {
+        return { supported: true };
+      }
+      constructor(init: { output: (data: StubAudioData) => void; error: (e: Error) => void }) {
+        capturedOutput = init.output;
+      }
+      configure(): void {}
+      decode(): void {}
+      flush(): Promise<void> {
+        flushCount += 1;
+        capturedOutput?.(new StubAudioData(firstChunkFrames, 0.25));
+        capturedOutput?.(new StubAudioData(decodedFrames - firstChunkFrames, -0.5));
+        return Promise.resolve();
+      }
+      close(): void {
+        this.state = 'closed';
+      }
+    }
+
+    class StubEncodedAudioChunk {
+      constructor() {}
+    }
+
+    const frameLength = 104;
+    const mp3Data = new Uint8Array(frameCount * frameLength);
+    for (let frame = 0; frame < frameCount; frame += 1) {
+      const offset = frame * frameLength;
+      // MPEG1, Layer3, 32 kbps, 44100 Hz, mono; each frame projects to 1152 PCM samples.
+      mp3Data[offset] = 0xff;
+      mp3Data[offset + 1] = 0xfb;
+      mp3Data[offset + 2] = 0x10;
+      mp3Data[offset + 3] = 0xc0;
+    }
+
+    const g = globalThis as Record<string, unknown>;
+    const savedAudioDecoder = g.AudioDecoder;
+    const savedEncodedAudioChunk = g.EncodedAudioChunk;
+    const savedFloat32Array = g.Float32Array;
+    const NativeFloat32Array = Float32Array;
+    const allocationFinalizer = new FinalizationRegistry<number>((bytes) => {
+      livePcmBytes -= bytes;
+    });
+    const trackedPcmBackings = new WeakSet<object>();
+    const TrackedFloat32Array = new Proxy(NativeFloat32Array, {
+      construct(target, argumentsList, newTarget) {
+        const array = Reflect.construct(target, argumentsList) as Float32Array;
+        Object.defineProperty(array, 'constructor', { configurable: true, value: newTarget });
+        const backing = array.buffer;
+        if (backing.byteLength >= 1024 * 1024 * Float32Array.BYTES_PER_ELEMENT && !trackedPcmBackings.has(backing)) {
+          trackedPcmBackings.add(backing);
+          numericAllocations.push(array.length);
+          livePcmBytes += backing.byteLength;
+          peakLivePcmBytes = Math.max(peakLivePcmBytes, livePcmBytes);
+          allocationFinalizer.register(backing, backing.byteLength);
+        }
+        return array;
+      },
+    });
+
+    let decodedReply: Extract<WorkerReply, { type: 'decoded' }> | undefined;
+    let decodedTransfer: Transferable[] | undefined;
+    try {
+      g.AudioDecoder = StubAudioDecoder;
+      g.EncodedAudioChunk = StubEncodedAudioChunk;
+      g.Float32Array = TrackedFloat32Array;
+
+      await processAudioRequest(
+        { type: 'decode-file', file: new File([mp3Data], 'near-cap.mp3', { type: 'audio/mpeg' }) },
+        (reply, transfer) => {
+          if (reply.type === 'decoded') {
+            decodedReply = reply;
+            decodedTransfer = transfer;
+          }
+        },
+      );
+
+      expect(decodedReply).toBeDefined();
+      if (!decodedReply) throw new Error('Expected decoded MP3 reply.');
+      const channel = decodedReply.channelData[0];
+      expect(channel).toBeDefined();
+      if (!channel) throw new Error('Expected decoded mono channel.');
+      const buffer = channel.buffer;
+
+      expect(numericAllocations).toEqual([decodedFrames]);
+      expect(peakLivePcmBytes).toBe(decodedBytes);
+      expect(peakLivePcmBytes).toBeLessThanOrEqual(maxDecodedBytes);
+      expect(closedCount).toBe(2);
+      expect(flushCount).toBe(1);
+      expect(copyCalls).toEqual([
+        {
+          destinationOffset: 0,
+          frameCount: firstChunkFrames,
+          frameOffset: 0,
+          planeIndex: 0,
+        },
+        {
+          destinationOffset: firstChunkFrames,
+          frameCount: decodedFrames - firstChunkFrames,
+          frameOffset: 0,
+          planeIndex: 0,
+        },
+      ]);
+      expect(channel).toHaveLength(decodedFrames);
+      expect(channel[0]).toBe(0.25);
+      expect(channel[firstChunkFrames - 1]).toBe(0.25);
+      expect(channel[firstChunkFrames]).toBe(-0.5);
+      expect(channel[decodedFrames - 1]).toBe(-0.5);
+      expect(decodedTransfer).toEqual([buffer]);
+      expect(decodedTransfer?.[0]).toBe(buffer);
+    } finally {
+      g.AudioDecoder = savedAudioDecoder;
+      g.EncodedAudioChunk = savedEncodedAudioChunk;
+      g.Float32Array = savedFloat32Array;
+    }
+  });
+
   it('MP3 over-cap output triggers error and closes every AudioData', async () => {
     // AudioDecoder is undefined in Node.js; inject stubs so decodeMp3 actually runs.
     let closedCount = 0;

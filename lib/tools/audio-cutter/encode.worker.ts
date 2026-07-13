@@ -261,7 +261,12 @@ function parseMp3Header(data: Uint8Array, offset: number): Omit<Mp3Frame, 'data'
   return { channels: (fourth >> 6) === 3 ? 1 : 2, length, sampleRate };
 }
 
-async function* streamMp3Frames(file: Blob, send: SendReply): AsyncGenerator<Mp3Frame> {
+async function* streamMp3Frames(
+  file: Blob,
+  send: SendReply,
+  progressStart: number,
+  progressSpan: number,
+): AsyncGenerator<Mp3Frame> {
   const reader = file.stream().getReader();
   let pending = new Uint8Array();
   let bytesRead = 0;
@@ -316,7 +321,10 @@ async function* streamMp3Frames(file: Blob, send: SendReply): AsyncGenerator<Mp3
         offset += header.length;
       }
       pending = pending.slice(offset);
-      send({ type: 'progress', value: 0.05 + 0.5 * Math.min(1, bytesRead / file.size) });
+      send({
+        type: 'progress',
+        value: progressStart + progressSpan * Math.min(1, bytesRead / file.size),
+      });
       if (done) break;
     }
   } finally {
@@ -343,121 +351,171 @@ async function decodeMp3(
     throw new Error('This browser cannot decode MP3 audio in a worker. Use PCM WAV input.');
   }
 
-  let decoder: AudioDecoder | undefined;
-  let processing = Promise.resolve();
-  let processingError: unknown;
-  let stopped = false;
   let sampleRate = 0;
   let channelCount = 0;
-  let decodedFrames = 0;
-  let frameCount = 0;
-  let pendingOutputCount = 0;
-  let pendingOutputBytes = 0;
-  const peaks: number[] = [];
-  const selectedChunks: (Float32Array | null)[][] = [];
+  let projectedFrames = 0;
+  for await (const frame of streamMp3Frames(file, send, 0.05, 0.2)) {
+    if (projectedFrames === 0) {
+      sampleRate = frame.sampleRate;
+      channelCount = frame.channels;
+    } else if (sampleRate !== frame.sampleRate || channelCount !== frame.channels) {
+      throw new Error('MP3 stream format changes are not supported.');
+    }
 
-  const consume = async (audioData: AudioData): Promise<void> => {
-    const audioBytes = audioData.numberOfFrames * audioData.numberOfChannels * Float32Array.BYTES_PER_ELEMENT;
+    const frameSamples = frame.sampleRate >= 32_000 ? 1152 : 576;
+    const nextProjectedFrames = projectedFrames + frameSamples;
+    const projectedPcmBytes =
+      nextProjectedFrames * channelCount * Float32Array.BYTES_PER_ELEMENT;
+    if (
+      !Number.isSafeInteger(nextProjectedFrames) ||
+      !Number.isSafeInteger(projectedPcmBytes) ||
+      projectedPcmBytes > MAX_DECODED_BYTES ||
+      nextProjectedFrames / sampleRate > MAX_DURATION_SECONDS
+    ) {
+      throw new Error('The decoded audio exceeds the 30 minute or 256 MB processing limit.');
+    }
+    projectedFrames = nextProjectedFrames;
+  }
+  if (projectedFrames === 0) throw new Error('Only valid PCM WAV or MP3 input is supported.');
+
+  const config: AudioDecoderConfig = { codec: 'mp3', sampleRate, numberOfChannels: channelCount };
+  const support = await AudioDecoder.isConfigSupported(config);
+  if (!support.supported) throw new Error('This browser cannot decode this MP3 audio in a worker.');
+
+  let selectionStart = 0;
+  let selectionEnd = 0;
+  if (request.type === 'encode') {
+    selectionStart = Math.max(
+      0,
+      Math.min(projectedFrames, Math.round(request.startSeconds * sampleRate)),
+    );
+    selectionEnd = Math.max(
+      selectionStart,
+      Math.min(projectedFrames, Math.round(request.endSeconds * sampleRate)),
+    );
+  } else if (request.type === 'decode-file') {
+    selectionEnd = projectedFrames;
+  }
+
+  const selectedCapacity = selectionEnd - selectionStart;
+  const selectedBytes = selectedCapacity * channelCount * Float32Array.BYTES_PER_ELEMENT;
+  if (!Number.isSafeInteger(selectedBytes) || selectedBytes > MAX_DECODED_BYTES) {
+    throw new Error('The selected audio exceeds the 256 MB processing limit.');
+  }
+  const outputChannels =
+    request.type === 'analyze'
+      ? []
+      : Array.from({ length: channelCount }, () => new Float32Array(selectedCapacity));
+
+  let decoder: AudioDecoder | undefined;
+  let processingError: unknown;
+  let stopped = false;
+  let decodedFrames = 0;
+  let fedFrames = 0;
+  let wakeDecoderQueue: (() => void) | undefined;
+  const peaks: number[] = [];
+  const wakeDecoder = (): void => {
+    wakeDecoderQueue?.();
+    wakeDecoderQueue = undefined;
+  };
+  const stop = (error: unknown): void => {
+    stopped = true;
+    processingError ??= error;
+    wakeDecoder();
+  };
+  const consume = (audioData: AudioData): void => {
     try {
-      const nextDecodedFrames = decodedFrames + audioData.numberOfFrames;
-      const decodedBytes = nextDecodedFrames * audioData.numberOfChannels * Float32Array.BYTES_PER_ELEMENT;
+      if (stopped) return;
       if (
-        nextDecodedFrames / audioData.sampleRate > MAX_DURATION_SECONDS ||
+        audioData.sampleRate !== sampleRate ||
+        audioData.numberOfChannels !== channelCount
+      ) {
+        throw new Error('MP3 stream format changes are not supported.');
+      }
+
+      const nextDecodedFrames = decodedFrames + audioData.numberOfFrames;
+      const decodedBytes =
+        nextDecodedFrames * channelCount * Float32Array.BYTES_PER_ELEMENT;
+      if (
+        !Number.isSafeInteger(audioData.numberOfFrames) ||
+        !Number.isSafeInteger(nextDecodedFrames) ||
         !Number.isSafeInteger(decodedBytes) ||
+        nextDecodedFrames > projectedFrames ||
+        nextDecodedFrames / sampleRate > MAX_DURATION_SECONDS ||
         decodedBytes > MAX_DECODED_BYTES
       ) {
         throw new Error('The decoded audio exceeds the 30 minute or 256 MB processing limit.');
       }
 
-      const startFrame =
-        request.type === 'encode' ? Math.max(0, Math.round(request.startSeconds * audioData.sampleRate)) : 0;
-      let endFrame: number;
-      if (request.type === 'decode-file') {
-        endFrame = Infinity;
-      } else if (request.type === 'encode') {
-        endFrame = Math.max(startFrame, Math.round(request.endSeconds * audioData.sampleRate));
-      } else {
-        endFrame = 0;
-      }
-      let peak = 0;
-      for (let channel = 0; channel < audioData.numberOfChannels; channel += 1) {
+      const overlapStart = Math.max(decodedFrames, selectionStart);
+      const overlapEnd = Math.min(nextDecodedFrames, selectionEnd);
+      const overlapFrames = Math.max(0, overlapEnd - overlapStart);
+      if (request.type === 'analyze') {
+        let peak = 0;
         const plane = new Float32Array(audioData.numberOfFrames);
-        await audioData.copyTo(plane, { format: 'f32-planar', planeIndex: channel });
-        if (request.type === 'analyze') {
+        for (let channel = 0; channel < channelCount; channel += 1) {
+          audioData.copyTo(plane, {
+            format: 'f32-planar',
+            frameCount: audioData.numberOfFrames,
+            frameOffset: 0,
+            planeIndex: channel,
+          });
           for (const sample of plane) peak = Math.max(peak, Math.abs(sample));
-        } else {
-          const overlapStart = Math.max(decodedFrames, startFrame);
-          const overlapEnd = Math.min(nextDecodedFrames, endFrame);
-          if (overlapEnd > overlapStart) {
-            selectedChunks[channel] ??= [];
-            selectedChunks[channel]!.push(
-              plane.slice(overlapStart - decodedFrames, overlapEnd - decodedFrames),
-            );
-          }
+        }
+        peaks.push(peak);
+      } else if (overlapFrames > 0) {
+        const destinationOffset = overlapStart - selectionStart;
+        for (let channel = 0; channel < channelCount; channel += 1) {
+          audioData.copyTo(
+            outputChannels[channel]!.subarray(
+              destinationOffset,
+              destinationOffset + overlapFrames,
+            ),
+            {
+              format: 'f32-planar',
+              frameCount: overlapFrames,
+              frameOffset: overlapStart - decodedFrames,
+              planeIndex: channel,
+            },
+          );
         }
       }
-      if (request.type === 'analyze') peaks.push(peak);
       decodedFrames = nextDecodedFrames;
     } finally {
       audioData.close();
-      pendingOutputCount -= 1;
-      pendingOutputBytes -= audioBytes;
     }
   };
 
   try {
-    for await (const frame of streamMp3Frames(file, send)) {
-      if (stopped || processingError) break;
-      if (!decoder) {
-        sampleRate = frame.sampleRate;
-        channelCount = frame.channels;
-        const config: AudioDecoderConfig = { codec: 'mp3', sampleRate, numberOfChannels: channelCount };
-        const support = await AudioDecoder.isConfigSupported(config);
-        if (!support.supported) throw new Error('This browser cannot decode this MP3 audio in a worker.');
-        selectedChunks.push(...Array.from({ length: channelCount }, () => []));
-        decoder = new AudioDecoder({
-          error: (error) => {
-            stopped = true;
-            processingError = error;
-          },
-          output: (audioData) => {
-            if (stopped) {
-              audioData.close();
-              return;
-            }
-            const outputBytes =
-              audioData.numberOfFrames * audioData.numberOfChannels * Float32Array.BYTES_PER_ELEMENT;
-            if (pendingOutputBytes + outputBytes > MAX_DECODED_BYTES) {
-              stopped = true;
-              processingError = new Error(
-                'The decoded audio exceeds the 30 minute or 256 MB processing limit.',
-              );
-              audioData.close();
-              return;
-            }
-            pendingOutputCount += 1;
-            pendingOutputBytes += outputBytes;
-            processing = processing
-              .catch(() => undefined)
-              .then(() => consume(audioData))
-              .catch((error: unknown) => {
-                stopped = true;
-                processingError = error;
-              });
-          },
-        });
-        decoder.configure(config);
-      } else if (sampleRate !== frame.sampleRate || channelCount !== frame.channels) {
+    decoder = new AudioDecoder({
+      error: (error) => stop(error),
+      output: (audioData) => {
+        try {
+          consume(audioData);
+        } catch (error) {
+          stop(error);
+        }
+      },
+    });
+    decoder.ondequeue = wakeDecoder;
+    decoder.configure(config);
+
+    for await (const frame of streamMp3Frames(file, send, 0.25, 0.3)) {
+      if (stopped) break;
+      if (sampleRate !== frame.sampleRate || channelCount !== frame.channels) {
         throw new Error('MP3 stream format changes are not supported.');
       }
 
-      // Pre-decode hard cap: project decoded PCM bytes for this frame before feeding the decoder.
-      // This bounds the native decoder's in-flight queue independently of output callback timing.
       const frameSamples = frame.sampleRate >= 32_000 ? 1152 : 576;
-      const projectedPcmBytes = (frameCount + frameSamples) * channelCount * Float32Array.BYTES_PER_ELEMENT;
+      const nextFedFrames = fedFrames + frameSamples;
+      const projectedPcmBytes =
+        nextFedFrames * channelCount * Float32Array.BYTES_PER_ELEMENT;
       if (
+        !Number.isSafeInteger(nextFedFrames) ||
+        !Number.isSafeInteger(projectedPcmBytes) ||
+        nextFedFrames > projectedFrames ||
         projectedPcmBytes > MAX_DECODED_BYTES ||
-        (frameCount + frameSamples) / sampleRate > MAX_DURATION_SECONDS
+        nextFedFrames / sampleRate > MAX_DURATION_SECONDS
       ) {
         throw new Error('The decoded audio exceeds the 30 minute or 256 MB processing limit.');
       }
@@ -465,27 +523,20 @@ async function decodeMp3(
       decoder.decode(
         new EncodedAudioChunk({
           type: 'key',
-          timestamp: Math.round((frameCount * 1_000_000) / sampleRate),
+          timestamp: Math.round((fedFrames * 1_000_000) / sampleRate),
           data: frame.data,
         }),
       );
-      frameCount += frameSamples;
-      if (
-        decoder.decodeQueueSize >= BACKPRESSURE_OUTPUTS ||
-        pendingOutputCount >= BACKPRESSURE_OUTPUTS ||
-        pendingOutputBytes >= MAX_DECODED_BYTES
-      ) {
-        await processing;
+      fedFrames = nextFedFrames;
+      if (processingError) throw processingError;
+      while (decoder.decodeQueueSize >= BACKPRESSURE_OUTPUTS && !stopped) {
+        await new Promise<void>((resolve) => {
+          wakeDecoderQueue = resolve;
+        });
         if (processingError) throw processingError;
       }
     }
-    if (!decoder) throw new Error('Only valid PCM WAV or MP3 input is supported.');
-    // Only flush if we haven't stopped due to a cap trip or error; flushing after stopping
-    // would decode the entire remaining stream.
-    if (!stopped) {
-      await decoder.flush();
-    }
-    await processing;
+    if (!stopped) await decoder.flush();
     if (processingError) throw processingError;
     if (decodedFrames < 1) throw new Error('The MP3 file contains no decodable audio.');
 
@@ -497,25 +548,17 @@ async function decodeMp3(
       };
     }
 
-    // O(N) concat: iterate by index and null each entry after copying to halve peak memory.
-    const channels = selectedChunks.map((chunks) => {
-      const length = chunks.reduce((acc, chunk) => acc + (chunk?.length ?? 0), 0);
-      const channel = new Float32Array(length);
-      let offset = 0;
-      for (let index = 0; index < chunks.length; index += 1) {
-        const chunk = chunks[index];
-        if (chunk) {
-          channel.set(chunk, offset);
-          offset += chunk.length;
-          chunks[index] = null;
-        }
-      }
-      return channel;
-    });
+    const selectedFrames = Math.max(
+      0,
+      Math.min(decodedFrames, selectionEnd) - selectionStart,
+    );
+    const channels = outputChannels.map((channel) => channel.subarray(0, selectedFrames));
     if (!channels[0]?.length) throw new Error('Select a non-empty audio region.');
     send({ type: 'progress', value: 0.6 });
     return { duration: decodedFrames / sampleRate, pcm: { channels, sampleRate }, sampleRate };
   } finally {
+    stopped = true;
+    wakeDecoder();
     if (decoder && decoder.state !== 'closed') decoder.close();
   }
 }
