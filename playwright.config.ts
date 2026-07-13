@@ -4,8 +4,9 @@ export default defineConfig({
   expect: {
     timeout: 10_000,
   },
+  forbidOnly: !!process.env.CI,
   fullyParallel: false,
-  outputDir: '/tmp/media-tools-playwright-results',
+  outputDir: 'test-results',
   projects: [
     {
       name: 'firefox-built-extension',
@@ -15,7 +16,11 @@ export default defineConfig({
       },
     },
   ],
-  reporter: 'line',
+  reporter: [
+    ['line'],
+    ['html', { open: 'never', outputFolder: 'playwright-report' }],
+    ['json', { outputFile: 'test-results/playwright-results.json' }],
+  ],
   testDir: './tests/e2e',
   timeout: 90_000,
   workers: 1,
