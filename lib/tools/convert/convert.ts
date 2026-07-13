@@ -1,4 +1,3 @@
-import { type AudioPcm, encodeWav } from '../audio-cutter/audio';
 import {
   MAX_PCM_ENCODE_BYTES,
   startEncode,
@@ -52,44 +51,6 @@ function assertProjectedPcmWithinLimit(frameCount: number, channelCount: number)
   }
 }
 
-function startWavEncode(input: DecodedPcm, onProgress: (value: number) => void): EncodeJob {
-  const channels = input.channelData.slice();
-  const sampleRate = input.sampleRate;
-  let settled = false;
-  let rejectJob: (reason: Error) => void = () => undefined;
-  const result = new Promise<Blob>((resolve, reject) => {
-    rejectJob = reject;
-    queueMicrotask(() => {
-      if (settled) return;
-      try {
-        onProgress(0);
-        const source: AudioPcm = {
-          channels,
-          sampleRate,
-        };
-        const buffer = encodeWav(source);
-        if (settled) return;
-        settled = true;
-        onProgress(1);
-        resolve(new Blob([buffer], { type: 'audio/wav' }));
-      } catch (error) {
-        settled = true;
-        reject(error instanceof Error ? error : new Error('WAV export failed.'));
-      }
-    });
-  });
-
-  return {
-    result,
-    cancel: () => {
-      if (!settled) {
-        settled = true;
-        rejectJob(new Error('Export cancelled.'));
-      }
-    },
-  };
-}
-
 export function startConversion(
   input: DecodedPcm,
   format: EncodeFormat,
@@ -97,9 +58,6 @@ export function startConversion(
 ): EncodeJob {
   const frameCount = validateInput(input, format);
   assertProjectedPcmWithinLimit(frameCount, input.channelData.length);
-  if (format === 'wav') {
-    return startWavEncode(input, onProgress);
-  }
   return startEncode(
     {
       channels: input.channelData,
