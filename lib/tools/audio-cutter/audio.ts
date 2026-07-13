@@ -31,6 +31,13 @@ export function encodeWav(source: AudioPcm): ArrayBuffer {
   const channelCount = source.channels.length;
   const bytesPerSample = 2;
   const dataBytes = frames * channelCount * bytesPerSample;
+  // The RIFF `RIFF` and `data` chunk-size fields are 32-bit; `36 + dataBytes` must fit in a
+  // uint32 or setUint32 silently wraps and produces a corrupt container. The 256 MB decode cap
+  // keeps us far below this, but guard before allocation as defense-in-depth (RF64 would be the
+  // real fix for >4 GiB output).
+  if (!Number.isSafeInteger(dataBytes) || dataBytes > 0xffffffff - 36) {
+    throw new Error('The audio is too large to encode as a WAV file (exceeds the 4 GiB RIFF limit).');
+  }
   const buffer = new ArrayBuffer(44 + dataBytes);
   const view = new DataView(buffer);
 
