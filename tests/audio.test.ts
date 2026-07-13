@@ -339,6 +339,7 @@ describe('audio cutter', () => {
     let sliceCalled = false;
     const oversizedChannel = {
       byteLength: MAX_PCM_ENCODE_BYTES + 1,
+      // startEncode should throw before it ever snapshots or transfers channel buffers.
       buffer: new ArrayBuffer(0),
       slice: () => {
         sliceCalled = true;
@@ -360,6 +361,41 @@ describe('audio cutter', () => {
         ),
       ).toThrow('256 MB');
       expect(sliceCalled).toBe(false);
+      expect(workersCreated).toBe(0);
+    } finally {
+      globalThis.Worker = originalWorker;
+    }
+  });
+
+  it('validates channel count limits before creating a worker in startEncode', () => {
+    const originalWorker = globalThis.Worker;
+    let workersCreated = 0;
+    class FakeWorker {
+      onerror: ((event: Event) => void) | null = null;
+      onmessage: ((event: MessageEvent) => void) | null = null;
+
+      constructor() {
+        workersCreated += 1;
+      }
+
+      postMessage() {}
+
+      terminate() {}
+    }
+    globalThis.Worker = FakeWorker as unknown as typeof Worker;
+    try {
+      expect(() =>
+        startEncode(
+          {
+            channels: Array.from({ length: MAX_PCM_CHANNELS + 1 }, () => new Float32Array([0])),
+            sampleRate: 8_000,
+            startSeconds: 0,
+            endSeconds: 1,
+            format: 'wav',
+          },
+          () => undefined,
+        ),
+      ).toThrow('mono/stereo');
       expect(workersCreated).toBe(0);
     } finally {
       globalThis.Worker = originalWorker;

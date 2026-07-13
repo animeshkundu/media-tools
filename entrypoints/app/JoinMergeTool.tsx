@@ -3,7 +3,7 @@ import { Button } from '@/components/Button';
 import { Progress } from '@/components/Progress';
 import { downloadBlob } from '@/lib/core/download';
 import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
-import { type AudioJob, type EncodeFormat } from '@/lib/core/worker';
+import { MAX_INPUT_BYTES, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
 import { startJoinedEncode, type DecodedPcmTrack } from '@/lib/tools/join/join';
 
 type JoinTrack = DecodedPcmTrack & {
@@ -15,6 +15,7 @@ const ACCEPTED_AUDIO = 'audio/wav,audio/mpeg,.wav,.mp3';
 
 async function decodeTrack(file: File, context: AudioContext): Promise<JoinTrack> {
   if (file.size === 0) throw new Error('Choose non-empty audio files.');
+  if (file.size > MAX_INPUT_BYTES) throw new Error('Choose audio files smaller than 64 MB.');
   const source = await file.arrayBuffer();
   const audio = await context.decodeAudioData(source);
   return {
@@ -93,10 +94,11 @@ export function JoinMergeTool() {
     jobRef.current = job;
     try {
       const blob = await job.result;
-      downloadBlob(blob, outputName(tracks[0]?.file.name ?? 'joined-audio', format));
+      downloadBlob(blob, outputName('joined-audio', format));
       setProgress(1);
       setStatus('Done. Your merged download was created without uploading files.');
     } catch (error) {
+      setProgress(0);
       setStatus(error instanceof Error ? error.message : 'Join export failed.');
     } finally {
       jobRef.current = undefined;
@@ -206,7 +208,10 @@ export function JoinMergeTool() {
           {busy && (
             <button
               className="rounded-xl border border-red-300/30 px-5 py-3 font-semibold text-red-200 hover:bg-red-300/10"
-              onClick={() => jobRef.current?.cancel()}
+              onClick={() => {
+                setStatus('Cancelling merge…');
+                jobRef.current?.cancel();
+              }}
             >
               Cancel
             </button>
