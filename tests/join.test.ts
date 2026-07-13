@@ -1,19 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
-import { startEncode } from '../lib/core/worker';
+import { MAX_PCM_ENCODE_BYTES, startEncode } from '../lib/core/worker';
 import {
   encodeJoinedWav,
   joinPcm,
-  MAX_JOIN_OUTPUT_BYTES,
   startJoinedEncode,
   type DecodedPcmTrack,
 } from '../lib/tools/join/join';
 
-vi.mock('../lib/core/worker', () => ({
-  startEncode: vi.fn(() => ({
-    cancel: vi.fn(),
-    result: Promise.resolve(new Blob()),
-  })),
-}));
+vi.mock('../lib/core/worker', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/core/worker')>();
+  return {
+    ...actual,
+    startEncode: vi.fn(() => ({
+      cancel: vi.fn(),
+      result: Promise.resolve(new Blob()),
+    })),
+  };
+});
 
 function createTrack(samples: number[][], sampleRate = 8_000): DecodedPcmTrack {
   return {
@@ -73,16 +76,45 @@ describe('audio join core', () => {
     );
   });
 
-  it('rejects aggregate PCM beyond the hard limit before output allocation', () => {
-    // 1,048,576 float samples occupy 4 MiB; references are repeated to cross the 512 MiB limit.
-    const shared = new Float32Array(1024 * 1024);
-    const tracksToExceedLimit = Math.floor(MAX_JOIN_OUTPUT_BYTES / shared.byteLength) + 1;
-    const repeatedTracks = Array.from(
-      { length: tracksToExceedLimit },
-      () => ({ channelData: [shared], sampleRate: 48_000 }),
-    );
+  it('rejects projected output beyond the shared encode limit before allocation', () => {
+    const OriginalFloat32Array = globalThis.Float32Array;
+    const allocations: number[] = [];
+    const TrackingFloat32Array = new Proxy(OriginalFloat32Array, {
+      construct(target, args, newTarget) {
+        if (typeof args[0] === 'number') allocations.push(args[0]);
+        return Reflect.construct(target, args, newTarget);
+      },
+    }) as unknown as Float32ArrayConstructor;
+    let float32Replaced = false;
 
-    expect(() => joinPcm(repeatedTracks)).toThrow('512 MiB decoded PCM limit');
+    try {
+      Object.defineProperty(globalThis, 'Float32Array', {
+        value: TrackingFloat32Array,
+        configurable: true,
+      });
+      float32Replaced = true;
+      const framesPastLimit = Math.floor(MAX_PCM_ENCODE_BYTES / Float32Array.BYTES_PER_ELEMENT) + 1;
+      const oversizedChannel = new Proxy(new OriginalFloat32Array(1), {
+        get(target, property, receiver) {
+          if (property === 'length') return framesPastLimit;
+          return Reflect.get(target, property, receiver);
+        },
+      }) as Float32Array;
+      const oversizedTrack = {
+        channelData: [oversizedChannel],
+        sampleRate: 48_000,
+      } as DecodedPcmTrack;
+
+      expect(() => joinPcm([oversizedTrack])).toThrow('256 MB processing limit');
+      expect(allocations).toEqual([]);
+    } finally {
+      if (float32Replaced) {
+        Object.defineProperty(globalThis, 'Float32Array', {
+          value: OriginalFloat32Array,
+          configurable: true,
+        });
+      }
+    }
   });
 
   it('encodes joined PCM as native WAV', () => {

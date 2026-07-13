@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_INPUT_BYTES, startAnalyze, startFileEncode } from '../lib/core/worker';
+import {
+  MAX_INPUT_BYTES,
+  MAX_PCM_CHANNELS,
+  MAX_PCM_ENCODE_BYTES,
+  startAnalyze,
+  startEncode,
+  startFileEncode,
+} from '../lib/core/worker';
 import { cutPcm, encodeWav } from '../lib/tools/audio-cutter/audio';
 import { processAudioRequest, type WorkerReply } from '../lib/tools/audio-cutter/encode.worker';
 
@@ -162,6 +169,46 @@ describe('audio cutter', () => {
     expect(replies.at(-1)).toMatchObject({ type: 'error', message: expect.stringContaining('64 MB') });
   });
 
+  it('rejects encode-pcm requests that exceed channel count or aggregate decoded bytes', async () => {
+    const tooManyChannelsReplies: WorkerReply[] = [];
+    await processAudioRequest(
+      {
+        type: 'encode-pcm',
+        channels: Array.from({ length: MAX_PCM_CHANNELS + 1 }, () => new Float32Array([0])),
+        sampleRate: 8_000,
+        startSeconds: 0,
+        endSeconds: 1,
+        format: 'wav',
+      },
+      (reply) => tooManyChannelsReplies.push(reply),
+    );
+    expect(tooManyChannelsReplies.at(-1)).toMatchObject({
+      type: 'error',
+      message: expect.stringContaining('mono/stereo'),
+    });
+
+    const oversizedChannel = {
+      byteLength: MAX_PCM_ENCODE_BYTES + 1,
+      length: 1,
+    } as unknown as Float32Array;
+    const oversizedReplies: WorkerReply[] = [];
+    await processAudioRequest(
+      {
+        type: 'encode-pcm',
+        channels: [oversizedChannel],
+        sampleRate: 8_000,
+        startSeconds: 0,
+        endSeconds: 1,
+        format: 'wav',
+      },
+      (reply) => oversizedReplies.push(reply),
+    );
+    expect(oversizedReplies.at(-1)).toMatchObject({
+      type: 'error',
+      message: expect.stringContaining('256 MB'),
+    });
+  });
+
   it('rejects an encode request with non-finite timestamps inside the worker', async () => {
     const file = wavFile(new Float32Array(8_000), 8_000);
     const replies: WorkerReply[] = [];
@@ -270,6 +317,89 @@ describe('audio cutter', () => {
     expect(Math.abs(frames / sampleRate - (0.6 - 0.1))).toBeLessThanOrEqual(1 / sampleRate);
     expect(ascii(view, 0, 4)).toBe('RIFF');
     expect(ascii(view, 8, 4)).toBe('WAVE');
+  });
+
+  it('validates encode-pcm byte limits before copying channel buffers in startEncode', () => {
+    const originalWorker = globalThis.Worker;
+    let workersCreated = 0;
+    class FakeWorker {
+      onerror: ((event: Event) => void) | null = null;
+      onmessage: ((event: MessageEvent) => void) | null = null;
+
+      constructor() {
+        workersCreated += 1;
+      }
+
+      postMessage() {}
+
+      terminate() {}
+    }
+    globalThis.Worker = FakeWorker as unknown as typeof Worker;
+
+    let sliceCalled = false;
+    const oversizedChannel = {
+      byteLength: MAX_PCM_ENCODE_BYTES + 1,
+      // startEncode should throw before it ever snapshots or transfers channel buffers.
+      buffer: new ArrayBuffer(0),
+      slice: () => {
+        sliceCalled = true;
+        throw new Error('slice should not run');
+      },
+    } as unknown as Float32Array;
+
+    try {
+      expect(() =>
+        startEncode(
+          {
+            channels: [oversizedChannel],
+            sampleRate: 8_000,
+            startSeconds: 0,
+            endSeconds: 1,
+            format: 'wav',
+          },
+          () => undefined,
+        ),
+      ).toThrow('256 MB');
+      expect(sliceCalled).toBe(false);
+      expect(workersCreated).toBe(0);
+    } finally {
+      globalThis.Worker = originalWorker;
+    }
+  });
+
+  it('validates channel count limits before creating a worker in startEncode', () => {
+    const originalWorker = globalThis.Worker;
+    let workersCreated = 0;
+    class FakeWorker {
+      onerror: ((event: Event) => void) | null = null;
+      onmessage: ((event: MessageEvent) => void) | null = null;
+
+      constructor() {
+        workersCreated += 1;
+      }
+
+      postMessage() {}
+
+      terminate() {}
+    }
+    globalThis.Worker = FakeWorker as unknown as typeof Worker;
+    try {
+      expect(() =>
+        startEncode(
+          {
+            channels: Array.from({ length: MAX_PCM_CHANNELS + 1 }, () => new Float32Array([0])),
+            sampleRate: 8_000,
+            startSeconds: 0,
+            endSeconds: 1,
+            format: 'wav',
+          },
+          () => undefined,
+        ),
+      ).toThrow('mono/stereo');
+      expect(workersCreated).toBe(0);
+    } finally {
+      globalThis.Worker = originalWorker;
+    }
   });
 
   it('encode-pcm path encodes as MP3 and returns a non-empty result', async () => {
