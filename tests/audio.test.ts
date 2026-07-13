@@ -53,6 +53,13 @@ describe('audio cutter', () => {
     expect(view.getUint32(4, true)).toBe(wav.byteLength - 8);
   });
 
+  it('rejects WAV output that would overflow the 32-bit RIFF chunk size, before allocating', () => {
+    // dataBytes = frames * channels * 2; the guard trips when 36 + dataBytes exceeds a uint32.
+    const overflowFrames = Math.floor((0xffffffff - 36) / 2) + 1; // mono → dataBytes = frames * 2
+    const spoofed = { length: overflowFrames } as unknown as Float32Array;
+    expect(() => encodeWav({ channels: [spoofed], sampleRate: 44_100 })).toThrow(/4 GiB|RIFF|too large/i);
+  });
+
   it('decodes and cuts WAV in the worker within one source frame', async () => {
     const sampleRate = 8_000;
     const samples = Float32Array.from({ length: sampleRate }, (_, index) => index / sampleRate);
