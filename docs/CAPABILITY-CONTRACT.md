@@ -21,7 +21,7 @@ form-action 'none'
 frame-src 'none'
 ```
 
-`connect-src 'none'` blocks every outbound network connection from extension pages, including `fetch`, `XMLHttpRequest`, WebSocket, and `EventSource`. `form-action 'none'` blocks form submission to any origin. These directives are enforced by the browser's CSP engine, not by application logic, and cannot be bypassed by JavaScript running inside the extension.
+`connect-src 'none'` blocks every outbound network connection from extension pages, including `fetch`, `XMLHttpRequest`, WebSocket, and `EventSource`. `form-action 'none'` blocks form submission to any origin. These directives are enforced by the browser's CSP engine, not by application logic, and cannot be bypassed by JavaScript running inside the extension. A CI regression guard (`scripts/check-csp.mjs`, run on every build in `.github/workflows/ci.yml`) asserts that the shipped manifest keeps `default-src`, `connect-src`, `form-action`, `frame-src`, and `base-uri` at `'none'`, so a `wxt.config.ts` change that re-introduces an egress-capable directive fails CI; `scripts/check-manifest-egress.mjs` additionally validates `web_accessible_resources` origins.
 
 **Narrowed claim:** The CSP prevents outbound connections from extension pages on browsers that enforce MV3 CSP (Chrome, Firefox). It does not cover connections initiated from outside the extension (for example, by a malicious native application). CSP enforcement depends on browser integrity; a compromised browser can bypass these restrictions. No telemetry, analytics, or crash reporting is included in the extension.
 
@@ -105,5 +105,4 @@ The following items are not yet enforced and are therefore not claimed above:
 
 - **Aggregate batch memory limit.** No cross-job or cross-session PCM accumulation cap exists today.
 - **Disk-backed output.** Large output blobs are held in memory as `ArrayBuffer` until the download link is clicked. An RF64 / disk-backed path for files approaching the 4 GiB RIFF limit is not yet implemented.
-- **CSP CI assertion.** There is no automated test that fails if a future `wxt.config.ts` change re-introduces an egress-capable `connect-src` directive. This is a required release gate before Phase 2 ships (per the architecture guardrails).
 - **Video tools.** No video tool is shipped in Phase 1. This contract does not cover Phase 2.
