@@ -14,6 +14,7 @@ import { Waveform } from '@/lib/tools/audio-cutter/Waveform';
 import { ChangeSpeedTool } from './ChangeSpeedTool';
 import { ConvertTool } from './ConvertTool';
 import { JoinMergeTool } from './JoinMergeTool';
+import { TrimTimeFields, type TrimValidation } from './TrimTimeFields';
 
 type LoadedAudio = {
   duration: number;
@@ -31,6 +32,7 @@ export default function App() {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('Drop an audio file to begin.');
   const [busy, setBusy] = useState(false);
+  const [trimValidation, setTrimValidation] = useState<TrimValidation>();
   const jobRef = useRef<AudioJob<unknown> | undefined>(undefined);
 
   async function load(file: File) {
@@ -44,9 +46,11 @@ export default function App() {
       setAudio({ ...analysis, file });
       setStart(0);
       setEnd(analysis.duration);
+      setTrimValidation(undefined);
       setStatus('Drag the gold handles to choose the part you want.');
     } catch (error) {
       setAudio(undefined);
+      setTrimValidation(undefined);
       setStatus(error instanceof Error ? error.message : 'This audio file could not be read.');
     } finally {
       jobRef.current = undefined;
@@ -205,7 +209,10 @@ export default function App() {
               <button
                 className="rounded-xl border border-white/15 px-4 py-2 text-sm hover:bg-white/5 disabled:opacity-50"
                 disabled={busy}
-                onClick={() => setAudio(undefined)}
+                onClick={() => {
+                  setAudio(undefined);
+                  setTrimValidation(undefined);
+                }}
               >
                 Choose another
               </button>
@@ -217,9 +224,22 @@ export default function App() {
               start={start}
               end={end}
               onChange={(nextStart, nextEnd) => {
+                setTrimValidation(undefined);
                 setStart(nextStart);
                 setEnd(nextEnd);
               }}
+            />
+            <TrimTimeFields
+              disabled={busy}
+              duration={audio.duration}
+              end={end}
+              start={start}
+              validation={trimValidation}
+              onChange={(nextStart, nextEnd) => {
+                setStart(nextStart);
+                setEnd(nextEnd);
+              }}
+              onValidationChange={setTrimValidation}
             />
             <div className="mt-3 flex justify-between font-mono text-sm text-amber-200">
               <span>In {formatDuration(start)}</span>
