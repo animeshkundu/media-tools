@@ -3,7 +3,7 @@ import { Button } from '@/components/Button';
 import { Progress } from '@/components/Progress';
 import { downloadBlob } from '@/lib/core/download';
 import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
-import { MAX_INPUT_BYTES, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
+import { startDecodeFile, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
 import { startChangeSpeedEncode } from '@/lib/tools/change-speed/changeSpeed';
 
 const ACCEPTED_AUDIO = 'audio/wav,audio/mpeg,.wav,.mp3';
@@ -15,18 +15,17 @@ type LoadedTrack = {
   sampleRate: number;
 };
 
-async function decodeTrack(file: File, context: AudioContext): Promise<LoadedTrack> {
-  if (file.size === 0) throw new Error('Choose a non-empty audio file.');
-  if (file.size > MAX_INPUT_BYTES) throw new Error('Choose an audio file smaller than 64 MB.');
-  const source = await file.arrayBuffer();
-  const audio = await context.decodeAudioData(source);
+export async function decodeFileForChangeSpeed(
+  file: File,
+  onProgress: (p: number) => void,
+): Promise<{ channelData: Float32Array[]; duration: number; sampleRate: number }> {
+  const job = startDecodeFile(file, onProgress);
+  const decoded = await job.result;
+  if (decoded.channelData.length === 0) throw new Error('The audio file contains no decodable audio channels.');
   return {
-    duration: audio.duration,
-    file,
-    sampleRate: audio.sampleRate,
-    channelData: Array.from({ length: audio.numberOfChannels }, (_, channel) =>
-      audio.getChannelData(channel).slice(),
-    ),
+    channelData: decoded.channelData,
+    duration: decoded.channelData[0]!.length / decoded.sampleRate,
+    sampleRate: decoded.sampleRate,
   };
 }
 
@@ -39,24 +38,31 @@ export function ChangeSpeedTool() {
   const [validation, setValidation] = useState<string>();
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const jobRef = useRef<AudioJob<unknown> | undefined>(undefined);
+  const jobRef = useRef<AudioJob<unknown> | null>(null);
 
   async function loadFile(file: File) {
     setBusy(true);
     setProgress(0);
     setValidation(undefined);
     setStatus('Reading audio on this device…');
-    let context: AudioContext | undefined;
     try {
-      context = new AudioContext();
-      const loaded = await decodeTrack(file, context);
-      setTrack(loaded);
+      const job = startDecodeFile(file, setProgress);
+      jobRef.current = job;
+      const decoded = await job.result;
+      if (decoded.channelData.length === 0) throw new Error('The audio file contains no decodable audio channels.');
+      setTrack({
+        channelData: decoded.channelData,
+        duration: decoded.channelData[0]!.length / decoded.sampleRate,
+        file,
+        sampleRate: decoded.sampleRate,
+      });
       setStatus('Set the speed factor and export.');
     } catch (error) {
       setTrack(undefined);
-      setStatus(error instanceof Error ? error.message : 'This audio file could not be read.');
+      setValidation(error instanceof Error ? error.message : 'This audio file could not be read.');
+      setStatus('Loading failed.');
     } finally {
-      await context?.close().catch(() => undefined);
+      jobRef.current = null;
       setBusy(false);
       setProgress(0);
     }
@@ -90,7 +96,7 @@ export function ChangeSpeedTool() {
         setStatus('Export failed.');
       }
     } finally {
-      jobRef.current = undefined;
+      jobRef.current = null;
       setBusy(false);
     }
   }
