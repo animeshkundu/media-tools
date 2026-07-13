@@ -572,6 +572,9 @@ async function encodeWav(source: AudioPcm, send: SendReply): Promise<ArrayBuffer
   if (channelCount < 1) throw new Error('No audio channels to encode.');
   const frames = source.channels.reduce((min, ch) => Math.min(min, ch.length), Infinity);
   const dataBytes = frames * channelCount * 2;
+  if (!Number.isSafeInteger(dataBytes) || dataBytes > 0xffffffff - 36) {
+    throw new Error('The audio is too large to encode as a WAV file (exceeds the 4 GiB RIFF limit).');
+  }
   const buffer = new ArrayBuffer(44 + dataBytes);
   const view = new DataView(buffer);
   writeAscii(view, 0, 'RIFF');
