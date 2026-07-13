@@ -1,10 +1,10 @@
 import { useRef, useState, type DragEvent } from 'react';
-import { Button } from '../../components/Button';
-import { Progress } from '../../components/Progress';
-import { downloadBlob } from '../../lib/core/download';
-import { formatBytes, formatDuration, outputName } from '../../lib/core/format';
-import { MAX_INPUT_BYTES, MAX_PCM_ENCODE_BYTES, type AudioJob, type EncodeFormat } from '../../lib/core/worker';
-import { startJoinedEncode, type DecodedPcmTrack } from '../../lib/tools/join/join';
+import { Button } from '@/components/Button';
+import { Progress } from '@/components/Progress';
+import { downloadBlob } from '@/lib/core/download';
+import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
+import { MAX_INPUT_BYTES, MAX_PCM_ENCODE_BYTES, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
+import { startJoinedEncode, type DecodedPcmTrack } from '@/lib/tools/join/join';
 
 type JoinTrack = DecodedPcmTrack & {
   duration: number;
