@@ -493,6 +493,200 @@ describe('audio cutter', () => {
     expect(ascii(view, 8, 4)).toBe('WAVE');
   });
 
+  it('encode-pcm rejects WAV output that would overflow the RIFF chunk size before allocating', async () => {
+    const overflowFrames = Math.floor((0xffffffff - 36) / 2) + 1;
+    const oversizedChannel = {
+      byteLength: Float32Array.BYTES_PER_ELEMENT,
+      length: overflowFrames,
+      slice: () => ({ length: overflowFrames }),
+    } as unknown as Float32Array;
+    const replies: WorkerReply[] = [];
+
+    await processAudioRequest(
+      {
+        type: 'encode-pcm',
+        channels: [oversizedChannel],
+        sampleRate: 1,
+        startSeconds: 0,
+        endSeconds: overflowFrames,
+        format: 'wav',
+      },
+      (reply) => replies.push(reply),
+    );
+
+    expect(replies.at(-1)).toMatchObject({
+      type: 'error',
+      message: expect.stringMatching(/4 GiB|RIFF|too large/i),
+    });
+  });
+
+  it('encode-pcm WAV output matches the main-thread encoder byte for byte', async () => {
+    const sampleRate = 8_000;
+    const channels = [
+      Float32Array.of(-1, -0.75, -0.25, 0, 0.25, 0.75, 1, 1.5),
+      Float32Array.of(1, 0.75, 0.25, 0, -0.25, -0.75, -1, -1.5),
+    ];
+    const replies: WorkerReply[] = [];
+
+    await processAudioRequest(
+      {
+        type: 'encode-pcm',
+        channels,
+        sampleRate,
+        startSeconds: 0,
+        endSeconds: channels[0]!.length / sampleRate,
+        format: 'wav',
+      },
+      (reply) => replies.push(reply),
+    );
+
+    const result = replies.find((reply) => reply.type === 'result');
+    expect(result?.type).toBe('result');
+    if (result?.type !== 'result') throw new Error('Expected encoded WAV result.');
+    expect(new Uint8Array(result.buffer)).toEqual(
+      new Uint8Array(encodeWav({ channels, sampleRate })),
+    );
+  });
+
+  it('startEncode transfers PCM snapshots, preserves source buffers for re-export, and cancels before rejecting', async () => {
+    const originalWorker = globalThis.Worker;
+    const workers: FakeWorker[] = [];
+    const postedSamples: number[][] = [];
+    const postedFormats: string[] = [];
+    const transferredBuffers: Transferable[][] = [];
+    const cancellationEvents: string[] = [];
+
+    class FakeWorker {
+      onerror: ((event: Event) => void) | null = null;
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      readonly index: number;
+      terminated = false;
+
+      constructor() {
+        this.index = workers.length;
+        workers.push(this);
+      }
+
+      postMessage(message: unknown, transfer: Transferable[] = []) {
+        const request = message as { channels: Float32Array[]; format: string };
+        postedSamples.push(Array.from(request.channels[0] ?? []));
+        postedFormats.push(request.format);
+        transferredBuffers.push(transfer);
+        structuredClone(message, { transfer });
+      }
+
+      terminate() {
+        this.terminated = true;
+        if (this.index === 0) cancellationEvents.push('terminated');
+      }
+    }
+
+    globalThis.Worker = FakeWorker as unknown as typeof Worker;
+    const channel = Float32Array.of(-0.5, 0, 0.5);
+
+    try {
+      const wavJob = startEncode(
+        {
+          channels: [channel],
+          sampleRate: 8_000,
+          startSeconds: 0,
+          endSeconds: channel.length / 8_000,
+          format: 'wav',
+        },
+        () => undefined,
+      );
+      const mp3Job = startEncode(
+        {
+          channels: [channel],
+          sampleRate: 8_000,
+          startSeconds: 0,
+          endSeconds: channel.length / 8_000,
+          format: 'mp3',
+        },
+        () => undefined,
+      );
+
+      expect(channel.byteLength).toBe(3 * Float32Array.BYTES_PER_ELEMENT);
+      expect(Array.from(channel)).toEqual([-0.5, 0, 0.5]);
+      expect(postedSamples).toEqual([
+        [-0.5, 0, 0.5],
+        [-0.5, 0, 0.5],
+      ]);
+      expect(postedFormats).toEqual(['wav', 'mp3']);
+      expect(transferredBuffers).toHaveLength(2);
+      expect(transferredBuffers[0]?.[0]).not.toBe(channel.buffer);
+      expect(transferredBuffers[1]?.[0]).not.toBe(channel.buffer);
+
+      const wavRejection = wavJob.result.catch((error: unknown) => {
+        cancellationEvents.push('rejected');
+        throw error;
+      });
+      wavJob.cancel();
+      expect(cancellationEvents).toEqual(['terminated']);
+      workers[0]?.onmessage?.({
+        data: { type: 'result', buffer: new ArrayBuffer(0), mime: 'audio/wav' },
+      } as MessageEvent);
+      await expect(wavRejection).rejects.toThrow(/cancel/i);
+      expect(cancellationEvents).toEqual(['terminated', 'rejected']);
+      expect(workers[0]?.terminated).toBe(true);
+
+      mp3Job.cancel();
+      await expect(mp3Job.result).rejects.toThrow(/cancel/i);
+      expect(workers[1]?.terminated).toBe(true);
+    } finally {
+      globalThis.Worker = originalWorker;
+    }
+  });
+
+  it('startEncode resolves a worker WAV result as an audio/wav Blob and terminates the worker', async () => {
+    const originalWorker = globalThis.Worker;
+    const workers: FakeWorker[] = [];
+
+    class FakeWorker {
+      onerror: ((event: Event) => void) | null = null;
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      terminated = false;
+
+      constructor() {
+        workers.push(this);
+      }
+
+      postMessage() {}
+
+      terminate() {
+        this.terminated = true;
+      }
+    }
+
+    globalThis.Worker = FakeWorker as unknown as typeof Worker;
+
+    try {
+      const job = startEncode(
+        {
+          channels: [Float32Array.of(0, 0.5)],
+          sampleRate: 8_000,
+          startSeconds: 0,
+          endSeconds: 2 / 8_000,
+          format: 'wav',
+        },
+        () => undefined,
+      );
+      const output = Uint8Array.of(0x52, 0x49, 0x46, 0x46);
+
+      workers[0]?.onmessage?.({
+        data: { type: 'result', buffer: output.buffer, mime: 'audio/wav' },
+      } as MessageEvent);
+
+      const blob = await job.result;
+      expect(blob).toBeInstanceOf(Blob);
+      expect(blob.type).toBe('audio/wav');
+      expect(new Uint8Array(await blob.arrayBuffer())).toEqual(output);
+      expect(workers[0]?.terminated).toBe(true);
+    } finally {
+      globalThis.Worker = originalWorker;
+    }
+  });
+
   it('validates encode-pcm byte limits before copying channel buffers in startEncode', () => {
     const originalWorker = globalThis.Worker;
     let workersCreated = 0;
