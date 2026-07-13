@@ -25,3 +25,15 @@ input,
 select {
   font: inherit;
 }
+
+/*
+ * Shared keyboard-focus ring (WCAG 2.1 AA 2.4.7). Uses :where() for zero
+ * specificity so any explicit `focus-visible:outline-*` utility still wins,
+ * while every interactive element that lacks one still shows a visible ring.
+ * Color matches the emerald-300 focus ring used by the form controls.
+ */
+:where(a, button, select, input, textarea, summary, [role='button'], [role='slider'], [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid #6ee7b7;
+  outline-offset: 2px;
+}
+
