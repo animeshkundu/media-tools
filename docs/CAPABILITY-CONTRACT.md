@@ -29,10 +29,10 @@ A clean built bundle produces no matches. `.github/workflows/ci.yml` runs this a
 The extension manifest, compiled by `wxt.config.ts`, sets this exact Content Security Policy for extension pages:
 
 ```
-default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'self'; base-uri 'none'
+default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'
 ```
 
-`connect-src 'none'` blocks outbound connections from extension pages, `form-action 'none'` blocks form submissions, and `frame-src 'none'` blocks frames. The remaining resource types are restricted to the explicitly listed bundled or in-page sources. CI runs `scripts/check-csp.mjs` against both built manifests and fails if a required directive is missing, weakened, duplicated, or supplemented by an unapproved directive. `scripts/check-manifest-egress.mjs` additionally rejects non-empty required, optional, or host permissions, content scripts, externally connectable configuration, and overly broad web-accessible resources.
+`connect-src 'none'` blocks outbound connections from extension pages, `form-action 'none'` blocks form submissions, and `frame-src 'none'` blocks frames. `object-src 'none'` disables object and embed content entirely, while permitted resource types remain restricted to the explicitly listed bundled or in-page sources. CI runs `scripts/check-csp.mjs` against both built manifests and fails if a required directive is missing, weakened, duplicated, or supplemented by an unapproved directive. `scripts/check-manifest-egress.mjs` additionally rejects non-empty required, optional, or host permissions, content scripts, externally connectable configuration, and overly broad web-accessible resources.
 
 The CSP is defense in depth, not the primary privacy proof. In particular, an extension-page CSP does not restrict top-level navigation. CI machine-verifies that none of the five audited network primitives appears in any built JavaScript file; the empty permission list and source review of the sole same-origin `browser.tabs.create` call provide the rest of the no-outbound-request receipt, while the CSP adds a browser-enforced barrier if a bug is introduced.
 
