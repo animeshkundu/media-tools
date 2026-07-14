@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#07110f" />
+  <meta name="description" content="Cut, join, speed up, and convert WAV or MP3 audio privately. Audio Cutter works offline in Firefox and Chrome with no uploads, accounts, or telemetry." />
+  <title>Audio Cutter · Private audio editing in your browser</title>
+  <link rel="canonical" href="https://animeshkundu.github.io/media-tools/" />
+  <link rel="icon" href="/media-tools/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/media-tools/styles.css" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Audio Cutter" />
+  <meta property="og:title" content="Audio Cutter · Private audio editing in your browser" />
+  <meta property="og:description" content="Private, offline audio cutting for Firefox and Chrome, entirely in your browser." />
+  <meta property="og:url" content="https://animeshkundu.github.io/media-tools/" />
+  <meta property="og:image" content="https://animeshkundu.github.io/media-tools/media/audio-cutter-waveform.png" />
+  <meta property="og:image:width" content="1280" />
+  <meta property="og:image:height" content="800" />
+  <meta property="og:image:alt" content="Audio Cutter showing a loaded waveform with trim handles and local export controls." />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Audio Cutter · Private audio editing in your browser" />
+  <meta name="twitter:description" content="Private, offline audio cutting for Firefox and Chrome, entirely in your browser." />
+  <meta name="twitter:image" content="https://animeshkundu.github.io/media-tools/media/audio-cutter-waveform.png" />
+  <meta name="twitter:image:alt" content="Audio Cutter showing a loaded waveform with trim handles and local export controls." />
+</head>
+<body class="landing-page">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <header class="site-header">
+    <a class="brand" href="/media-tools/" aria-label="Audio Cutter home">
+      <span class="brand-mark" aria-hidden="true">≋</span>
+      <span>Audio Cutter</span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <ul class="site-nav">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#screenshots">Screenshots</a></li>
+        <li><a href="/media-tools/docs/">Docs</a></li>
+        <li><a class="nav-github" href="https://github.com/animeshkundu/media-tools">GitHub <span aria-hidden="true">↗</span></a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="shell hero-copy">
+        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Private by design</p>
+        <h1 id="hero-title">Cut the audio.<br /><span>Keep it yours.</span></h1>
+        <p class="hero-lede">Private, offline audio cutting for Firefox and Chrome, entirely in your browser.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#install">Get Audio Cutter <span aria-hidden="true">↓</span></a>
+          <a class="button button-secondary" href="#demo">Watch the demo <span aria-hidden="true">▶</span></a>
+        </div>
+        <ul class="hero-trust" aria-label="Product highlights">
+          <li>Zero install permissions</li>
+          <li>Chrome + Firefox</li>
+          <li>Open source</li>
+        </ul>
+      </div>
+
+      <div class="shell hero-visual">
+        <div class="browser-frame">
+          <div class="browser-bar" aria-hidden="true">
+            <span></span><span></span><span></span>
+            <div class="address">Audio Cutter · Browser extension</div>
+          </div>
+          <img src="/media-tools/media/audio-cutter-waveform.png" alt="Audio Cutter showing a loaded waveform with gold trim handles and WAV export controls" width="1280" height="800" />
+        </div>
+        <div class="floating-note floating-note-left" aria-hidden="true"><strong>100%</strong> <span>local processing</span></div>
+        <div class="floating-note floating-note-right" aria-hidden="true"><strong>0</strong> <span>files uploaded</span></div>
+      </div>
+    </section>
+
+    <section class="privacy-section" aria-labelledby="privacy-title">
+      <div class="shell privacy-card">
+        <div class="privacy-icon" aria-hidden="true">✓</div>
+        <div>
+          <p class="eyebrow">The privacy promise</p>
+          <h2 id="privacy-title">Your audio stays where it belongs.</h2>
+          <p class="privacy-promise">Your audio never leaves your device; no uploads, no accounts, no telemetry; all processing local.</p>
+          <p class="privacy-evidence">That claim rests first on what you can audit: Audio Cutter declares zero permissions, and CI scans both browser builds for network primitives such as <code>fetch</code>, <code>XMLHttpRequest</code>, <code>WebSocket</code>, <code>sendBeacon</code>, and <code>EventSource</code>. A strict no-egress content-security policy (<code>connect-src 'none'</code>) is defense in depth, not the sole proof: a CSP does not restrict top-level navigation, so source review also verifies that the extension opens only its own bundled app page. CI checks the empty permission list and CSP in both built manifests. Read the <a href="https://github.com/animeshkundu/media-tools/blob/main/docs/PEER-REVIEW.md">peer review</a> and <a href="/media-tools/docs/">technical notes</a>.</p>
+        </div>
+        <div class="privacy-facts" aria-label="Privacy facts">
+          <span><strong>Local</strong> processing</span>
+          <span><strong>Zero</strong> telemetry</span>
+          <span><strong>No</strong> account</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section shell csp-section" id="enforcement" aria-labelledby="csp-title">
+      <div class="section-heading">
+        <p class="eyebrow">How privacy is enforced</p>
+        <h2 id="csp-title">The receipt, not just the promise.</h2>
+        <p>Audio Cutter ships with an empty permission list and a strict no-egress content-security policy. CI checks both against the built Chrome and Firefox manifests on every change.</p>
+      </div>
+      <div class="csp-receipt">
+        <div class="csp-block">
+          <p class="csp-label">Declared permissions</p>
+          <pre><code>"permissions": []</code></pre>
+        </div>
+        <div class="csp-block">
+          <p class="csp-label">Extension-page content-security policy</p>
+          <pre><code>default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'self'; base-uri 'none'</code></pre>
+        </div>
+        <p class="csp-note"><code>connect-src 'none'</code> blocks outbound connections from extension pages, while <code>form-action 'none'</code> and <code>frame-src 'none'</code> close other egress paths. Saving audio uses a standard browser download from an in-page blob, so no <code>downloads</code> permission is requested. Empty permissions and CSP are not proof by themselves; the claim is backed by source review, built-bundle scans, manifest checks, and production-artifact tests. See the <a href="https://github.com/animeshkundu/media-tools/blob/main/docs/CAPABILITY-CONTRACT.md">capability contract</a>.</p>
+      </div>
+    </section>
+
+    <section class="section shell" id="features" aria-labelledby="features-title">
+      <div class="section-heading">
+        <p class="eyebrow">The local audio workbench</p>
+        <h2 id="features-title">The edit you need. Nothing uploaded.</h2>
+        <p>Load WAV or MP3, make the change, and download the result. Audio input, processing, and output stay in your browser.</p>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature feature-wide">
+          <span class="feature-number">01</span>
+          <div class="feature-icon" aria-hidden="true">✂</div>
+          <h3>Cut and trim precisely</h3>
+          <p>Read the waveform, drag the gold handles, or enter exact in and out times before exporting only the audio you want.</p>
+        </article>
+        <article class="feature">
+          <span class="feature-number">02</span>
+          <div class="feature-icon" aria-hidden="true">⌁</div>
+          <h3>Join and merge tracks</h3>
+          <p>Arrange tracks in order and combine them, with mono/stereo layout and differing sample rates normalized when needed.</p>
+        </article>
+        <article class="feature feature-tall">
+          <span class="feature-number">03</span>
+          <div class="feature-icon" aria-hidden="true">×</div>
+          <h3>Change playback speed</h3>
+          <p>Choose anything from 0.25× to 4× and see the estimated output duration before export. Speed and pitch change together.</p>
+          <div class="speed-scale" aria-hidden="true">
+            <span>0.25×</span>
+            <i></i>
+            <strong>1×</strong>
+            <i></i>
+            <span>4×</span>
+          </div>
+        </article>
+        <article class="feature feature-wide">
+          <span class="feature-number">04</span>
+          <div class="feature-icon" aria-hidden="true">↔</div>
+          <h3>Convert WAV and MP3</h3>
+          <p>Create lossless PCM WAV or 192 kbps MP3 output. Encoder code and assets are bundled, so conversion works without a server.</p>
+        </article>
+        <article class="feature">
+          <span class="feature-number">05</span>
+          <div class="feature-icon" aria-hidden="true">■</div>
+          <h3>Bounded and cancellable</h3>
+          <p>Input and PCM limits, a processing watchdog, worker cancellation, and progress reporting keep long jobs controlled.</p>
+        </article>
+        <article class="feature">
+          <span class="feature-number">06</span>
+          <div class="feature-icon" aria-hidden="true">◎</div>
+          <h3>Real-Firefox E2E</h3>
+          <p>The production extension flow runs in real Firefox during CI, not only in browser emulation.</p>
+        </article>
+        <article class="feature">
+          <span class="feature-number">07</span>
+          <div class="feature-icon" aria-hidden="true">◇</div>
+          <h3>One MV3 codebase</h3>
+          <p>The same extension source ships to Chrome and Firefox, keeping behavior aligned across browsers.</p>
+        </article>
+        <article class="feature feature-accent">
+          <span class="feature-number">08</span>
+          <div class="feature-icon" aria-hidden="true">0</div>
+          <h3>No network, no upload</h3>
+          <p>No ads, accounts, telemetry, watermarks, or server dependency. Your source audio and finished file remain local.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section gallery-section" id="screenshots" aria-labelledby="screenshots-title">
+      <div class="shell">
+        <div class="section-heading section-heading-row">
+          <div>
+            <p class="eyebrow">The complete flow</p>
+            <h2 id="screenshots-title">Clear at every step.</h2>
+          </div>
+          <p>One focused editor from the first local drop to the finished download, with a direct explanation if audio cannot be decoded.</p>
+        </div>
+        <div class="screenshot-grid">
+          <figure class="screenshot-card screenshot-card-large">
+            <div class="screenshot-label"><span>01</span> Choose</div>
+            <img src="/media-tools/media/audio-cutter-empty.png" alt="Audio Cutter empty state with a keyboard-accessible local audio drop zone" width="1280" height="800" loading="lazy" />
+            <figcaption>Drop a WAV or MP3, or choose one from your device.</figcaption>
+          </figure>
+          <figure class="screenshot-card">
+            <div class="screenshot-label"><span>02</span> Inspect</div>
+            <img src="/media-tools/media/audio-cutter-waveform.png" alt="Audio Cutter showing a loaded audio waveform and file details" width="1280" height="800" loading="lazy" />
+            <figcaption>Read the waveform before making the cut.</figcaption>
+          </figure>
+          <figure class="screenshot-card">
+            <div class="screenshot-label"><span>03</span> Trim</div>
+            <img src="/media-tools/media/audio-cutter-trim-selected.png" alt="Audio Cutter showing a selected waveform range between gold trim handles" width="1280" height="800" loading="lazy" />
+            <figcaption>Drag the handles or enter exact times.</figcaption>
+          </figure>
+          <figure class="screenshot-card">
+            <div class="screenshot-label"><span>04</span> Export</div>
+            <img src="/media-tools/media/audio-cutter-export-done.png" alt="Audio Cutter confirming that a local audio export finished" width="1280" height="800" loading="lazy" />
+            <figcaption>Download the finished file directly from the browser.</figcaption>
+          </figure>
+          <figure class="screenshot-card">
+            <div class="screenshot-label"><span>05</span> Recover</div>
+            <img src="/media-tools/media/audio-cutter-error.png" alt="Audio Cutter explaining that corrupt audio could not be decoded" width="1280" height="800" loading="lazy" />
+            <figcaption>Get a useful message when decoding fails.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="section shell demo-section" id="demo" aria-labelledby="demo-title">
+      <div class="section-heading section-heading-centered">
+        <p class="eyebrow">See it in Firefox</p>
+        <h2 id="demo-title">From waveform to download.</h2>
+        <p>A real run of Audio Cutter captured in Firefox, with the entire edit completed locally.</p>
+      </div>
+      <div class="video-frame">
+        <video controls playsinline preload="metadata" poster="/media-tools/media/audio-cutter-demo-poster.png">
+          <source src="/media-tools/media/audio-cutter-demo.mp4" type="video/mp4" />
+          <source src="/media-tools/media/audio-cutter-demo.webm" type="video/webm" />
+          Your browser does not support embedded video. You can <a href="/media-tools/media/audio-cutter-demo.mp4">download the MP4 demo</a> or <a href="/media-tools/media/audio-cutter-demo.webm">download the WebM alternate</a> instead.
+        </video>
+      </div>
+    </section>
+
+    <section class="section install-section" id="install" aria-labelledby="install-title">
+      <div class="shell install-card">
+        <div class="install-copy">
+          <p class="eyebrow">Install Audio Cutter</p>
+          <h2 id="install-title">A developer preview you can run today.</h2>
+          <p>Signed store listings are coming. For now, download the latest release: in Chrome, unzip the Chrome package and use <code>chrome://extensions</code> (Developer mode, then Load unpacked); in Firefox, use <code>about:debugging</code> (Load Temporary Add-on). Temporary Firefox add-ons are removed when Firefox restarts.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="https://github.com/animeshkundu/media-tools/releases/latest">Download the latest release <span aria-hidden="true">↓</span></a>
+            <a class="button button-secondary" href="https://github.com/animeshkundu/media-tools">View on GitHub <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+        <div class="store-list" aria-label="Browser store availability">
+          <div class="store-card">
+            <span class="store-icon" aria-hidden="true">◉</span>
+            <span><small>Get it for</small><strong>Firefox</strong></span>
+            <em>AMO · Coming soon</em>
+          </div>
+          <div class="store-card">
+            <span class="store-icon" aria-hidden="true">◌</span>
+            <span><small>Get it for</small><strong>Chrome</strong></span>
+            <em>CWS · Coming soon</em>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer landing-footer">
+    <div class="shell footer-inner">
+      <a class="brand" href="/media-tools/" aria-label="Audio Cutter home"><span class="brand-mark" aria-hidden="true">≋</span><span>Audio Cutter</span></a>
+      <p>Private audio editing for your browser.</p>
+      <nav aria-label="Footer navigation">
+        <a href="https://github.com/animeshkundu/media-tools">GitHub</a>
+        <a href="/media-tools/docs/">Docs</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>
