@@ -22,9 +22,9 @@ Record durable project learnings here so future work can avoid rediscovering the
 ### Treat cancellation as a worker-lifecycle guarantee
 
 - Context: Audio decode and encode jobs can be long enough that cancellation and cleanup are user-visible safety behavior.
-- What the repository enforces: The app owns a cancellable job handle, cancellation terminates the Web Worker and rejects the job, and download creation occurs only after a complete worker result. The Firefox E2E suite checks that cancelling an active export emits no partial download.
+- What the repository enforces: The app owns a cancellable job handle, cancellation terminates the Web Worker and rejects the job, and download creation occurs only after a complete worker result.
 - What to preserve: Keep one clear settlement path, ignore late worker messages, terminate workers on success, error, crash, or cancellation, and never create a download from an incomplete result.
-- Related code: `lib/core/worker.ts`, `entrypoints/app/App.tsx`, and `tests/e2e/audio-cutter.firefox.spec.ts`.
+- Related code: `lib/core/worker.ts` and `entrypoints/app/App.tsx`.
 
 ### Verify the no-network contract at the production boundary
 
@@ -36,6 +36,6 @@ Record durable project learnings here so future work can avoid rediscovering the
 ### Use the built extension in real Firefox as a release gate
 
 - Context: Successful TypeScript, unit-test, and dual-target build commands do not prove that a packaged extension works in a browser.
-- What the repository enforces: A separate CI job builds and lints `.output/firefox-mv3`, installs Playwright Firefox, runs the production-artifact E2E suite, and rejects missing, skipped, flaky, unexpected, or insufficient results.
+- What the repository enforces: A separate CI job, the Firefox E2E workflow, builds and lints `.output/firefox-mv3`, provisions Firefox and geckodriver through Selenium Manager, installs the built add-on, drives its real `moz-extension://` app page, runs the production-artifact E2E suite, and rejects missing, skipped, flaky, unexpected, or insufficient results.
 - What to preserve: Browser-facing changes need real-Firefox coverage for loading, decode, export, malformed input, progress, cancellation, and download behavior where applicable. Do not replace this gate with mocks or a dev-server-only test.
-- Related code: `.github/workflows/ci.yml`, `playwright.config.ts`, and `tests/e2e/audio-cutter.firefox.spec.ts`.
+- Related code: `.github/workflows/e2e.yml`, `tests/e2e/global-setup.ts`, `tests/e2e/playwright.config.ts`, and `tests/e2e/audio-cutter.e2e.ts`.
