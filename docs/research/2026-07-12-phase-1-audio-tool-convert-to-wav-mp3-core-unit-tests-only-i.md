@@ -18,7 +18,7 @@ with a self-contained RIFF writer. MP3 must use the existing `lamejs` 1.2.1 inst
 
 ## Repository findings
 
-1. `ROADMAP.md:3-10` places WAV/MP3 conversion in Phase 1 after the shipped cutter and before the
+1. `docs/ROADMAP.md:3-10` places WAV/MP3 conversion in Phase 1 after the shipped cutter and before the
    coupled speed/pitch tool.
 2. `docs/PRODUCT-SPEC.md:88-102` requires explicit WAV/MP3 choices, duration and channel-layout
    preservation where supported, visible settings, local WAV encoding, bundled `lamejs` MP3
@@ -34,7 +34,7 @@ with a self-contained RIFF writer. MP3 must use the existing `lamejs` 1.2.1 inst
    `[-1, 1]`, quantize it to signed 16-bit samples, feed `lamejs.Mp3Encoder` in 1,152-frame blocks,
    flush, and concatenate all emitted chunks. The conversion core should preserve those mechanics
    while accepting an explicit visible bitrate setting.
-6. `package-lock.json:5173-5176` resolves `lamejs` to 1.2.1, and `THIRD-PARTY.md:5-11` records that
+6. `package-lock.json:5173-5176` resolves `lamejs` to 1.2.1, and `docs/THIRD-PARTY.md:5-11` records that
    shipped version and its MP3-encoding purpose. No dependency or provenance edit is needed for this
    unit.
 7. `package.json:22-25` currently declares `lamejs` and other runtime dependencies with caret ranges,
@@ -141,8 +141,8 @@ its Node environment.
 - `.github/instructions/tests.instructions.md`
 - `docs/ARCHITECTURE.md`
 - `docs/PRODUCT-SPEC.md`
-- `ROADMAP.md`
-- `THIRD-PARTY.md`
+- `docs/ROADMAP.md`
+- `docs/THIRD-PARTY.md`
 - `package.json`
 - `package-lock.json`
 - `vitest.config.ts`

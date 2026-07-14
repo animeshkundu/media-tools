@@ -22,7 +22,7 @@ The real competitors are upload-first or web-side, ad-supported sites such as 12
 
 Firefox is the clearest opening. The best genuine local audio trimmer has 2 daily users. There is no local video cutter, compressor, or video-to-GIF tool. Media Converter and Muxer is the one meaningful local conversion competitor, with 16,205 daily users and a 3.93-star rating, but it is narrow and beatable on speed, breadth, and usability.
 
-These figures come from the pinned Chrome snapshot, CRX teardown, and AMO research in [the media-tools research](../.docs/ext-2-media-tools.md), with the wider suite context in [the program overview](../.docs/ext-0-overview.md).
+These figures come from the pinned Chrome snapshot, CRX teardown, and AMO research in [the media-tools research](research/ext-2-media-tools.md), with the wider suite context in [the program overview](research/ext-0-overview.md).
 
 ## Who it's for
 

@@ -38,9 +38,9 @@ before implementation.
   assertions for both built artifacts.
 - `.github/workflows/ci.yml` — install a pinned Firefox version/driver, build first, run the smoke
   against `.output/firefox-mv3`, retain failure diagnostics, and keep both browser builds required.
-- `LEARNINGS.md` or `docs/history/2026-07-12-firefox-e2e.md` — record stable extension-origin,
+- `docs/LEARNINGS.md` or `docs/history/2026-07-12-firefox-e2e.md` — record stable extension-origin,
   temporary-install, offline-observation, and download-test gotchas verified during implementation.
-- `THIRD-PARTY.md` — record any shipped dependency pin/provenance changes; development-only browser
+- `docs/THIRD-PARTY.md` — record any shipped dependency pin/provenance changes; development-only browser
   tooling is identified as non-shipped.
 
 No application file should change merely to make automation easier. Add stable selectors only where
@@ -140,7 +140,7 @@ the accessible role/name is insufficient, and treat a missing accessible role/na
    input produces an error with neither misleading success nor a download.
 7. **Phase 1:** focused built-Firefox scenarios verify join order/no gap, WAV/MP3 conversion, and
    speed-duration math; CI still builds both browser artifacts. These scenarios block on the separate
-   product PRs currently absent from `ROADMAP.md`.
+   product PRs currently absent from `docs/ROADMAP.md`.
 8. **Engineering:** actual output is retained for `npm run check`, both production builds, and Firefox
    E2E; package and provenance assertions reject drifting shipped versions; repository scans reject
    prohibited attribution.

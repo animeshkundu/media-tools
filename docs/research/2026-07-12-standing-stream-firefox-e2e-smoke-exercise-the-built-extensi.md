@@ -61,7 +61,7 @@ Phase 2/3 work.
 
 ### Phase status
 
-- Join/merge, format conversion, and coupled speed/pitch remain unchecked in `ROADMAP.md` and have no
+- Join/merge, format conversion, and coupled speed/pitch remain unchecked in `docs/ROADMAP.md` and have no
   implementation directories or tests.
 - No Phase 2 video work should be included in this stream.
 
@@ -123,7 +123,7 @@ and integration contracts that unit tests cannot prove.
 - `package.json`
 - `wxt.config.ts`
 - `.github/workflows/ci.yml`
-- `ROADMAP.md`
+- `docs/ROADMAP.md`
 - `docs/ARCHITECTURE.md`
 - `docs/PRODUCT-SPEC.md`
 - `docs/DESIGN.md`

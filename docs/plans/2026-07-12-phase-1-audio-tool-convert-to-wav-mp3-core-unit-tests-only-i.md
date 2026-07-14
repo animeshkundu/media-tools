@@ -29,7 +29,7 @@ Subject to the test-discovery resolution:
   is approved.
 - If specifically approved instead, add `tests/convert.test.ts` as the focused suite while keeping
   all production implementation under `lib/tools/convert/`.
-- Do not modify any prohibited file. No `LEARNINGS.md`, ADR, changelog, or history update is planned:
+- Do not modify any prohibited file. No `docs/LEARNINGS.md`, ADR, changelog, or history update is planned:
   the durable research artifact already records the repository-specific discovery and blocker, and
   implementation introduces no architectural decision beyond the accepted product specification.
 

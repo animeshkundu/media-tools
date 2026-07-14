@@ -21,7 +21,7 @@ met.
 The exact diff for each pull request should remain narrow, but the expected files are:
 
 - **Privacy and supply chain:** `wxt.config.ts`, `package.json`, `package-lock.json`,
-  `THIRD-PARTY.md`, `.github/workflows/ci.yml`, a production-manifest assertion under `tests/` or an
+  `docs/THIRD-PARTY.md`, `.github/workflows/ci.yml`, a production-manifest assertion under `tests/` or an
   existing script location, and privacy wording in `docs/VISION.md`, `docs/PRODUCT-SPEC.md`, and
   `docs/ARCHITECTURE.md`.
 - **Shared audio execution:** `lib/core/worker.ts` plus new tool-agnostic worker protocol, limits, and
@@ -35,8 +35,8 @@ The exact diff for each pull request should remain narrow, but the expected file
   `entrypoints/app/App.tsx`, and focused tests.
 - **Coupled speed:** a new `lib/tools/audio-speed/` module with its worker and view, a tab/route entry
   in `entrypoints/app/App.tsx`, and focused tests.
-- **Design and durable records:** `assets/tailwind.css`, `docs/DESIGN.md`, relevant mocks, `ROADMAP.md`,
-  and `LEARNINGS.md` only when the corresponding behavior or decision lands.
+- **Design and durable records:** `assets/tailwind.css`, `docs/DESIGN.md`, relevant mocks, `docs/ROADMAP.md`,
+  and `docs/LEARNINGS.md` only when the corresponding behavior or decision lands.
 
 ## Step-by-step delivery plan
 
@@ -149,7 +149,7 @@ The exact diff for each pull request should remain narrow, but the expected file
 
 1. Keep the dark emerald shell, amber trim handles, determinate progress, visible offline badge, and
    responsive layouts aligned with the design source and mocks.
-2. Update `ROADMAP.md` only as each tool actually lands; update architecture, design, third-party,
+2. Update `docs/ROADMAP.md` only as each tool actually lands; update architecture, design, third-party,
    and durable learnings in the same pull request as the behavior they describe.
 3. For every pull request run `npm run check`, `npm run build`, and `npm run build:firefox`, then
    drive the affected built tool with real media in Chrome and Firefox.
