@@ -27,10 +27,10 @@ Declared permissions:
 Extension-page content-security policy:
 
 ```
-default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'self'; base-uri 'none'
+default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'
 ```
 
-`connect-src 'none'` blocks outbound network connections from extension pages, `form-action 'none'` blocks form submissions, and `frame-src 'none'` blocks frames. Scripts, workers, media, images, styles, and objects are limited to the explicitly listed bundled or in-page sources. Saving audio uses a standard browser download from an in-page blob, so no `downloads` permission is requested. An empty permission list and a CSP are not a privacy proof by themselves, so the capability contract is verified through source review, the CI built-bundle scan for network primitives, both built manifests, and production-artifact tests. See [docs/PEER-REVIEW.md](docs/PEER-REVIEW.md) and [docs/CAPABILITY-CONTRACT.md](docs/CAPABILITY-CONTRACT.md).
+`connect-src 'none'` blocks outbound network connections from extension pages, `form-action 'none'` blocks form submissions, and `frame-src 'none'` blocks frames. Scripts, workers, media, images, and styles are limited to the explicitly listed bundled or in-page sources; object and embed content is disabled entirely. Saving audio uses a standard browser download from an in-page blob, so no `downloads` permission is requested. An empty permission list and a CSP are not a privacy proof by themselves, so the capability contract is verified through source review, the CI built-bundle scan for network primitives, both built manifests, and production-artifact tests. See [docs/PEER-REVIEW.md](docs/PEER-REVIEW.md) and [docs/CAPABILITY-CONTRACT.md](docs/CAPABILITY-CONTRACT.md).
 
 ## Features
 

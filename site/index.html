@@ -105,7 +105,7 @@
         </div>
         <div class="csp-block">
           <p class="csp-label">Extension-page content-security policy</p>
-          <pre><code>default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'self'; base-uri 'none'</code></pre>
+          <pre><code>default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'</code></pre>
         </div>
         <p class="csp-note"><code>connect-src 'none'</code> blocks outbound connections from extension pages, while <code>form-action 'none'</code> and <code>frame-src 'none'</code> close other egress paths. Saving audio uses a standard browser download from an in-page blob, so no <code>downloads</code> permission is requested. Empty permissions and CSP are not proof by themselves; the claim is backed by source review, built-bundle scans, manifest checks, and production-artifact tests. See the <a href="https://github.com/animeshkundu/media-tools/blob/main/docs/CAPABILITY-CONTRACT.md">capability contract</a>.</p>
       </div>
@@ -238,7 +238,7 @@
           <h2 id="install-title">A developer preview you can run today.</h2>
           <p>Signed store listings are coming. For now, download the latest release: in Chrome, unzip the Chrome package and use <code>chrome://extensions</code> (Developer mode, then Load unpacked); in Firefox, use <code>about:debugging</code> (Load Temporary Add-on). Temporary Firefox add-ons are removed when Firefox restarts.</p>
           <div class="hero-actions">
-            <a class="button button-primary" href="https://github.com/animeshkundu/media-tools/releases/latest">Download the latest release <span aria-hidden="true">↓</span></a>
+            <a class="button button-primary" href="https://github.com/animeshkundu/media-tools/releases">View developer-preview downloads <span aria-hidden="true">↓</span></a>
             <a class="button button-secondary" href="https://github.com/animeshkundu/media-tools">View on GitHub <span aria-hidden="true">↗</span></a>
           </div>
         </div>

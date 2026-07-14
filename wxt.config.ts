@@ -25,7 +25,7 @@ export default defineConfig({
         "connect-src 'none'",
         "form-action 'none'",
         "frame-src 'none'",
-        "object-src 'self'",
+        "object-src 'none'",
         "base-uri 'none'",
       ].join('; '),
     },
