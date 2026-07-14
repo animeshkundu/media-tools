@@ -1,12 +1,12 @@
-# Media Tools — browser extension design doc (Chrome + Firefox, MV3)
+# Media Tools: browser extension design doc (Chrome + Firefox, MV3)
 
 > **SUPERSEDED (2026-07-14):** Web Audio references below are preserved as original market and
 > architecture research, not as a description of the shipped decode path. The shipped engine decodes
 > MP3 with worker-side WebCodecs `AudioDecoder` and parses WAV PCM directly in the worker. Bundled
 > `lamejs` is used for MP3 encoding only.
 
-Status: research complete, decision-ready. Author: research-media. Retrieved: 2026-07-12.
-Scope: transforming a **local file the user provides** (audio + video) — 100% client-side, offline,
+Status: research complete, decision-ready. Retrieved: 2026-07-12.
+Scope: transforming a **local file the user provides** (audio + video), 100% client-side, offline,
 no upload. Explicitly **out of scope**: capturing tab/stream audio (`chrome.tabCapture` is
 Chrome-biased and Firefox-limited) and downloading from YouTube/streams (legally fraught,
 saturated). Those are different products.
@@ -18,12 +18,12 @@ saturated). Those are different products.
 **BUILD IT. This is the strongest whitespace of the three candidate extensions.**
 
 Tearing down the incumbent CRXs (`research/incumbents/`) produced the decisive finding: the
-"market-leading" Chrome incumbents — **Audio Cutter** (~200k users) and **Video Cutter** (~100k
-users) — are **deprecated MV2 Chrome-App launcher shims with zero in-extension code.** Their
+"market-leading" Chrome incumbents, **Audio Cutter** (~200k users) and **Video Cutter** (~100k
+users), are **deprecated MV2 Chrome-App launcher shims with zero in-extension code.** Their
 manifests contain nothing but `app.launch.web_url` pointing at `mp3cut.net` and
 `online-video-cutter.com` (both the **123apps** company). The actual work happens on a **website**
 that is upload-first, ad-supported, and sign-in-gated. Chrome ended the Chrome Apps platform, so
-these listings are **grandfathered zombies you cannot republish or compete with as an app** — and
+these listings are **grandfathered zombies you cannot republish or compete with as an app**, and
 their installs reflect a Google-Drive shortcut, not a real in-browser tool.
 
 On **Firefox** these Chrome Apps never existed and genuine local media processing is **almost
@@ -41,7 +41,7 @@ differentiator there; for cutting it is more about no-ads / no-paywall / Firefox
 **Why now (the answer to "if it were easy someone would have").** Client-side video was genuinely
 hard before ~2024. The unlock: **WebCodecs shipped stable in Firefox desktop 130 (Sept 2024)** and
 **mediabunny** (a zero-dependency, WebCodecs-based, MPL-2.0 media toolkit) reached production in 2025. Together they run most video operations **hardware-accelerated in ~tens of KB of JS on both
-browsers** — no 30 MB ffmpeg.wasm for the common path. The technical barrier that kept this slot
+browsers**, no 30 MB ffmpeg.wasm for the common path. The technical barrier that kept this slot
 empty just fell.
 
 **Recommended shape:** one MV3 extension, one codebase → Chrome + Firefox, phased:
@@ -50,7 +50,7 @@ empty just fell.
   `lamejs`). Beats the entire Firefox audio landscape and the dead Chrome shim on day one.
 - **Phase 2 (WebCodecs era, still small):** video trim, mute/strip audio, extract audio, audio
   format conversion, video compressor (mediabunny + WebCodecs; dedicated editor page).
-- **Phase 3 (validate perf first):** video→GIF, pitch/time-stretch, exotic conversions — lazy-load
+- **Phase 3 (validate perf first):** video→GIF, pitch/time-stretch, exotic conversions, lazy-load
   `ffmpeg.wasm` (Chrome-first) only for what WebCodecs cannot do, behind measured benchmark gates.
 
 ---
@@ -65,7 +65,7 @@ empty just fell.
 
 | #   | Tool                                    | Verdict                                       | Cost   | One-line rationale                                                                                                                       |
 | --- | --------------------------------------- | --------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Audio cut / trim**                    | **BUILD (MVP)** — flagship                    | CHEAP  | Best demand×gap×ease. FF unserved (best local = 2 users); Chrome incumbent is a dead launcher shim. Web Audio decode→slice→`lamejs`/WAV. |
+| 1   | **Audio cut / trim**                    | **BUILD (MVP)**, flagship                    | CHEAP  | Best demand×gap×ease. FF unserved (best local = 2 users); Chrome incumbent is a dead launcher shim. Web Audio decode→slice→`lamejs`/WAV. |
 | 2   | **Audio join / merge**                  | **BUILD (MVP)**                               | CHEAP  | Same engine, concat decoded buffers. FF unserved; Chrome incumbent mediocre (3.16★).                                                     |
 | 3   | **Audio format convert → WAV / MP3**    | **BUILD (MVP)**                               | CHEAP  | Huge Chrome demand (Audio Converter: 129k ratings). WAV native, MP3 via `lamejs`.                                                        |
 | 4   | **Change audio speed**                  | **BUILD (MVP)**                               | CHEAP  | Resample = coupled speed+pitch, trivial; rides free on the audio engine.                                                                 |
@@ -73,13 +73,13 @@ empty just fell.
 | 6   | **Mute / remove audio from video**      | **BUILD (fast-follow)**                       | CHEAP  | Strip audio track = lossless remux. Unserved everywhere.                                                                                 |
 | 7   | **Video cut / trim**                    | **BUILD (fast-follow)**                       | MEDIUM | FF totally unserved; Chrome incumbent dead shim @ 3.2★. Lossless keyframe remux + frame-accurate re-encode. Needs a full page.           |
 | 8   | **Audio convert → M4A/AAC, OGG/Opus**   | **BUILD (fast-follow)**                       | MEDIUM | Rounds out the converter. AAC/Opus via `AudioEncoder`; OGG-Vorbis via lib/ffmpeg.                                                        |
-| 9   | **Video compressor**                    | **BUILD (fast-follow)** — marquee, perf-gated | MEDIUM | Massive web demand; strongest upload-privacy wedge. WebCodecs re-encode (hardware). Highest risk → benchmark-gate.                       |
+| 9   | **Video compressor**                    | **BUILD (fast-follow)**, marquee, perf-gated | MEDIUM | Massive web demand; strongest upload-privacy wedge. WebCodecs re-encode (hardware). Highest risk → benchmark-gate.                       |
 | 10  | **Change audio pitch / time-stretch**   | **PRO/LATER**                                 | MEDIUM | Independent pitch needs a phase vocoder (`SoundTouchJS`). FF file-based unserved; niche.                                                 |
 | 11  | **Video → GIF**                         | **PRO/LATER**                                 | HEAVY  | Popular; FF unserved. WebCodecs decode + `gifenc`, or ffmpeg palettegen for quality.                                                     |
 | 12  | **Exotic video convert** (AVI/FLV/HEVC) | **PRO/LATER**                                 | HEAVY  | Long tail; lazy `ffmpeg.wasm`, Chrome-first (multi-thread).                                                                              |
-| —   | Tab / stream audio capture              | **SKIP**                                      | —      | `chrome.tabCapture` Firefox-limited; not a local-file job.                                                                               |
-| —   | Real-time equalizer / volume boost      | **SKIP**                                      | —      | Served on both (Audio Equalizer ~51k FF); it's a live-playback job, not a file transform.                                                |
-| —   | YouTube / stream downloader             | **SKIP**                                      | —      | Legally fraught, saturated (VideoDownloadHelper 1.8M). Different product.                                                                |
+| N/A   | Tab / stream audio capture              | **SKIP**                                      | N/A      | `chrome.tabCapture` Firefox-limited; not a local-file job.                                                                               |
+| N/A   | Real-time equalizer / volume boost      | **SKIP**                                      | N/A      | Served on both (Audio Equalizer ~51k FF); it's a live-playback job, not a file transform.                                                |
+| N/A   | YouTube / stream downloader             | **SKIP**                                      | N/A      | Legally fraught, saturated (VideoDownloadHelper 1.8M). Different product.                                                                |
 
 ---
 
@@ -87,7 +87,7 @@ empty just fell.
 
 > Chrome `userCount` figures come from the repo's pinned Jan-2025 snapshot
 > (`data/snapshots/chrome/2025-01-05/mini_extension_stats.csv`) plus the CRX teardown. **The
-> snapshot's coarse `userCount` buckets (e.g. "200,000") are lower bounds** — the store reports
+> snapshot's coarse `userCount` buckets (e.g. "200,000") are lower bounds**, the store reports
 > users in rounded tiers. Ratings _count_ is the more reliable relative-popularity signal.
 
 **The "incumbents" are 123apps launcher shims** (verified from CSV rows + CRX teardown §6):
@@ -105,11 +105,11 @@ empty just fell.
 - **Conversion is the highest-engagement job by far.** Audio Converter's **129,524 ratings** and
   Video Converter's **38,071** dwarf the cutters. At typical extension rating rates (~0.1–1% of
   users ever rate), 129k lifetime ratings imply a **multi-million-scale userbase for the convert
-  job** — though these are decade-old listings funneling to a website, so read it as demand for the
+  job**, though these are decade-old listings funneling to a website, so read it as demand for the
   _job_, largely captured by websites today. _(Confidence: high the job is huge; the exact live
   install count is banded/uncertain.)_
 - **Cutters are real but second-tier and beatable.** Video Cutter's **3.23★** and Audio Joiner's
-  **3.16★** mark low-satisfaction incumbents — and since they are _launcher shims_, that rating is
+  **3.16★** mark low-satisfaction incumbents, and since they are _launcher shims_, that rating is
   really the 123apps website's; the in-browser slot is empty.
 - **A long tail of single-purpose tools** confirms fragmented, unmet demand: Video→Audio Converter
   (8k, 4.89★), MP3 Cutter/mp3cutter.in (10k, 3.27★), Video→GIF Animation Converter (6k, 4.10★),
@@ -120,15 +120,15 @@ empty just fell.
 mp3cut.net, clideo.com, veed.io, cloudconvert, ezgif.com, kapwing. Users Google "audio cutter,"
 "compress video online," "video to gif," land on a site that uploads their file, then hit ads,
 watermarks, size caps, and paywalls. An extension one click away that does the same job **offline**
-intercepts that funnel. _(Live-count verification was delegated but the sub-agent failed on input
-overflow; the pinned snapshot + CRX teardown are the authoritative evidence.)_
+intercepts that funnel. _(Live-count verification was inconclusive because the query overflowed;
+the pinned snapshot + CRX teardown are the authoritative evidence.)_
 
 **Bottom line:** the convert job is multi-million-scale; cut/join/extract/GIF are real, fragmented,
 and served only by websites or dead shims. No genuine in-browser MV3 incumbent exists.
 
 ---
 
-## 4. Firefox competitive landscape (per tool) — AMO evidence
+## 4. Firefox competitive landscape (per tool): AMO evidence
 
 > Source: AMO v5 API (`/api/v5/addons/search/`, `app=firefox`, `sort=users`), retrieved
 > **2026-07-12**. Metric is `average_daily_users` (ADU). Multiple query phrasings tested per job.
@@ -145,16 +145,16 @@ and served only by websites or dead shims. No genuine in-browser MV3 incumbent e
 
 | Job                              | Best genuine local competitor (AMO slug)                                                                                           | ADU                | Verdict                                                        |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------ | -------------------------------------------------------------- |
-| **Audio cut / trim**             | `ezconvert-audio-trimmer` ("cut & trim any audio format locally"); `mp3-cutter`                                                    | **2**; ~27         | **UNSERVED** — a local trimmer exists with 2 users. Wide open. |
+| **Audio cut / trim**             | `ezconvert-audio-trimmer` ("cut & trim any audio format locally"); `mp3-cutter`                                                    | **2**; ~27         | **UNSERVED**, a local trimmer exists with 2 users. Wide open. |
 | **Audio join / merge**           | `audio-joiner-merge-dash` (DASH-only)                                                                                              | 9                  | **UNSERVED**                                                   |
-| **Audio convert**                | `media-conversion-tool` ("Media Converter and Muxer", ffmpeg.wasm, 3.93★/167 rev); `web-apps-by-123apps` (launcher, last upd 2022) | **16,205**; 19,436 | **PARTIALLY SERVED** — one beatable competitor.                |
-| **Audio speed / pitch (file)**   | `speed-pitch-changer`, `capo-pitch-speed-changer` — operate on _streaming/tab_ media, not local files                              | 6,992; 32          | **UNSERVED for local files**                                   |
-| **Video cut / trim**             | none — every result is a YouTube/Twitter downloader                                                                                | —                  | **UNSERVED**                                                   |
-| **Video convert**                | `file-converter` (opens online-convert.com = upload); "Converter Suite & Custom Web Search" (search-hijacker)                      | 12,654; 74,738     | **UNSERVED (genuine local)** — see caveat                      |
-| **Video compress**               | none                                                                                                                               | —                  | **UNSERVED**                                                   |
+| **Audio convert**                | `media-conversion-tool` ("Media Converter and Muxer", ffmpeg.wasm, 3.93★/167 rev); `web-apps-by-123apps` (launcher, last upd 2022) | **16,205**; 19,436 | **PARTIALLY SERVED**, one beatable competitor.                |
+| **Audio speed / pitch (file)**   | `speed-pitch-changer`, `capo-pitch-speed-changer`, operate on _streaming/tab_ media, not local files                              | 6,992; 32          | **UNSERVED for local files**                                   |
+| **Video cut / trim**             | none, every result is a YouTube/Twitter downloader                                                                                | N/A                  | **UNSERVED**                                                   |
+| **Video convert**                | `file-converter` (opens online-convert.com = upload); "Converter Suite & Custom Web Search" (search-hijacker)                      | 12,654; 74,738     | **UNSERVED (genuine local)**, see caveat                      |
+| **Video compress**               | none                                                                                                                               | N/A                  | **UNSERVED**                                                   |
 | **Extract audio from video**     | `media-conversion-tool` (the muxer)                                                                                                | 16,205             | **PARTIALLY SERVED** (that one)                                |
-| **Video → GIF**                  | none local                                                                                                                         | —                  | **UNSERVED**                                                   |
-| **Mute / remove audio**          | none                                                                                                                               | —                  | **UNSERVED**                                                   |
+| **Video → GIF**                  | none local                                                                                                                         | N/A                  | **UNSERVED**                                                   |
+| **Mute / remove audio**          | none                                                                                                                               | N/A                  | **UNSERVED**                                                   |
 | `katge-video-downloader-trimmer` | brand-new (2026-07-10) YouTube downloader+trimmer                                                                                  | **0**              | Not a local-file tool; negligible                              |
 
 ---
@@ -173,11 +173,11 @@ and served only by websites or dead shims. No genuine in-browser MV3 incumbent e
 | Video mute / strip audio          | **Open goal**        | 0                        | Own it                            |
 | Video → GIF                       | **Open goal**        | 0                        | Own it (Phase 3)                  |
 | Audio pitch / time-stretch (file) | **Open goal**        | ~0                       | Pro/later                         |
-| Real-time EQ / volume             | **Served — skip**    | 51,714 (Audio Equalizer) | Different job                     |
+| Real-time EQ / volume             | **Served, skip**    | 51,714 (Audio Equalizer) | Different job                     |
 
 **Two honesty flags:** (1) _Conversion is genuinely partially served_ by Media Converter and Muxer
-(ffmpeg.wasm-based) — lead with cut/trim/compress/GIF where nothing exists, treat conversion as a
-fast-follow. (2) _The big "converter" numbers on Firefox are search-hijackers_ — "Converter Suite &
+(ffmpeg.wasm-based), lead with cut/trim/compress/GIF where nothing exists, treat conversion as a
+fast-follow. (2) _The big "converter" numbers on Firefox are search-hijackers_, "Converter Suite &
 Custom Web Search" (74,738), "Photo Editor & Search" (29,859 ADU / **1 review**) are the "& Search"
 adware-adjacent family, not genuine tools; a quality extension isn't competing with them on merit.
 
@@ -194,39 +194,39 @@ Verified by unpacking the CRXs (`research/incumbents/audiocutter/manifest.json`,
 `.../videocutter/manifest.json`):
 
 ```jsonc
-// Audio Cutter v1.2.9 — manifest.json (entire relevant content)
+// Audio Cutter v1.2.9, manifest.json (entire relevant content)
 { "manifest_version": 2, "app": { "launch": { "web_url": "http://mp3cut.net/" } } }
 // Video Cutter v1.0.5
 { "manifest_version": 2, "app": { "launch": { "web_url": "http://online-video-cutter.com/" } } }
 ```
 
 Both ship only icons + locale strings. **No processing code exists in the extension.** They are
-"open this website" buttons on the **dead Chrome Apps platform** — you cannot publish new ones, and
+"open this website" buttons on the **dead Chrome Apps platform**, you cannot publish new ones, and
 a real MV3 extension therefore has no MV3 competitor.
 
-### 6.2 The real competitor is a website — and the "no-upload" wedge is per-tool
+### 6.2 The real competitor is a website, and the "no-upload" wedge is per-tool
 
 When users click, they land on a 123apps web app, e.g. `mp3cut.net`: big _Choose File_ + drag-drop
 → waveform editor → trim handles, fade in/out, format picker → download; **ads + a "Remove Ads"
 upsell + Sign In**, cross-linked across the suite. **The #1 complaint across every incumbent's
-reviews is literally _"it's not an app — it just opens a website"_** — so the universal, always-true
+reviews is literally _"it's not an app, it just opens a website"_**, so the universal, always-true
 wedge is being a **real installed tool**. Whether the site _uploads_, however, is **per-tool**
-(verified from each site's own copy + embedded JS config — the earlier "all upload" reading was wrong):
+(verified from each site's own copy + embedded JS config, the earlier "all upload" reading was wrong):
 
 - **mp3cut.net** (basic audio cut) and **online-video-cutter.com** (simple trim) already process
-  **client-side via WASM** — so "no upload" is a _weak_ edge on basic trimming; compete there on
+  **client-side via WASM**, so "no upload" is a _weak_ edge on basic trimming; compete there on
   **no ads · no account · no cap · instant · offline** instead.
 - **online-audio-converter.com · audio-joiner.com · convert-video-online.com** genuinely **upload to
   servers**, cap the free tier (500 MB free / 4 GB premium video; ~5 files/day), and gate the rest
   behind **Premium (~$6/mo)**. Web rivals (VEED, Kapwing, Clideo) add **watermarks** on free tiers.
 
 **Aim the "100% offline, nothing uploaded, no watermark, no cap" pitch hardest at conversion,
-joining, and video** — not at plain audio trimming, where mp3cut already runs locally.
+joining, and video**, not at plain audio trimming, where mp3cut already runs locally.
 
 ### 6.3 The genuine MV3 client-side models to emulate
 
 - On AMO, **Media Converter and Muxer** (`media-conversion-tool`, 16,205 ADU) proves an
-  ffmpeg.wasm-based converter passes review and runs in-browser — but it's mediocre (3.93★) and
+  ffmpeg.wasm-based converter passes review and runs in-browser, but it's mediocre (3.93★) and
   narrow. Beat it on UX, speed (WebCodecs), and breadth.
 - From the teardown, **heic2jpg** (MV3 · service worker · **side panel** · sandbox page · WASM,
   lazy) and **zipmanager** (MV3 · side panel · storage) are the right in-extension patterns:
@@ -234,7 +234,7 @@ joining, and video** — not at plain audio trimming, where mp3cut already runs 
 
 ### 6.4 How we build better (the wedge)
 
-1. **Be a real MV3 extension that does the work in-browser** — not a Chrome-App launcher (dead) or
+1. **Be a real MV3 extension that does the work in-browser**, not a Chrome-App launcher (dead) or
    a website redirect. This alone answers the single most common incumbent complaint.
 2. **The wedge, sharply:** _a real installed app · no ads · no sign-in · no watermark · no size cap ·
    offline._ Lead "nothing uploaded" hardest on **conversion + joining + video** (incumbents
@@ -247,7 +247,7 @@ joining, and video** — not at plain audio trimming, where mp3cut already runs 
 5. **Two category gaps with zero real competition:** **mute / remove audio from a video** (no
    dedicated extension exists at all) and **change speed/pitch of a local file _with export_**
    (existing tools are playback-only, e.g. Transpose 1M+ but no file output). Both are cheap
-   client-side wins — strong candidates for early differentiation.
+   client-side wins, strong candidates for early differentiation.
 
 ---
 
@@ -255,15 +255,15 @@ joining, and video** — not at plain audio trimming, where mp3cut already runs 
 
 ### 7.1 Three engines, and the library choice per operation
 
-**Tier A — Web Audio + tiny JS (CHEAP, sub-MB).** `OfflineAudioContext` decodes any
+**Tier A, Web Audio + tiny JS (CHEAP, sub-MB).** `OfflineAudioContext` decodes any
 browser-supported audio → slice/concat/resample in JS. Export **WAV** natively; **MP3** via
 **`lamejs`** (pure-JS LAME, LGPL; MP3 encode is _not_ in WebCodecs, so lamejs is required). Covers
 audio cut, join, speed (coupled), WAV/MP3 convert.
 
-**Tier B — WebCodecs + mediabunny (MEDIUM, small, hardware-accelerated) — the primary engine.**
+**Tier B, WebCodecs + mediabunny (MEDIUM, small, hardware-accelerated), the primary engine.**
 
 - **WebCodecs** ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API)) gives
-  hardware `Video/AudioEncoder`+`Decoder`, raw codec access only — no containers.
+  hardware `Video/AudioEncoder`+`Decoder`, raw codec access only, no containers.
 - **mediabunny** ([mediabunny.dev](https://mediabunny.dev),
   [github](https://github.com/Vanilagy/mediabunny), **MPL-2.0**, zero-dep TS, tree-shakable to
   ~tens of KB) is the muxer/demuxer + high-level convert/trim/resize on top of WebCodecs. Formats:
@@ -272,7 +272,7 @@ audio cut, join, speed (coupled), WAV/MP3 convert.
   frame-accurate re-encode), mute/strip, extract audio, compress (re-encode), m4a/aac/opus encode,
   most container conversion.
 
-**Tier C — ffmpeg.wasm (HEAVY, ~25-31 MB core, lazy, Chrome-first).** Only for what WebCodecs
+**Tier C, ffmpeg.wasm (HEAVY, ~25-31 MB core, lazy, Chrome-first).** Only for what WebCodecs
 can't do: **GIF encode**, exotic/legacy containers (AVI/FLV), HEVC, codecs the browser lacks.
 Lazy-load **only when a tool needs it**, never in the base bundle.
 
@@ -306,7 +306,7 @@ Dedicated EXTENSION PAGE / TAB  ◄── the workhorse; works on Chrome AND Fir
    • Runs Web Audio / WebCodecs / mediabunny / (lazy) ffmpeg.wasm inside a Web Worker.
    • File → decode → process → Blob → download. Streams large inputs where possible.
 Side panel (optional) for the light audio tools (heic2jpg / zipmanager pattern).
-chrome.offscreen (Chrome-only ENHANCEMENT) — hosts the cross-origin-isolated context for
+chrome.offscreen (Chrome-only ENHANCEMENT), hosts the cross-origin-isolated context for
    multi-threaded ffmpeg.wasm. Firefox: no offscreen API → dedicated page/tab; WebCodecs needs no SAB.
 ```
 
@@ -322,19 +322,19 @@ for the ffmpeg fallback (see §7.3).
   [docs](https://developer.chrome.com/docs/extensions/develop/concepts/cross-origin-isolation)).
   **Firefox does not support these keys** ([Bug 1673477](https://bugzilla.mozilla.org/show_bug.cgi?id=1673477))
   → `moz-extension://` pages can't be isolated → **ffmpeg.wasm is single-threaded on Firefox.**
-  Detect `self.crossOriginIsolated`; use `@ffmpeg/core-mt` on Chrome, `@ffmpeg/core` on Firefox —
+  Detect `self.crossOriginIsolated`; use `@ffmpeg/core-mt` on Chrome, `@ffmpeg/core` on Firefox,
   but prefer WebCodecs on Firefox so we never pay the single-thread penalty for the common path.
 - **MV3 remote-code ban:** bundle all WASM/JS in the package (point `FFmpeg.load({coreURL,wasmURL})`
   at packaged files). CSP: `"extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src
 'self'"`. **Precedent:** Media Converter and Muxer (ffmpeg.wasm) is live on AMO; heic2jpg ships
-  13 MB WASM on the Chrome Web Store — a bundled media-WASM extension passes review on both.
+  13 MB WASM on the Chrome Web Store, a bundled media-WASM extension passes review on both.
 - **Memory:** WASM is 32-bit → ~2-4 GB address-space ceiling; a multi-GB video can OOM ffmpeg.
   Mitigate: prefer streaming (mediabunny), chunk, cap/warn on huge inputs, support **cancellation**,
   free buffers promptly.
 - **Bundle:** Phase 1 <1 MB; Phase 2 (mediabunny + WebCodecs) still small (hundreds of KB); Phase 3
-  lazy-loads the ~30 MB ffmpeg core **on demand** — base install stays light, review stays easy.
+  lazy-loads the ~30 MB ffmpeg core **on demand**, base install stays light, review stays easy.
 - **Permissions:** local-file work via `<input type=file>` + drag-drop needs **no host
-  permissions** — a clean, trust-building manifest.
+  permissions**, a clean, trust-building manifest.
 
 ### 7.4 Locked design principles
 
@@ -360,7 +360,7 @@ in VLC + QuickTime + browsers. Ship only when green on Chrome _and_ Firefox.
   select, format + bitrate picker, one-click export.
 - **Video editor page:** timeline scrubber, in/out handles, live preview, output settings
   (resolution/bitrate for compress; fps/size for GIF), progress bar with **Cancel**.
-- **Batch** where cheap (multiple audio files → convert/trim all) — a Pro hook.
+- **Batch** where cheap (multiple audio files → convert/trim all), a Pro hook.
 - **Zero friction:** no account, no watermark, no ads in the free core, everything offline.
 - **Trust signals:** "Your file never leaves your device"; works with airplane mode on (a genuine,
   demoable claim). Capability-detect and gray out an encoder that isn't available rather than
@@ -373,7 +373,7 @@ in VLC + QuickTime + browsers. Ship only when green on Chrome _and_ Firefox.
 **Model: free offline core + one-time "Pro" unlock** (avoid subscription/server so the offline
 promise holds).
 
-- **Free:** audio cut/join/convert (mp3/wav), video trim/mute/extract-audio, basic compress — no
+- **Free:** audio cut/join/convert (mp3/wav), video trim/mute/extract-audio, basic compress, no
   ads, no watermark, no upload, no size cap beyond the device.
 - **Pro (one-time ~$8-15, or low annual):** batch, high-bitrate/lossless export, video→GIF quality
   options, pitch/time-stretch, exotic-format conversion, priority (multi-thread) compression on
@@ -386,13 +386,13 @@ promise holds).
 
 **GTM:**
 
-1. **Firefox-first** — near-zero competition; become _the_ local media tool on AMO (smaller catalog
+1. **Firefox-first**, near-zero competition; become _the_ local media tool on AMO (smaller catalog
    ranks a quality tool fast). Cross-list on Chrome where the incumbents are dead shims.
-2. **Intercept the web-search funnel** — store-listing SEO on the exact queries flowing to
+2. **Intercept the web-search funnel**, store-listing SEO on the exact queries flowing to
    mp3cut.net/clideo/ezgif ("audio cutter", "trim mp3", "compress video", "video to gif", "extract
    audio"). Lead copy: _100% offline · no upload · no watermark · no limit._
 3. **Suite cross-promotion** with File Tools + Photo Tools as a privacy-first "offline tools" brand.
-4. **Content wedge:** short "airplane-mode" demos — same job, no internet, nothing uploaded — which
+4. **Content wedge:** short "airplane-mode" demos, same job, no internet, nothing uploaded, which
    the website competitors literally cannot claim.
 
 ---
@@ -405,26 +405,26 @@ promise holds).
 | **Firefox single-threaded ffmpeg** (no SAB) → slow compress                                              | Medium   | Prefer WebCodecs (hardware, no SAB) on Firefox; reserve ffmpeg for gaps; warn on huge inputs.                                                                                                                                                                                         |
 | **Memory / OOM on large video** (32-bit WASM)                                                            | Medium   | Stream (mediabunny), chunk, cap/warn, cancellation, prompt buffer release.                                                                                                                                                                                                            |
 | **WebCodecs codec availability ≠ API availability** (AAC/H.264 encode platform-dependent, esp. Linux FF) | Medium   | Capability-detect every encoder; graceful ffmpeg fallback; disable unsupported UI options.                                                                                                                                                                                            |
-| **Licensing**                                                                                            | Medium   | `lamejs` LGPL · `mediabunny` MPL-2.0 · `gifenc` MIT — all fine commercially. **ffmpeg.wasm:** default core **LGPL**; x264/x265 core **GPL** → use the LGPL core or offload H.264/H.265 encode to WebCodecs (browser's own encoder, no patent burden on us). MP3 patents expired 2017. |
+| **Licensing**                                                                                            | Medium   | `lamejs` LGPL · `mediabunny` MPL-2.0 · `gifenc` MIT, all fine commercially. **ffmpeg.wasm:** default core **LGPL**; x264/x265 core **GPL** → use the LGPL core or offload H.264/H.265 encode to WebCodecs (browser's own encoder, no patent burden on us). MP3 patents expired 2017. |
 | **Store review (broad file handling + WASM)**                                                            | Low-Med  | No host permissions for local files; bundle all code; minimal manifest; precedent extensions live on both stores.                                                                                                                                                                     |
 | **Adverse selection ("why is it empty?")**                                                               | Low      | Answered: demand routed to websites with working funnels; the MV3 slot stayed empty because Chrome Apps died and client-side video was hard pre-WebCodecs. WebCodecs-in-Firefox (Sept 2024) + mediabunny (2025) is the genuine "why now."                                             |
-| **Perf disappointment on video**                                                                         | Med      | Benchmark gates (§7.5) before shipping any heavy tool; ship audio (Phase 1) regardless — a guaranteed win.                                                                                                                                                                            |
+| **Perf disappointment on video**                                                                         | Med      | Benchmark gates (§7.5) before shipping any heavy tool; ship audio (Phase 1) regardless, a guaranteed win.                                                                                                                                                                            |
 
 ---
 
 ## 11. Prioritized MVP build order
 
-**Phase 1 — Audio core (ship first, <1 MB, guaranteed win).** Audio cutter/trimmer + joiner +
+**Phase 1, Audio core (ship first, <1 MB, guaranteed win).** Audio cutter/trimmer + joiner +
 speed + WAV/MP3 export (Web Audio + `lamejs`). Waveform editor UI. Ships to both stores; **beats the
 entire Firefox audio landscape and the dead Chrome shim on day one.** Establishes the brand and the
 offline promise.
 
-**Phase 2 — Video via WebCodecs/mediabunny (small, cross-browser desktop).** Extract audio from
+**Phase 2, Video via WebCodecs/mediabunny (small, cross-browser desktop).** Extract audio from
 video, mute/remove audio, video trim (lossless keyframe + frame-accurate), audio→M4A/AAC/OGG
 conversion, and the **video compressor** (marquee, behind §7.5 gates). Dedicated editor page. This
 turns the extension into a full media toolkit and takes the unserved video whitespace.
 
-**Phase 3 — Heavy tools, behind benchmark gates.** Video→GIF (`gifenc`), pitch/time-stretch
+**Phase 3, Heavy tools, behind benchmark gates.** Video→GIF (`gifenc`), pitch/time-stretch
 (`SoundTouchJS`), exotic-format conversion (lazy `ffmpeg.wasm`, Chrome-first). Ship each only after
 it clears §7.5 on Chrome and Firefox.
 
@@ -434,12 +434,12 @@ stays light until a user invokes a heavy tool.
 
 ---
 
-## Appendix A — sources
+## Appendix A: sources
 
 - Incumbent teardown: `docs/TEARDOWN.md`, `research/incumbents/audiocutter/manifest.json`, `.../videocutter/manifest.json`.
 - Chrome demand: `data/snapshots/chrome/2025-01-05/mini_extension_stats.csv` (pinned, verified per-row).
 - Firefox: AMO v5 API (query template §4); slugs `media-conversion-tool`, `ezconvert-audio-trimmer`, `web-apps-by-123apps`, `speed-pitch-changer`, `audio-equalizer-wext`, `katge-video-downloader-trimmer`.
-- Firefox WebCodecs: [WebCodecs API — MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API), [AudioEncoder — MDN](https://developer.mozilla.org/en-US/docs/Web/API/AudioEncoder) (VideoEncoder/AudioEncoder stable Firefox desktop 130+, Sept 2024).
+- Firefox WebCodecs: [WebCodecs API, MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API), [AudioEncoder, MDN](https://developer.mozilla.org/en-US/docs/Web/API/AudioEncoder) (VideoEncoder/AudioEncoder stable Firefox desktop 130+, Sept 2024).
 - Extension cross-origin isolation: [Chrome docs](https://developer.chrome.com/docs/extensions/develop/concepts/cross-origin-isolation), [Firefox Bug 1673477](https://bugzilla.mozilla.org/show_bug.cgi?id=1673477).
 - ffmpeg.wasm: [ffmpegwasm.netlify.app](https://ffmpegwasm.netlify.app/), [github.com/ffmpegwasm/ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm).
 - mediabunny: [mediabunny.dev](https://mediabunny.dev), [github.com/Vanilagy/mediabunny](https://github.com/Vanilagy/mediabunny) (MPL-2.0).

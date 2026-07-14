@@ -28,7 +28,7 @@ The two durable planning artifacts are the explicit exception requested for this
    multiplier within one audio frame.
 3. `docs/ARCHITECTURE.md:96-128` reserves an `audio-speed` worker job for later integration, while
    `docs/ARCHITECTURE.md:229-238` identifies pure resample math as a per-tool Vitest target.
-4. `CLAUDE.md:20-26,86-93` requires tool isolation and keeps heavy work off the UI thread. This unit
+4. Repository guardrails require tool isolation and keep heavy work off the UI thread. This unit
    intentionally supplies only worker-ready pure DSP and does not claim that worker integration has
    landed.
 5. Existing PCM code uses `Float32Array` channels and keeps the source sample rate

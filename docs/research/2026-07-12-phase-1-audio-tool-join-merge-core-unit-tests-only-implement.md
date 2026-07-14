@@ -4,7 +4,7 @@
 > work unit at research time. The shipped engine now decodes MP3 with worker-side WebCodecs
 > `AudioDecoder` and parses WAV PCM directly in the worker.
 
-Date: 2026-07-12  
+Date: 2026-07-12
 Controller marker: `unit-id: fee88d3a-57d3-40c6-8dc7-7404d0b15e45`
 
 ## Scope
@@ -13,7 +13,7 @@ This work unit is limited to pure PCM join logic and deterministic unit tests. T
 may add only new implementation files under `lib/tools/join/`; it must not add decode, encode, worker,
 UI, routing, download, CSP, CI, dependency, or shared-core changes. These exclusions agree with the
 request even though the repository's general convention normally wires each new tool into
-`entrypoints/app/App.tsx` (`CLAUDE.md:86-93`).
+`entrypoints/app/App.tsx`.
 
 The requested planning artifacts are the only files changed by this research task.
 
@@ -39,8 +39,8 @@ The requested planning artifacts are the only files changed by this research tas
   enforce pre-decode file caps, but it should reject invalid dimensions and unsafe output lengths before
   allocation.
 - Worker-owned decode is a separate prerequisite because Web Audio is unavailable in workers
-  (`CLAUDE.md:32-36`; `docs/PEER-REVIEW.md:17`). This unit accepts already-decoded PCM and must not
-  imply that worker decode exists.
+  (`docs/PEER-REVIEW.md:17`). This unit accepts already-decoded PCM and must not imply that worker
+  decode exists.
 
 ## Proposed deterministic normalization policy
 

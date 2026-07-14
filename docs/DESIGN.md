@@ -5,10 +5,10 @@ Scope: visual and interaction guidance for the shipped offline editor and planne
 ## Design principles
 
 1. **Drop-first, not upload-first.** The first meaningful control is a local file dropzone. The tool starts decoding or inspecting the file the instant it drops. Copy says “drop” or “choose,” never “upload.”
-2. **Make local processing visible.** Keep “100% offline” near the page title. Reinforce it with “Your file never leaves your device” and “Works in airplane mode.” Basic audio cutting already runs locally on strong web competitors, so lead that flow with speed, no ads, no account, no cap, and offline access. Lead conversion, joining, and video flows with the stronger nothing-uploaded promise.
+2. **Make local processing visible.** Keep “100% offline” near the page title. Reinforce it with “Your file never leaves your device” and “Works in airplane mode.” Basic audio cutting already runs locally on strong web competitors, so lead that flow with speed, no ads, no account, no service-imposed cap, and offline access. Lead conversion, joining, and planned video flows with the stronger nothing-uploaded promise.
 3. **Match, then beat the editor benchmark.** Match the polish of the 123apps waveform editor with clear trim handles, immediate time feedback, output controls, progress, and a direct download action. Beat it by removing ads, sign-in, watermarks, and artificial caps.
 4. **Detect before work begins.** Probe browser and codec capabilities before enabling an option. Gray out unsupported formats with a short explanation instead of allowing a long job to fail late.
-5. **Keep the free core frictionless.** Audio cut, join, WAV/MP3 conversion, video trim, mute, audio extraction, and basic compression need no account and have no ads, watermark, upload, or service-imposed size cap. Pro adds power and convenience rather than withholding the basic job.
+5. **Keep the free core frictionless.** Shipped audio cut, join, and WAV/MP3 conversion need no account and have no ads, watermark, upload, or service-imposed size cap. Planned Phase 2 video trim, mute, audio extraction, and basic compression must follow the same rule. Pro adds power and convenience rather than withholding the basic job.
 6. **Stay calm and direct.** Use short labels, one clear primary action per state, and concise status text. Emerald communicates progress and completion. Amber is reserved for the active trim range. Red is reserved for cancellation and destructive actions.
 
 ## Design system
@@ -101,23 +101,23 @@ Place the label above the field in 14px medium `text-emerald-100/70`. The field 
 
 Use a full pill with `border-emerald-300/20`, `bg-emerald-300/10`, 16px by 8px padding, 14px emerald-200 text, and no icon. It sits opposite the title at the end of the wrapping header. This exact composition ships in [`entrypoints/app/App.tsx`](../entrypoints/app/App.tsx).
 
-### Tool-picker card
+### Planned tool-picker card
 
 Use the card family with a 16px or 24px radius, `border-white/10`, and `bg-black/20`. Start with the shipped 56px emerald icon tile, then show a 20px semibold tool name and one muted line that describes the output. Mark availability separately from the name. “Coming” cards are visibly subdued and not actionable. A small Pro hint may identify batch or advanced-quality options, but must not imply that a free-core tool is locked. See [home.html](../mocks/home.html).
 
-### File and batch row
+### Planned file and batch row
 
 Use a compact `border-white/10` row with a file icon, a truncating name, muted size and duration, and a status pill aligned to the end. Status uses neutral white for Queued, emerald for Done, and emerald plus a small determinate bar for active conversion. Keep row actions secondary. Batch itself is a Pro convenience; single-file free-core output remains available. See [batch.html](../mocks/batch.html).
 
 ### Pro and settings panel
 
-Build settings from the shipped card, label, input, and button tokens. Toggles use a dark control track with an emerald active thumb. The Pro card clearly separates the free core from power features. Activation starts with checkout outside the extension, followed by a pasted signed license token. Validate the Ed25519 signature locally with a bundled public key and cache the entitlement in extension storage. No account or server call is required after activation. Sharing is only softly constrained by purchaser information in the token. Refund revocation cannot be guaranteed offline, so any periodic recheck is optional, opt-in, and best effort. See [pro.html](../mocks/pro.html).
+Build planned settings from the shipped card, label, input, and button tokens. Toggles use a dark control track with an emerald active thumb. The proposed Pro card clearly separates the free core from power features. If implemented, activation starts with checkout outside the extension, followed by a pasted signed license token. The extension would validate the Ed25519 signature locally with a bundled public key and cache the entitlement in extension storage. No account or server call would be required after activation. Sharing would be only softly constrained by purchaser information in the token. Refund revocation cannot be guaranteed offline, so any future periodic recheck must be optional, opt-in, and best effort. See [pro.html](../mocks/pro.html).
 
 ## Key screens and user flows
 
-### Home and tool picker
+### Planned home and tool picker
 
-[home.html](../mocks/home.html) is the entry surface. It separates live Phase 1 audio tools from coming Phase 2 video tools, keeps unavailable tools visibly disabled, and places the offline trust signal in the header. The primary route is:
+[home.html](../mocks/home.html) illustrates a planned entry surface. It would separate live Phase 1 audio tools from coming Phase 2 video tools, keep unavailable tools visibly disabled, and place the offline trust signal in the header. The primary route would be:
 
 1. Open Audio Cutter.
 2. Pick an available tool.
@@ -130,13 +130,13 @@ Build settings from the shipped card, label, input, and button tokens. Toggles u
 
 [audio-cutter.html](../mocks/audio-cutter.html) follows the shipped [`entrypoints/app/App.tsx`](../entrypoints/app/App.tsx) layout closely. After drop, decode immediately, show the file and metadata, set the whole file as the initial range, and invite the user to drag the gold handles. Keep format next to the primary “Cut & download” action. During export, disable conflicting controls, reveal Cancel, show determinate progress, and update the bottom status line. On success, download the result directly and confirm that it was created locally.
 
-### Batch conversion
+### Planned batch conversion
 
-[batch.html](../mocks/batch.html) shows the Pro multi-file route. A multi-file drop creates one row per file, capability checks run before the queue starts, shared format and bitrate settings apply to every compatible row, and each row reports Queued, Converting, Done, or an actionable error. Overall progress and Cancel remain visible during work. “Export all” produces normal downloads unless an optional browser-specific folder picker is available.
+[batch.html](../mocks/batch.html) shows the proposed Pro multi-file route. A multi-file drop creates one row per file, capability checks run before the queue starts, shared format and bitrate settings apply to every compatible row, and each row reports Queued, Converting, Done, or an actionable error. Overall progress and Cancel remain visible during work. “Export all” produces normal downloads unless an optional browser-specific folder picker is available.
 
-### Pro unlock
+### Planned Pro unlock
 
-[pro.html](../mocks/pro.html) keeps general settings and licensing in one calm surface. Free users retain the complete free core. A user who wants batch and advanced formats buys a one-time license outside the extension, pastes the signed key, and activates it through local verification. The unlocked entitlement is stored on the device and continues to work offline without an account.
+[pro.html](../mocks/pro.html) illustrates a possible general-settings and licensing surface. In this proposal, free users retain the complete free core. A user who wants batch and advanced formats would buy a one-time license outside the extension, paste the signed key, and activate it through local verification. The entitlement would be stored on the device and continue to work offline without an account.
 
 ## States
 
@@ -149,7 +149,7 @@ The flagship tool uses one stable page shell and swaps the work area without cha
 | Ready and editing | Show the file panel, metadata, waveform, trim handles, timecodes, format select, ghost action, and primary export action. | Bottom status: “Drag the gold handles to choose the part you want.” The waveform has an accessible label that identifies the gold trim handles. |
 | Progress and cancel | Disable file replacement, format changes, and export. Show Cancel and a determinate emerald progress bar. | Bottom status names the local job, for example “Encoding WAV in a worker…” Progress exposes `role="progressbar"` and numeric ARIA values. |
 | Success | Fill progress to 100%, create the download, and return controls to ready state. | Bottom status: “Done. Your download was created without uploading the file.” |
-| Decode error | Return to a usable empty state and preserve the selected file only if recovery is possible. | Bottom status: “This browser could not decode that audio file. Try WAV, MP3, M4A, or OGG.” |
+| Decode error | Return to a usable empty state and preserve the selected file only if recovery is possible. | Bottom status: “This browser could not decode that audio file. Try WAV or MP3.” |
 | Capability unavailable | Gray out the unsupported format or tool before processing. Keep alternatives enabled. | Place a concise reason beside the disabled control, such as “AAC export is not available in this browser.” Do not wait for export to fail. |
 | Export error | Stop progress, release the active job, and restore safe controls. | Show the engine message when it is useful, otherwise “Export failed.” |
 

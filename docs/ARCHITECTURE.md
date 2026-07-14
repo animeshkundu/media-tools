@@ -1,7 +1,7 @@
 # Architecture - Media Tools
 
-Status: decision-ready technical design for a cross-browser MV3 WebExtension that transforms local
-audio and video files 100% client-side. This is the deep companion to
+Status: decision-ready technical design for a cross-browser MV3 WebExtension with shipped local
+audio tools and planned client-side video tools. This is the deep companion to
 [`./PRODUCT-SPEC.md`](./PRODUCT-SPEC.md). Read the market context in
 [`research/ext-2-media-tools.md`](research/ext-2-media-tools.md) first.
 
@@ -48,7 +48,7 @@ Three surfaces, with a strict division of labor:
 │   Reports progress, honors cancel (terminate), releases buffers on exit.      │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-Optional Chrome-only enhancements (feature-detected, never required):
+Planned Chrome-only enhancements (feature-detected, never required):
   • chrome.sidePanel for the light audio tools (Firefox has incompatible sidebar_action).
   • File System Access API (showSaveFilePicker) for save-to-folder; else download.
   • Cross-origin isolation (COEP/COOP manifest keys) to unlock multi-thread ffmpeg.wasm.
@@ -85,26 +85,25 @@ thread and preserve worker ownership as planned video engines and formats are ad
 | Build / packaging | **WXT** 0.20.x | One MV3 source → Chrome + Firefox, HMR, `zip`/`submit` built in. Alternatives (raw webpack + manual manifests) reinvent the cross-browser transform. |
 | UI | **React 19 + TypeScript (strict) + Tailwind v4** | Already shipped; component model fits the editor UI; strict TS catches capability-detection gaps. |
 | Audio engine | **Worker-side WebCodecs `AudioDecoder` for MP3 + direct PCM parsing for WAV + `lamejs` for MP3 encode** | Decode and final encoding stay off the UI thread. MP3 support is checked with `AudioDecoder.isConfigSupported`; WAV is parsed directly; bundled `lamejs` (LGPL) is encode-only. |
-| Video engine (primary) | **WebCodecs + `mediabunny`** | Hardware-accelerated encode/decode plus containers, **no SharedArrayBuffer**, so full speed on Firefox. Tens of KB tree-shaken. This is the "why now": WebCodecs went stable in Firefox 130 (Sept 2024). |
-| Video engine (fallback) | **`ffmpeg.wasm`, lazy, Chrome-first** | Only for what WebCodecs cannot do (GIF encode, exotic/legacy containers, HEVC). ~30 MB, so never in the base bundle; multi-thread needs cross-origin isolation that Firefox extension pages cannot get. |
+| Planned video engine (primary) | **WebCodecs + `mediabunny`** | Phase 2 design: hardware-accelerated encode/decode plus containers, with no SharedArrayBuffer requirement. WebCodecs went stable in Firefox 130 (Sept 2024). |
+| Possible video engine (fallback) | **`ffmpeg.wasm`, lazy, Chrome-first** | Phase 3 option for what WebCodecs cannot do, such as GIF encode or exotic containers. It is not shipped and must not enter the base bundle. Multi-thread operation needs cross-origin isolation that Firefox extension pages cannot get. |
 | Cross-browser API | **WXT-provided `browser.*`** | One API surface; feature-detect the Chrome-only extras. |
 | Output | **Blob + `URL.createObjectURL` + `<a download>`** | Universal on both browsers. File System Access is a Chrome-only nicety. |
 
-### 3.1 The engine decision in one line
+### 3.1 The planned video-engine decision in one line
 
-**WebCodecs + mediabunny is the cross-browser video engine, not ffmpeg.wasm.** ffmpeg.wasm can only
-multi-thread on Chrome (it needs `SharedArrayBuffer`, hence cross-origin isolation, which
-`moz-extension://` pages cannot obtain, [Bug 1673477](https://bugzilla.mozilla.org/show_bug.cgi?id=1673477)).
-Leaning on ffmpeg as the primary path would make Firefox a slow second-class citizen and bloat the
-base install. WebCodecs gives the browser's own hardware encoders on both desktops with no SAB, so
-the common path (trim, mute, extract, compress, container convert) is fast and small everywhere. We
-pay the ffmpeg tax only on the long tail, only on Chrome, only when a user invokes it.
+**Phase 2 plans WebCodecs + mediabunny as the cross-browser video engine, not ffmpeg.wasm.** A future
+ffmpeg.wasm path could only multi-thread on Chrome because it needs `SharedArrayBuffer` and
+cross-origin isolation, which `moz-extension://` pages cannot obtain ([Bug 1673477](https://bugzilla.mozilla.org/show_bug.cgi?id=1673477)).
+Using ffmpeg as the primary path would make Firefox a slow second-class citizen and bloat the base
+install. The planned WebCodecs path would use the browser's own hardware encoders without requiring
+SAB. Any ffmpeg cost would be reserved for a measured long-tail need after the Phase 3 gates pass.
 
 ## 4. Data flow and message contracts
 
 The app page owns file selection and UI state, while the worker owns decode and final encoding.
-Bounded join and Change Speed transforms remain on the app page today. Messages are a discriminated
-union so each tool extends the same channel.
+Bounded join and Change Speed transforms remain on the app page today. The shipped audio messages
+use a discriminated union; the video variants below describe the planned extension of that channel.
 
 ```ts
 // Page → Worker: one job per worker instance. Transfer the heavy buffers.
@@ -136,8 +135,8 @@ Rules the harness (`lib/core/worker.ts`) already enforces and every tool inherit
   it into a human status line. `worker.onerror` is the backstop.
 
 Output flow: `result.buffer` → `new Blob([buffer], {type: mime})` → `downloadBlob(blob, outputName(...))`
-(`lib/core/download.ts`, `lib/core/format.ts`). On Chrome, an optional `showSaveFilePicker` path can
-replace the anchor download; Firefox always uses the anchor.
+(`lib/core/download.ts`, `lib/core/format.ts`). The shipped browsers use the anchor download. A future
+Chrome-only enhancement could use `showSaveFilePicker` after feature detection.
 
 ## 5. Module boundaries
 
@@ -151,7 +150,7 @@ components/                     presentational, token-only: Button, Progress (+ 
 lib/
   core/                         cross-tool infrastructure (the shared "core")
     worker.ts                   worker harness: spawn, progress, cancel, transferables
-    download.ts                 Blob → download (+ optional FS Access on Chrome)
+    download.ts                 Blob → download (future FS Access enhancement on Chrome)
     dropzone.tsx                accessible file input + drag-drop
     format.ts                   bytes / duration / output-name helpers
     capability.ts   (planned)   WebCodecs/codec probes (isConfigSupported), FS Access + sidePanel detection
@@ -166,12 +165,13 @@ Boundaries, stated as rules:
 
 - **`components/` is presentational and token-only.** No business logic, no `browser.*`. Reusable.
 - **`lib/core/` is tool-agnostic infrastructure.** The worker harness, download, dropzone, formatting,
-  and capability detection. This is the shared core the monorepo overview calls `packages/core`.
+  and capability detection. This is the conceptual shared core described by the program overview.
 - **`lib/tools/<name>/` is one tool, self-contained,** with its worker entry, its DSP, its view, and
   its Vitest test. A new tool is added here and surfaced in `App.tsx`; it does not reach into another
   tool. Adding a tool touches exactly one new folder plus the picker.
-- **Heavy code is lazy.** `mediabunny`, `gifenc`, `SoundTouchJS`, and `ffmpeg.wasm` are dynamic
-  `import()`ed inside the tool worker that needs them, never in the base chunk.
+- **Planned heavy code must be lazy.** If `mediabunny`, `gifenc`, `SoundTouchJS`, or `ffmpeg.wasm`
+  lands in a later phase, it must load only inside the tool worker that needs it and stay out of the
+  shipped base chunk until its phase is approved.
 
 ## 6. Cross-browser strategy
 
@@ -181,15 +181,14 @@ Boundaries, stated as rules:
 | Heavy compute | Web Worker | Web Worker | Identical. The shared execution model, no SAB needed for the primary engine. |
 | Side panel | `chrome.sidePanel` | none (`sidebar_action` differs) | Optional, feature-detected. Tab page is the shared surface. |
 | Save to folder | File System Access | none | Optional; degrade to anchor download. |
-| Cross-origin isolation | COEP/COOP manifest keys | not supported ([Bug 1673477]) | Only affects multi-thread ffmpeg. Chrome ships `@ffmpeg/core-mt`; Firefox does not ship ffmpeg at all and uses WebCodecs. |
+| Cross-origin isolation | COEP/COOP manifest keys | not supported ([Bug 1673477]) | Relevant only to a possible future multi-thread ffmpeg path. No ffmpeg package ships today. |
 | Codec availability | broad | varies (esp. Linux) | Capability-detect every encoder; gray out what is unavailable. |
 
-**"Lazy ffmpeg" means lazy execution and browser-specific packaging.** The Chrome build includes
-`@ffmpeg/core-mt` behind a dynamic import and sets the COEP/COOP manifest keys so `crossOriginIsolated`
-is true and `SharedArrayBuffer` works. The Firefox build does not include ffmpeg at all; Phase 3 tools
-that would need it either use WebCodecs (GIF via `gifenc` decode path) or are disabled with an honest
-message on Firefox. WXT's per-browser manifest transform makes this a build-time branch, not a runtime
-hack. The ~30 MB core is fetched and instantiated on first use, so the base install stays light on both.
+**"Lazy ffmpeg" is a Phase 3 packaging proposal, not shipped behavior.** If benchmarks justify it,
+a future Chrome package could include `@ffmpeg/core-mt` behind a tool-specific dynamic import and add
+the required COEP/COOP manifest keys. A Firefox package would omit ffmpeg and use a validated
+WebCodecs alternative or disable the unsupported tool with an honest message. This browser-specific
+package split and store-loadable execution path must be proved before any implementation lands.
 
 ### 6.1 Supported browsers
 
@@ -229,12 +228,13 @@ download.
 
 ## 7. Performance and memory budget
 
-- **Bundle size.** Phase 1 audio core < 1 MB. Phase 2 (mediabunny + WebCodecs) stays in the hundreds
-  of KB because WebCodecs is the browser's own code. Phase 3 lazy-loads the ~30 MB ffmpeg core on
-  demand only; it is never counted against the base install.
-- **Memory.** WASM is 32-bit, so the address space ceiling is ~2-4 GB and a multi-GB video can OOM
-  ffmpeg. Mitigations: prefer streaming (mediabunny `BlobSource`), process in chunks, cap and warn on
-  very large inputs, release buffers as soon as a stage completes, and keep cancellation responsive.
+- **Bundle size.** The shipped Phase 1 audio core is below 1 MB. The Phase 2 target is to keep
+  mediabunny additions within hundreds of KB through focused imports. Any Phase 3 ffmpeg package
+  must keep its roughly 30 MB core out of the base install and justify its browser-specific cost.
+- **Memory.** A possible future WASM engine would have a 32-bit address-space ceiling of roughly 2
+  to 4 GB, so a multi-GB video could exhaust it. The Phase 2 and Phase 3 designs must prefer
+  streaming where possible, process in chunks, cap and warn on very large inputs, release buffers
+  promptly, and keep cancellation responsive.
 - **Responsiveness.** Shipped audio decode and final encoding run in a worker. Join normalization and
   change-speed resampling remain bounded app-page transforms, as recorded in the capability contract.
   Planned heavy tools must keep long work off the UI thread.
@@ -248,11 +248,11 @@ download.
 
 - **No host permissions.** Files come from `<input type=file>` and drag-drop, which need none. This is
   the trust-building manifest and it is user-verifiable.
-- **Least privilege, lazily.** `downloads` and any host access are requested only if a feature needs
-  them, via `optional_permissions`.
-- **No remote code (MV3 requirement, and our own rule).** Every dependency and WASM asset is bundled.
-  `FFmpeg.load()` points at packaged files, never a CDN. The self-hosted model/codec assets are cached
-  in IndexedDB after first load for offline reuse.
+- **Least privilege, lazily.** The shipped manifest has no `downloads`, host, or optional permissions.
+  Any future optional enhancement must justify and request only the narrow permission it needs.
+- **No remote code (MV3 requirement, and our own rule).** Every shipped dependency is bundled. Any
+  future WASM or codec asset must also ship in the browser package, load from a packaged URL rather
+  than a CDN, and preserve offline operation.
 - **CSP.** `content_security_policy.extension_pages` is now default-deny in `wxt.config.ts`:
   `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:
   blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none';
@@ -265,17 +265,16 @@ download.
 - **Input-safety by tool.** MP3 decode uses the browser's WebCodecs implementation, while WAV input is
   parsed directly in the worker. The relevant defenses are strict metadata validation, hard input and
   decoded-memory limits, bounded reads, and checking MP3 decoder support before decode.
-- **Pro entitlement without breaking offline.** The Pro unlock is an externally purchased,
-  Ed25519-signed license token validated **locally** with a bundled public key, then cached. No server
-  call after activation, so the offline promise holds. Trade-offs (sharing, revocation) are documented
-  in [`./PRODUCT-SPEC.md`](./PRODUCT-SPEC.md); the architecture note is only that the public key is
-  bundled and verification is offline.
+- **Planned Pro entitlement must not break offline.** The Phase 3 proposal uses an externally
+  purchased, Ed25519-signed license token validated locally with a bundled public key. This is not
+  shipped. Before implementation, the sharing, revocation, storage, and privacy trade-offs in
+  [`./PRODUCT-SPEC.md`](./PRODUCT-SPEC.md) must be reviewed again.
 
 ## 9. Testing strategy
 
 - **Unit (Vitest, per tool).** The pure DSP is the high-value target: slice/concat/resample math, WAV
   PCM encoding, MP3 frame sanity, join ordering, speed-factor resampling, and every capability probe.
-  Each `lib/tools/<name>/` ships its own test. `tests/audio.test.ts` is the seed.
+  Each shipped tool has focused coverage under `tests/`; `tests/audio.test.ts` is the cutter seed.
 - **Capability detection.** Test that unsupported encoders are detected and the UI disables rather than
   attempts them, so a user never waits through a long job that cannot finish.
 - **Cross-browser runtime drive.** Current runtime evidence is recorded in §6.1. Before Chrome moves
@@ -298,10 +297,10 @@ Shipped-now vs planned-per-phase. Ship only MIT / MPL / LGPL; never the GPL ffmp
 | --- | --- | --- | --- | --- |
 | `react` / `react-dom` | 19.2.4 | MIT | App UI + renderer | none |
 | `lamejs` | 1.2.1 (shipped) | LGPL-3.0-or-later | MP3 encode only in a worker; it is not used for decode | Unmaintained; pin + vendored at `public/vendor/lame.min.js`. LGPL dynamic use is fine. |
-| `mediabunny` | latest (Phase 2) | MPL-2.0 | WebCodecs muxer/demuxer + trim/convert/compress; zero-dep; no SAB → full speed on Firefox | Newer library; track releases; capability-detect encoders. |
-| `gifenc` | latest (Phase 3) | MIT | GIF encode (not in WebCodecs) | Small, low risk. |
-| `SoundTouchJS` | latest (Phase 3) | LGPL-2.1 | Independent pitch / time-stretch (phase vocoder) | LGPL fine. |
-| `@ffmpeg/ffmpeg` + `@ffmpeg/core` (FF) / `@ffmpeg/core-mt` (Chrome) | latest (Phase 3, Chrome-first) | LGPL core only (avoid GPL x264/x265; offload H.264/H.265 encode to WebCodecs) | ~30 MB, lazy, Chrome multi-thread only. Keep out of base bundle; disable or WebCodecs-substitute on Firefox. |
+| `mediabunny` | Not installed (Phase 2 proposal) | MPL-2.0 | Proposed WebCodecs muxer/demuxer for trim, convert, and compression | Pin an exact reviewed version, capability-detect encoders, and verify the size target before shipping. |
+| `gifenc` | Not installed (Phase 3 proposal) | MIT | Possible GIF encoder | Pin and review only if the GIF tool clears its release gates. |
+| `SoundTouchJS` | Not installed (Phase 3 proposal) | LGPL-2.1 | Possible independent pitch and time-stretch engine | Review licensing and performance before adoption. |
+| `@ffmpeg/ffmpeg` + `@ffmpeg/core-mt` | Not installed (possible Chrome Phase 3 package) | LGPL core only | Possible Chrome-only fallback for validated long-tail formats | Roughly 30 MB. Prove store-loadable execution, keep it out of the base package, and avoid GPL cores. Firefox would omit ffmpeg. |
 
 `webextension-polyfill` semantics are provided by WXT's `browser` (MPL-2.0). MP3 patents expired 2017.
 Keep this table and licenses in sync with [`THIRD-PARTY.md`](THIRD-PARTY.md) as dependencies land.

@@ -1,4 +1,4 @@
-/* Audio Cutter site — self-contained dark emerald theme matching the extension. */
+/* Audio Cutter site, self-contained dark emerald theme matching the extension. */
 :root {
   --ink-950: #020605;
   --ink-900: #07110f;
@@ -157,7 +157,7 @@ h1 span { color: var(--emerald-300); }
 .feature { position: relative; min-height: 17rem; padding: 1.5rem; overflow: hidden; border: 1px solid var(--color-border); border-radius: 1.3rem; background: rgba(255, 255, 255, .03); box-shadow: var(--shadow-sm); }
 .feature-wide { grid-column: span 2; }
 .feature-tall { grid-row: span 2; }
-.feature-number { position: absolute; top: 1.3rem; right: 1.35rem; color: rgba(209, 250, 229, .4); font-size: .66rem; font-weight: 800; letter-spacing: .12em; }
+.feature-number { position: absolute; top: 1.3rem; right: 1.35rem; color: rgba(209, 250, 229, .55); font-size: .66rem; font-weight: 800; letter-spacing: .12em; }
 .feature-icon { display: grid; place-items: center; width: 2.7rem; height: 2.7rem; margin-bottom: 2.4rem; border-radius: .85rem; color: var(--emerald-300); background: rgba(52, 211, 153, .11); font-size: 1rem; font-weight: 850; }
 .feature h3 { margin: 0; color: white; font-size: 1.08rem; line-height: 1.25; }
 .feature p { margin: .65rem 0 0; color: var(--color-muted); font-size: .83rem; line-height: 1.65; }
@@ -184,7 +184,11 @@ h1 span { color: var(--emerald-300); }
 
 .demo-section { max-width: 64rem; }
 .video-frame { overflow: hidden; border: 1px solid var(--color-border-strong); border-radius: 1.4rem; background: black; box-shadow: var(--shadow-lg); }
-.video-frame video { width: 100%; aspect-ratio: 16 / 10; }
+.video-frame video { width: 100%; aspect-ratio: 16 / 10; color: var(--color-text); }
+.video-frame video a { color: var(--color-link); }
+.video-transcript { max-width: 46rem; margin: 1rem auto 0; color: var(--color-caption); font-size: .82rem; }
+.video-transcript summary { cursor: pointer; color: var(--emerald-300); font-weight: 650; }
+.video-transcript p { margin: .5rem 0 0; line-height: 1.6; }
 
 .install-section { padding-top: 1rem; }
 .install-card { display: grid; grid-template-columns: 1.15fr .85fr; gap: clamp(2rem, 6vw, 5rem); padding: clamp(2rem, 6vw, 4.5rem); overflow: hidden; border: 1px solid rgba(110, 231, 183, .22); border-radius: 1.7rem; color: white; background: radial-gradient(circle at 90% 10%, rgba(52, 211, 153, .25), transparent 15rem), #020605; }
@@ -268,7 +272,7 @@ h1 span { color: var(--emerald-300); }
 
 @media print {
   .site-header, .skip-link, .hero-actions, .video-frame, .site-footer { display: none; }
-  body, .gallery-section, .install-card { color: #000; background: #fff; }
-  .gallery-section .section-heading h2, .install-copy h2 { color: #000; }
+  body { color: #000; background: #fff; }
+  body * { color: #000 !important; background-color: transparent !important; background-image: none !important; }
   .feature, .privacy-card, .screenshot-card, .install-card, .card { break-inside: avoid; border: 1px solid #777; box-shadow: none; }
 }

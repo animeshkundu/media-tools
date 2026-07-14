@@ -3,7 +3,8 @@
 > **SUPERSEDED (2026-07-14):** References below to main-thread Web Audio describe the retired
 > decode path and are preserved as historical planning context. The shipped engine decodes MP3 with
 > worker-side WebCodecs `AudioDecoder` and parses WAV PCM directly in the worker. Bundled `lamejs` is
-> used for MP3 encoding only.
+> used for MP3 encoding only. The shipped CSP also supersedes the proposed `object-src 'self'` value
+> below with the stricter `object-src 'none'` directive.
 
 - **Date:** 2026-07-12
 - **Owner:** @animeshkundu
@@ -18,7 +19,7 @@ without its behavior, passes `npm run check`, builds Chrome and Firefox, loads b
 artifacts, and drives the affected tool with real media. No later tool may bypass the shared worker,
 limit, cancellation, or download contracts.
 
-## PR 1 — Privacy, manifest, dependency, and provenance gates
+## PR 1: Privacy, manifest, dependency, and provenance gates
 
 ### Files
 
@@ -61,7 +62,7 @@ limit, cancellation, or download contracts.
 - Run `npm audit --omit=dev` and assess development-only advisories separately.
 - Run full checks and both builds.
 
-## PR 2 — Shared worker-owned, bounded audio pipeline
+## PR 2: Shared worker-owned, bounded audio pipeline
 
 > **SUPERSEDED decode plan:** The worker decode architecture described as future work in this section
 > now ships as summarized in the status note above.
@@ -109,7 +110,7 @@ limit, cancellation, or download contracts.
   numeric latency target.
 - Real Chrome and Firefox production artifacts decode supported WAV/MP3 fixtures offline.
 
-## PR 3 — World-class Audio Cutter accuracy, accessibility, and polish
+## PR 3: World-class Audio Cutter accuracy, accessibility, and polish
 
 ### Files
 
@@ -157,7 +158,7 @@ limit, cancellation, or download contracts.
 - Offline Chrome and Firefox drives cut WAV and MP3, verify zero requests, parse/play the downloads,
   exercise cancel and worker crash, and confirm no partial download.
 
-## PR 4 — Audio join/merge
+## PR 4: Audio join/merge
 
 ### Files
 
@@ -187,7 +188,7 @@ limit, cancellation, or download contracts.
 - Offline Chrome and Firefox production drives reorder, export WAV/MP3, parse/play output, and record
   zero requests.
 
-## PR 5 — Audio conversion to WAV/MP3
+## PR 5: Audio conversion to WAV/MP3
 
 ### Files
 
@@ -216,7 +217,7 @@ limit, cancellation, or download contracts.
   misleading success or partial output.
 - Offline Chrome and Firefox drives verify playback and zero requests.
 
-## PR 6 — Coupled speed and pitch
+## PR 6: Coupled speed and pitch
 
 ### Files
 
@@ -242,7 +243,7 @@ limit, cancellation, or download contracts.
   cancellation, and worker failure.
 - Offline Chrome and Firefox drives parse/play WAV and MP3 outputs and record zero requests.
 
-## PR 7 — Phase 1 release-gate and product QA closure
+## PR 7: Phase 1 release-gate and product QA closure
 
 ### Files
 

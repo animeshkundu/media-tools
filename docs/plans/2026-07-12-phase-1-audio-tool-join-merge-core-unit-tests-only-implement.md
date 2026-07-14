@@ -1,6 +1,6 @@
 # Phase 1 audio join/merge core implementation plan
 
-Date: 2026-07-12  
+Date: 2026-07-12
 Controller marker: `unit-id: fee88d3a-57d3-40c6-8dc7-7404d0b15e45`
 
 ## Preconditions

@@ -23,10 +23,9 @@ with a self-contained RIFF writer. MP3 must use the existing `lamejs` 1.2.1 inst
 2. `docs/PRODUCT-SPEC.md:88-102` requires explicit WAV/MP3 choices, duration and channel-layout
    preservation where supported, visible settings, local WAV encoding, bundled `lamejs` MP3
    encoding, useful rejection of bad input, and no misleading successful output.
-3. `CLAUDE.md:18-26,47-53,55-64,86-93` requires tool isolation, local processing with no upload,
-   bounded inputs, strict TypeScript, exact dependency versions, and heavy work outside the UI
-   thread. The present unit supplies only the pure encoder that a later worker integration will
-   invoke.
+3. Repository guardrails require tool isolation, local processing with no upload, bounded inputs,
+   strict TypeScript, exact dependency versions, and heavy work outside the UI thread. The present
+   unit supplies only the pure encoder that a later worker integration will invoke.
 4. `lib/tools/audio-cutter/audio.ts:20-60` contains an existing 16-bit PCM WAV writer, but this unit
    may not edit or import cutter internals. The conversion implementation therefore needs its own
    self-contained WAV writer under `lib/tools/convert/`.
@@ -137,7 +136,6 @@ its Node environment.
 
 ## Sources
 
-- `CLAUDE.md`
 - `.github/instructions/tests.instructions.md`
 - `docs/ARCHITECTURE.md`
 - `docs/PRODUCT-SPEC.md`

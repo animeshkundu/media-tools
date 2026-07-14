@@ -1,6 +1,6 @@
 # Roadmap
 
-## Phase 1 — Audio core
+## Phase 1: Audio core
 
 - [x] Audio cutter with draggable waveform trim handles
 - [x] WAV export
@@ -9,7 +9,7 @@
 - [x] Audio format conversion
 - [x] Coupled speed and pitch change
 
-## Phase 2 — Video with WebCodecs + mediabunny
+## Phase 2: Video with WebCodecs + mediabunny
 
 - [ ] Extract audio from video
 - [ ] Mute or remove an audio track
@@ -17,7 +17,7 @@
 - [ ] Audio export to M4A/AAC/OGG where supported
 - [ ] Video compression behind cross-browser benchmark gates
 
-## Phase 3 — Heavy and specialized tools
+## Phase 3: Heavy and specialized tools
 
 - [ ] Video to GIF
 - [ ] Independent pitch and time stretch

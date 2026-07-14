@@ -61,7 +61,7 @@ Initial developer-preview release. Private, offline audio editing that runs enti
 - Join or merge tracks in a chosen order, normalizing channel layouts and differing sample rates when needed.
 - Change playback speed from 0.25× to 4×, with speed and pitch changing together.
 - Convert audio to lossless PCM WAV or 192 kbps MP3.
-- Bounded-memory processing with a 64 MB input limit and 256 MB decoded and in-flight PCM limits.
+- Bounded-memory processing with a 64 MiB input limit and 256 MiB decoded and in-flight PCM limits.
 - Real-Firefox end-to-end tests in CI and one MV3 codebase for Chrome and Firefox.
 
 ### Security

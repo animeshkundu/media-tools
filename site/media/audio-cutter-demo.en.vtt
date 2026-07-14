@@ -1,0 +1,16 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:02.000
+Audio Cutter's start screen shows a drop zone for a local WAV or MP3 file.
+
+00:00:02.000 --> 00:00:04.000
+A WAV file is selected, and its waveform appears for inspection.
+
+00:00:04.000 --> 00:00:06.000
+Exact In and Out times are entered, moving the gold trim handles to select the range.
+
+00:00:06.000 --> 00:00:08.000
+WAV output remains selected, then Cut & download is chosen.
+
+00:00:08.000 --> 00:00:10.500
+Audio Cutter confirms that the finished file was downloaded locally without an upload.

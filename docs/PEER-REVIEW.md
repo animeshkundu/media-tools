@@ -1,6 +1,6 @@
-# Peer review - media-tools plan (cross-lab critic)
+# Peer review: media-tools plan
 
-Reviewer: independent cross-lab review, adversarial pass on VISION + PRODUCT-SPEC + ARCHITECTURE.
+Adversarial pass on VISION + PRODUCT-SPEC + ARCHITECTURE.
 Verdict: **not yet decision-ready** - the plan treats WebCodecs *availability* as proof of a
 usable cross-browser codec + performance stack. Scores: assumption-soundness 2/5, failure-mode
 coverage 1/5, alternatives 3/5. Findings below with a disposition for each. This does not block
@@ -23,7 +23,9 @@ resolve before that phase ships) · **SPEC** (add explicit policy + fixtures) ·
 | 9 | High | Licensing not reduced to SPDX labels: LGPL vendored-min-JS/WASM needs notices + corresponding source/relink material; MPL source availability; the exact ffmpeg build's configure flags/linked libs must be audited (GPL if x264/x265 present even if uninvoked); AAC/AVC/HEVC patent review; AMO needs full source/build for minified+WASM. | **GATE** (before publishing anything with these deps): artifact-level BOM + legal review. |
 | 10 | Med-high | Thesis/monetization unvalidated vs cost: weak extension competitors + empty FF category may mean low demand or preference for native tools (Audacity/VLC/HandBrake); deprecated-incumbent installs aren't transferable demand; free-heavy value + late Pro + one-time $8-15 must fund ongoing codec/browser/OS/store maintenance; the Ed25519 token needs issuance + key custody + a payment-provider integration/backend. | **VALIDATE**: prove file-types, failure rates, repeat usage, and paid intent with the **audio wedge** before funding the video roadmap. |
 
-**Single highest-priority fix (reviewer):** freeze Phase 2 and build a vertical-slice
+**Current resolution for finding 7:** Resolved in the shipped audio extension. The extension-page CSP now includes `default-src 'none'`, `connect-src 'none'`, `form-action 'none'`, `frame-src 'none'`, `object-src 'none'`, and `base-uri 'none'`. CI validates the exact policy and manifest egress keys in both browser builds.
+
+**Single highest-priority fix from the review:** freeze Phase 2 and build a vertical-slice
 **compatibility spike** that publishes a pass/fail *browser × OS × container/codec* matrix -
 actual encoder availability, measured acceleration, and bounded-memory output for representative
 MP4/H.264/AAC and WebM workflows - before committing to the video tools.
