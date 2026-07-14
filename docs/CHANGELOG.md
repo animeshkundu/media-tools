@@ -18,6 +18,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Security
 
+## [0.1.1] - 2026-07-14
+
+Developer-preview hardening and accuracy release. No user-facing feature changes.
+
+### Added
+
+- Project site `robots.txt` and `sitemap.xml`.
+
+### Changed
+
+- Tightened the extension-page Content Security Policy `object-src` directive to `'none'`.
+- Pinned every build dependency to an exact version.
+- Upgraded the Firefox end-to-end suite to install and drive the real `moz-extension://` extension page under the enforced extension-page CSP, covering WAV cut and export, WAV to MP3, MP3 input, join, change speed, and a no-egress check.
+- Corrected the documentation to match the shipped engine: worker-side WebCodecs `AudioDecoder` for MP3 decode, direct PCM parsing for WAV, and `lamejs` for MP3 encode only.
+
+### Fixed
+
+- Repointed the developer-preview install link from a "latest release" URL, which excludes prereleases, to the releases page.
+
 ## [0.1.0] - 2026-07-14
 
 Initial developer-preview release. Private, offline audio editing that runs entirely in the browser.
@@ -37,5 +56,6 @@ Initial developer-preview release. Private, offline audio editing that runs enti
 - Zero install-time permissions and a strict no-egress extension-page Content Security Policy.
 - No-network build check: CI greps both built browser bundles for common network primitives (`fetch`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, and `EventSource`) as one defense-in-depth layer.
 
-[Unreleased]: https://github.com/animeshkundu/media-tools/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/animeshkundu/media-tools/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/animeshkundu/media-tools/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/animeshkundu/media-tools/releases/tag/v0.1.0
