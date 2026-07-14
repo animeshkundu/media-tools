@@ -1,5 +1,10 @@
 # Standing stream QA review: product-level review of Media Tools
 
+> **SUPERSEDED (2026-07-14):** Findings below about main-thread Web Audio describe the retired
+> decode path and are preserved as a point-in-time review. The shipped engine decodes MP3 with
+> worker-side WebCodecs `AudioDecoder` and parses WAV PCM directly in the worker. Bundled `lamejs` is
+> used for MP3 encoding only.
+
 - **Date:** 2026-07-12
 - **Owner:** @animeshkundu
 - **Work unit:** QA review of the shipped product against the vision, product specification, design system, architecture, peer-review dispositions, and roadmap
@@ -99,6 +104,9 @@ properties from policy promises.
 
 ### 4. Worker-owned heavy work, limits, cancellation, and cleanup
 
+> **SUPERSEDED decode finding:** The current-state decode details below describe the retired path.
+> See the status note at the top of this record.
+
 **Current state:** `App.tsx` reads the entire file, decodes it with `AudioContext`, copies every
 channel, and retains the full PCM on the main thread. Export then copies every channel again before
 transferring it. No file-size, channel-count, sample-rate, duration, frame-count, decoded-byte, or
@@ -162,7 +170,7 @@ reduced-motion behavior. Validate at narrow and wide layouts with browser screen
 
 ## Additional product-level inconsistencies
 
-- `docs/VISION.md` says “mechanically verifiable” and “no arbitrary size cap,” while binding
+- `docs/VISION.md` made an overbroad auditability claim and said “no arbitrary size cap,” while binding
   guardrails require narrower claims and hard safety limits.
 - `docs/ARCHITECTURE.md` still presents Web Audio as the audio engine while worker-owned decode cannot
   use `AudioContext`; the accepted peer review requires a decision before join/speed.

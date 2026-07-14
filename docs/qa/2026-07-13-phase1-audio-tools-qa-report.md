@@ -1,5 +1,10 @@
 # Phase-1 audio tools QA report
 
+> **SUPERSEDED (2026-07-14):** Findings below about main-thread Web Audio describe the retired
+> decode path and are preserved as a point-in-time QA record. The shipped engine now decodes MP3 with
+> worker-side WebCodecs `AudioDecoder` and parses WAV PCM directly in the worker. Bundled `lamejs` is
+> used for MP3 encoding only.
+
 **Date:** 2026-07-13  
 **Scope:** Audio Cutter flagship (`entrypoints/app/`, `lib/tools/audio-cutter/`, `lib/core/`) plus merged Phase-1 cores (`lib/tools/join/`, `lib/tools/change-speed/`, `lib/tools/convert/`)  
 **Out of scope:** Phase-2 video, Phase-3 pitch/time-stretch, store-submission, Pro tier  

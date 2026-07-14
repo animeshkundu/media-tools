@@ -1,5 +1,9 @@
 # Phase 1 audio join/merge core research
 
+> **SUPERSEDED (2026-07-14):** The statement below that worker decode did not exist describes this
+> work unit at research time. The shipped engine now decodes MP3 with worker-side WebCodecs
+> `AudioDecoder` and parses WAV PCM directly in the worker.
+
 Date: 2026-07-12  
 Controller marker: `unit-id: fee88d3a-57d3-40c6-8dc7-7404d0b15e45`
 

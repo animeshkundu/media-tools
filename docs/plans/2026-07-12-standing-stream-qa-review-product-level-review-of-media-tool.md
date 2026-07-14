@@ -1,5 +1,10 @@
 # Standing stream QA review: implementation plan
 
+> **SUPERSEDED (2026-07-14):** References below to main-thread Web Audio describe the retired
+> decode path and are preserved as historical planning context. The shipped engine decodes MP3 with
+> worker-side WebCodecs `AudioDecoder` and parses WAV PCM directly in the worker. Bundled `lamejs` is
+> used for MP3 encoding only.
+
 - **Date:** 2026-07-12
 - **Owner:** @animeshkundu
 - **Correlation marker:** `unit-id: d2bbce55-d026-47c2-86de-6d9f81702283`
@@ -57,6 +62,9 @@ limit, cancellation, or download contracts.
 - Run full checks and both builds.
 
 ## PR 2 — Shared worker-owned, bounded audio pipeline
+
+> **SUPERSEDED decode plan:** The worker decode architecture described as future work in this section
+> now ships as summarized in the status note above.
 
 ### Files
 

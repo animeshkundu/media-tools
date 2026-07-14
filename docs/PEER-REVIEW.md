@@ -1,6 +1,6 @@
 # Peer review - media-tools plan (cross-lab critic)
 
-Reviewer: codex-critic (gpt-5.6-sol), adversarial pass on VISION + PRODUCT-SPEC + ARCHITECTURE.
+Reviewer: independent cross-lab review, adversarial pass on VISION + PRODUCT-SPEC + ARCHITECTURE.
 Verdict: **not yet decision-ready** - the plan treats WebCodecs *availability* as proof of a
 usable cross-browser codec + performance stack. Scores: assumption-soundness 2/5, failure-mode
 coverage 1/5, alternatives 3/5. Findings below with a disposition for each. This does not block
@@ -14,7 +14,7 @@ resolve before that phase ships) · **SPEC** (add explicit policy + fixtures) ·
 |---|-----|---------|-------------|
 | 1 | Blocker | No browser × OS × codec/container support contract. FF130 WebCodecs ≠ H.264/AAC/HEVC encoder parity or hardware accel (varies by OS, esp. Linux); `.mov`=HEVC/ProRes, `.m4a`=AAC/ALAC. `isConfigSupported()` only turns unsupported flows into disabled UI, which fails the Converter persona. | **GATE** (Phase 2): ship a tested input/container/codec × Chrome/FF × Win/mac/Linux matrix; then narrow the promise, bundle targeted software codecs, or make affected tools browser-specific. Resolves the "green on both" vs "Chrome-first" contradiction. |
 | 2 | Blocker | 1-2 GB envelope unsupported by the output design: whole output accumulates in one `ArrayBuffer`→`Blob`; `File` is structured-cloned (not transferable) so a transfer needs a full read; audio decode/join expands to full PCM; FF lacks `showSaveFilePicker` → needs OPFS sink w/ quota+cancel; native RIFF WAV fails >4 GiB (needs RF64). "No cap" + "cap and warn" + current design are mutually inconsistent. | **GATE** + **SPEC**: define tested hard limits and a disk-backed sink (OPFS on FF) before large-file/video tools. |
-| 3 | High | Planned "Web Audio decode/slice in the worker" is invalid - `AudioContext`/`OfflineAudioContext` are Window-only, not in workers. | **FIX-NOW** (decision): keep Web Audio decode on the app thread, OR use `AudioDecoder`+demux, OR bundle worker WASM decode. Decide before audio join/speed. |
+| 3 | High | Planned "Web Audio decode/slice in the worker" was invalid because `AudioContext` and `OfflineAudioContext` are Window-only. | **RESOLVED:** the shipped worker uses WebCodecs `AudioDecoder` for MP3 and direct PCM parsing for WAV. `lamejs` is used only for MP3 encoding; the app thread does not decode audio. |
 | 4 | High | "Lazy ffmpeg" conflates runtime load with install size: a bundled 30 MB core ships to every user (incl. free); fetching it post-install violates MV3 remote-code; IndexedDB caching doesn't fix that. Also the library table says FF uses `@ffmpeg/core` which contradicts "FF doesn't ship ffmpeg." | **GATE** (Phase 3): choose bundle-and-accept-size / separate companion edition / drop those formats. Prove a store-loadable ffmpeg.wasm spike (COOP/COEP, nested workers, CSP). |
 | 5 | High | Media correctness under-specified: VFR, B-frame reorder, edit lists, negative/nonzero-start timestamps, fragmented MP4, A/V sync + AAC/MP3 encoder delay after cuts, rotation/PAR/color-range/HDR, multi audio/subtitle/chapter/cover tracks, stream-copy container compat. "Frame-accurate/lossless/preserve-audio" need explicit drop/preserve policies + format fixtures; QuickTime playback can't gate arbitrary WebM/VP9/Opus. | **SPEC**: add preservation policies + a fixture corpus + golden tests. |
 | 6 | High | Benchmark gates record facts, not pass/fail: no max peak memory, cancel-latency, FF runtime threshold, baseline hardware, quality/A-V-sync tolerance, or min-browser matrix. One-Chrome/one-FF manual testing won't expose platform codec variation; declare min versions + desktop-only; test tab-close/discard/update/sleep on long jobs. | **SPEC**: turn each gate into a numeric pass/fail on a declared matrix. |
@@ -28,6 +28,6 @@ resolve before that phase ships) · **SPEC** (add explicit policy + fixtures) ·
 actual encoder availability, measured acceleration, and bounded-memory output for representative
 MP4/H.264/AAC and WebM workflows - before committing to the video tools.
 
-**Lead disposition:** accept all findings. The audio flagship stands; #3 and #7 are FIX-NOW
-before further audio work; #1/#2/#4/#9 gate the video/Pro phases; #10 (validate the audio wedge
-first) is the strategic pivot and is yours to call.
+**Lead disposition:** accept all findings. The audio flagship stands; #3 is resolved by the shipped
+worker decode architecture, while #1/#2/#4/#9 gate the video/Pro phases. #10 (validate the audio
+wedge first) is the strategic pivot and is yours to call.

@@ -20,14 +20,14 @@ The `docs/` suite is primary. Read the relevant documents before changing produc
 - The durable host is the app page in [`entrypoints/app/`](entrypoints/app/), opened in a tab. It owns React state, worker supervision, progress, cancellation, and downloads.
 - The MV3 background service worker or Firefox event page is glue only. It may open the app page or handle lightweight extension events. Never run media decode, encode, mux, or other long work there.
 - Heavy media work belongs in a Web Worker with determinate progress where available, explicit cancellation, and cleanup on success, cancellation, crash, and failure. Never block the UI thread.
-- Current reality: [`entrypoints/app/App.tsx`](entrypoints/app/App.tsx) decodes audio with `AudioContext` on the main thread, then [`lib/core/worker.ts`](lib/core/worker.ts) runs WAV or MP3 cutting and encoding in [`lib/tools/audio-cutter/encode.worker.ts`](lib/tools/audio-cutter/encode.worker.ts). Do not describe decode as worker-owned until it actually is.
+- Current reality: audio decode is worker-owned. [`lib/core/worker.ts`](lib/core/worker.ts) starts [`lib/tools/audio-cutter/encode.worker.ts`](lib/tools/audio-cutter/encode.worker.ts), where WebCodecs `AudioDecoder` decodes MP3 and direct PCM parsing decodes WAV. Convert, Join, and Change Speed call `startDecodeFile`; [`entrypoints/app/App.tsx`](entrypoints/app/App.tsx) supervises worker jobs and does not decode audio on the main thread. Bundled `lamejs` is used only for MP3 encoding.
 - Processing is local and requires no upload. Bundle executable code and required WASM with the extension. The extension CSP may allow `'wasm-unsafe-eval'` for bundled WASM, but never remote code.
 - Keep required permissions minimal. Local file input and Blob downloads require no host permissions. Browser-specific APIs are optional, feature-detected enhancements, never cross-browser dependencies.
 - Maintain one WXT codebase for Chrome and Firefox. Use WXT's `browser.*` surface and capability detection instead of browser forks in shared behavior.
 
 ## Guardrails and release gates
 
-These requirements are binding even where the current seed has known debt. Do not present an unmet gate as shipped protection. The current debt includes whole-file main-thread audio decode, drifting dependency ranges, incomplete no-egress CSP, and no declared browser x OS matrix.
+These requirements are binding even where the current seed has known debt. Do not present an unmet gate as shipped protection. Bounded join normalization and Change Speed resampling still run on the app page, runtime evidence is incomplete across the declared browser and operating-system matrix, and Chrome remains build-only rather than runtime-tested.
 
 ### Engines and browser behavior
 

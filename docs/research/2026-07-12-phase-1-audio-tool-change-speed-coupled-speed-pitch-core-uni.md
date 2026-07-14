@@ -39,7 +39,7 @@ The two durable planning artifacts are the explicit exception requested for this
    (`.github/instructions/tests.instructions.md:1-14`).
 7. `package.json:7-20` defines the required validation commands: `npm run check`, `npm run build`,
    and `npm run build:firefox`. No dependency is needed for linear interpolation.
-8. The current branch is `copilot/featureaudio-cutter-harden`; it does not contain the controller
+8. The current development branch does not contain the controller
    marker. The marker therefore needs to be retained in the first planning commit and, if an
    implementation PR is later requested, on its own line in the PR body.
 

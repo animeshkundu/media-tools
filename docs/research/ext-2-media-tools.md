@@ -1,5 +1,10 @@
 # Media Tools — browser extension design doc (Chrome + Firefox, MV3)
 
+> **SUPERSEDED (2026-07-14):** Web Audio references below are preserved as original market and
+> architecture research, not as a description of the shipped decode path. The shipped engine decodes
+> MP3 with worker-side WebCodecs `AudioDecoder` and parses WAV PCM directly in the worker. Bundled
+> `lamejs` is used for MP3 encoding only.
+
 Status: research complete, decision-ready. Author: research-media. Retrieved: 2026-07-12.
 Scope: transforming a **local file the user provides** (audio + video) — 100% client-side, offline,
 no upload. Explicitly **out of scope**: capturing tab/stream audio (`chrome.tabCapture` is

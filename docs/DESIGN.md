@@ -1,4 +1,4 @@
-# Media Tools design system and screen flows
+# Audio Cutter design system and screen flows
 
 Scope: visual and interaction guidance for the shipped offline editor and planned tool surfaces. Mocks: [Home](../mocks/home.html), [Audio cutter](../mocks/audio-cutter.html), [Batch](../mocks/batch.html), and [Settings and Pro](../mocks/pro.html).
 
@@ -119,7 +119,7 @@ Build settings from the shipped card, label, input, and button tokens. Toggles u
 
 [home.html](../mocks/home.html) is the entry surface. It separates live Phase 1 audio tools from coming Phase 2 video tools, keeps unavailable tools visibly disabled, and places the offline trust signal in the header. The primary route is:
 
-1. Open Media Tools.
+1. Open Audio Cutter.
 2. Pick an available tool.
 3. Drop or choose a local file.
 4. Edit the range or output settings.

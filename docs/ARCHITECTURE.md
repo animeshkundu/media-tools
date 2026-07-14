@@ -1,20 +1,22 @@
 # Architecture - Media Tools
 
 Status: decision-ready technical design for a cross-browser MV3 WebExtension that transforms local
-audio and video files 100% client-side. This is the deep companion to [`../CLAUDE.md`](../CLAUDE.md)
-(the short, enforceable guardrails) and to [`./PRODUCT-SPEC.md`](./PRODUCT-SPEC.md). Read the market
-context in [`research/ext-2-media-tools.md`](research/ext-2-media-tools.md) first.
+audio and video files 100% client-side. This is the deep companion to
+[`./PRODUCT-SPEC.md`](./PRODUCT-SPEC.md). Read the market context in
+[`research/ext-2-media-tools.md`](research/ext-2-media-tools.md) first.
 
 ## 1. Principles that shape every decision
 
-1. **Nothing leaves the device.** No upload, no network for processing, no remote code. The manifest
-   is the proof: no host permissions, a strict CSP, and every dependency bundled. A user can read it.
+1. **Nothing leaves the device.** No upload, no network for processing, no remote code. The controls
+   are auditable: no host permissions, a strict CSP, bundled dependencies, and no upload path in the
+   shipped source. The manifest and source are both available for review.
 2. **The extension page is the workhorse, the background is glue.** MV3 backgrounds are ephemeral and
    have no DOM. All UI and all heavy compute live in a durable page opened in a tab.
 3. **One codebase, both browsers.** WXT compiles a single MV3 source to Chrome and Firefox. Anything
    that exists on only one browser is a feature-detected enhancement, never a hard dependency.
-4. **The right engine for each job, cheapest first.** Web Audio for audio, WebCodecs + mediabunny for
-   video, and ffmpeg.wasm only as a lazy Chrome-first fallback for what the browser codecs cannot do.
+4. **The right engine for each job, cheapest first.** Worker-side WebCodecs decodes MP3, direct PCM
+   parsing handles WAV, bundled `lamejs` encodes MP3, and WebCodecs + mediabunny is planned for video.
+   ffmpeg.wasm remains only a possible Chrome-first fallback for what the browser codecs cannot do.
 5. **Heavy work is cancellable and accountable.** It runs in a Web Worker with progress, an explicit
    cancel, prompt buffer release, and a benchmark gate before any heavy tool ships.
 
@@ -39,9 +41,10 @@ Three surfaces, with a strict division of labor:
                 ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ WEB WORKER  (spawned by the app page - the compute engine)                     │
-│   Tier A: Web Audio decode/slice/resample + lamejs MP3 / native WAV.          │
-│   Tier B: WebCodecs + mediabunny demux/mux/trim/convert/compress.             │
-│   Tier C: ffmpeg.wasm (lazy, Chrome-first) for GIF / exotic containers.       │
+│   Tier A: WebCodecs MP3 decode, direct WAV PCM parse, native WAV encode,       │
+│           and lamejs MP3 encode.                                                │
+│   Tier B: WebCodecs + mediabunny demux/mux/trim/convert/compress (planned).    │
+│   Tier C: ffmpeg.wasm (planned, Chrome-first) for GIF / exotic containers.    │
 │   Reports progress, honors cancel (terminate), releases buffers on exit.      │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -57,19 +60,23 @@ A full page is the only surface that is identical on both browsers and roomy eno
 patterns from the incumbent teardown (heic2jpg, zipmanager): the background orchestrates, the heavy
 work runs in a page/worker, the UI is self-rendered, nothing redirects to a website.
 
-### 2.1 Current state vs target (honest)
+### 2.1 Current shipped state
 
-The seed tool ships today, and the worker split is partial on purpose. State it plainly so the plan
-is not read as more built than it is:
+All shipped WAV and MP3 decode and final encoding are worker-owned. The app page renders and
+supervises jobs but does not decode audio:
 
-- **Today:** `entrypoints/app/App.tsx` decodes audio with Web Audio **on the main thread**
-  (`load()`), then hands the decoded channels to a worker for the **encode** step only
-  (`lib/core/worker.ts` → `lib/tools/audio-cutter/encode.worker.ts`). Decode blocks the UI briefly on
-  large files.
-- **Target:** move decode and every heavy transform into the worker as the tool set grows, so the main
-  thread only renders and supervises. This is a known, planned refactor, tracked with the Phase 2 work
-  where video decode makes a main-thread decode untenable. The message contract in §4 is designed for
-  it (the worker can own the `File`/`ArrayBuffer` from the start).
+- `lib/core/worker.ts` creates the dedicated worker backed by
+  `lib/tools/audio-cutter/encode.worker.ts`. Convert, Join, and Change Speed initiate full-file decode
+  through `startDecodeFile`; Audio Cutter delegates analysis and selected-region decode through the
+  same worker harness.
+- MP3 decode uses worker-side WebCodecs `AudioDecoder`, guarded by
+  `AudioDecoder.isConfigSupported`, and feeds `EncodedAudioChunk` values to the decoder.
+- WAV decode uses worker-side direct PCM parsing in `decodeWavRegion`.
+- `lamejs` is bundled for worker-side MP3 encoding only. It is not an MP3 decoder.
+
+Bounded join normalization and concatenation plus Change Speed resampling currently run on the app
+page before final worker encoding. The next architecture step is to move those transforms off the UI
+thread and preserve worker ownership as planned video engines and formats are added.
 
 ## 3. Tech choices and rationale
 
@@ -77,7 +84,7 @@ is not read as more built than it is:
 | --- | --- | --- |
 | Build / packaging | **WXT** 0.20.x | One MV3 source → Chrome + Firefox, HMR, `zip`/`submit` built in. Alternatives (raw webpack + manual manifests) reinvent the cross-browser transform. |
 | UI | **React 19 + TypeScript (strict) + Tailwind v4** | Already shipped; component model fits the editor UI; strict TS catches capability-detection gaps. |
-| Audio engine | **Web Audio (`OfflineAudioContext`) + `lamejs`** | Sample-accurate decode/slice/resample in the browser; WAV is native PCM; MP3 encode is not in WebCodecs, so bundled `lamejs` (LGPL) is required. Sub-MB. |
+| Audio engine | **Worker-side WebCodecs `AudioDecoder` for MP3 + direct PCM parsing for WAV + `lamejs` for MP3 encode** | Decode and final encoding stay off the UI thread. MP3 support is checked with `AudioDecoder.isConfigSupported`; WAV is parsed directly; bundled `lamejs` (LGPL) is encode-only. |
 | Video engine (primary) | **WebCodecs + `mediabunny`** | Hardware-accelerated encode/decode plus containers, **no SharedArrayBuffer**, so full speed on Firefox. Tens of KB tree-shaken. This is the "why now": WebCodecs went stable in Firefox 130 (Sept 2024). |
 | Video engine (fallback) | **`ffmpeg.wasm`, lazy, Chrome-first** | Only for what WebCodecs cannot do (GIF encode, exotic/legacy containers, HEVC). ~30 MB, so never in the base bundle; multi-thread needs cross-origin isolation that Firefox extension pages cannot get. |
 | Cross-browser API | **WXT-provided `browser.*`** | One API surface; feature-detect the Chrome-only extras. |
@@ -95,8 +102,9 @@ pay the ffmpeg tax only on the long tail, only on Chrome, only when a user invok
 
 ## 4. Data flow and message contracts
 
-The app page owns the file and the worker owns the compute. Messages are a discriminated union so
-each tool extends the same channel.
+The app page owns file selection and UI state, while the worker owns decode and final encoding.
+Bounded join and Change Speed transforms remain on the app page today. Messages are a discriminated
+union so each tool extends the same channel.
 
 ```ts
 // Page → Worker: one job per worker instance. Transfer the heavy buffers.
@@ -183,6 +191,37 @@ that would need it either use WebCodecs (GIF via `gifenc` decode path) or are di
 message on Firefox. WXT's per-browser manifest transform makes this a build-time branch, not a runtime
 hack. The ~30 MB core is fetched and instantiated on first use, so the base install stays light on both.
 
+### 6.1 Supported browsers
+
+Runtime evidence and declared API floors are intentionally separate. A successful browser build is
+not runtime support.
+
+#### Release-tested
+
+| Browser | OS and environment | Evidence | Status |
+| --- | --- | --- | --- |
+| Firefox | Ubuntu | [Firefox E2E](../.github/workflows/e2e.yml) installs the CI-provisioned Playwright Firefox, serves the built Firefox bundle, and exercises WAV input, WAV and MP3 export, cancellation, and corrupt-input handling. | Release-tested as built-bundle page coverage in the CI-provisioned Firefox version. It does not validate extension installation, `moz-extension://`, extension-page CSP behavior, or MP3 input decode. |
+| Firefox | macOS | The local [media capture](media/README.md) installs the unpacked Firefox build through geckodriver and Marionette and captures the real extension page. | Release-tested locally for the captured WAV editing and error flows. No exact Firefox or macOS version is claimed here because the committed artifacts do not record one. |
+
+The Chrome production bundle is built in CI on Ubuntu, but there is no installed-Chrome E2E suite.
+Chrome is **build-only, not runtime-tested** on any operating system.
+
+#### Declared support
+
+These minimums follow [MDN's `AudioDecoder` compatibility data](https://developer.mozilla.org/en-US/docs/Web/API/AudioDecoder#browser_compatibility).
+They are API-availability floors, not completed runtime tests.
+
+| Browser | Desktop OS | Declared minimum | Verification status |
+| --- | --- | --- | --- |
+| Firefox | Windows, macOS, and Linux | Firefox 130+ | **Declared, not yet runtime-verified** across this OS matrix or at the minimum version. |
+| Chrome | Windows, macOS, and Linux | Chrome 94+ | **Declared, not yet runtime-verified** across this OS matrix or at the minimum version. |
+
+MP3 input depends on the browser and operating system accepting the exact `AudioDecoder` MP3
+configuration. WebCodecs API availability alone does not guarantee MP3 decode, so the worker calls
+`AudioDecoder.isConfigSupported` and rejects unsupported MP3 input. Direct PCM WAV parsing does not
+depend on WebCodecs. This matrix will be refined when the upcoming installed-extension Firefox E2E
+confirms MP3 input support on the declared Firefox minimum.
+
 ## 7. Performance and memory budget
 
 - **Bundle size.** Phase 1 audio core < 1 MB. Phase 2 (mediabunny + WebCodecs) stays in the hundreds
@@ -191,8 +230,9 @@ hack. The ~30 MB core is fetched and instantiated on first use, so the base inst
 - **Memory.** WASM is 32-bit, so the address space ceiling is ~2-4 GB and a multi-GB video can OOM
   ffmpeg. Mitigations: prefer streaming (mediabunny `BlobSource`), process in chunks, cap and warn on
   very large inputs, release buffers as soon as a stage completes, and keep cancellation responsive.
-- **Responsiveness.** Heavy work never runs on the UI thread (target state; see §2.1). Progress is
-  reported at a bounded cadence so the UI stays smooth. Decode moves into the worker in Phase 2.
+- **Responsiveness.** Shipped audio decode and final encoding run in a worker. Join normalization and
+  change-speed resampling remain bounded app-page transforms, as recorded in the capability contract.
+  Planned heavy tools must keep long work off the UI thread.
 - **Benchmark gates (ship-blocking for any heavy tool).** Record installed package size, max tested
   input (for example 1080p / 10-min ≈ 1-2 GB), peak memory, wall-clock (target: compress ≥ ~0.5-1×
   realtime on the Chrome hardware path, and record the Firefox number), that cancellation mid-run
@@ -211,15 +251,15 @@ hack. The ~30 MB core is fetched and instantiated on first use, so the base inst
 - **CSP.** `content_security_policy.extension_pages` is now default-deny in `wxt.config.ts`:
   `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:
   blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none';
-  frame-src 'none'; object-src 'self'; base-uri 'none'`. `wasm-unsafe-eval` is not currently
+  frame-src 'none'; object-src 'none'; base-uri 'none'`. `wasm-unsafe-eval` is not currently
   allowed because no bundled WASM ships today; if that changes later, add it back only with the
   narrowest policy that still preserves the no-upload contract.
-- **AMO data-collection disclosure.** `browser_specific_settings.gecko.id = media-tools@local` and
+- **AMO data-collection disclosure.** `browser_specific_settings.gecko.id = audiocutter@animesh.kundus.in` and
   `data_collection_permissions: { required: ['none'] }` are set (AMO has required this since
   2025-11-03). The honest answer is "none", because there is no telemetry.
-- **Input-safety by tool.** Media decoders are the browser's own hardened codecs, so the classic
-  archive risks (zip-bomb, path traversal) do not apply here; the relevant defense is memory (large
-  input caps and streaming) and never trusting a codec to be present (capability-detect).
+- **Input-safety by tool.** MP3 decode uses the browser's WebCodecs implementation, while WAV input is
+  parsed directly in the worker. The relevant defenses are strict metadata validation, hard input and
+  decoded-memory limits, bounded reads, and checking MP3 decoder support before decode.
 - **Pro entitlement without breaking offline.** The Pro unlock is an externally purchased,
   Ed25519-signed license token validated **locally** with a bundled public key, then cached. No server
   call after activation, so the offline promise holds. Trade-offs (sharing, revocation) are documented
@@ -233,15 +273,17 @@ hack. The ~30 MB core is fetched and instantiated on first use, so the base inst
   Each `lib/tools/<name>/` ships its own test. `tests/audio.test.ts` is the seed.
 - **Capability detection.** Test that unsupported encoders are detected and the UI disables rather than
   attempts them, so a user never waits through a long job that cannot finish.
-- **Cross-browser manual drive (release-blocking).** Load the built extension and drive each tool with
-  a real file on **Chrome and Firefox**: decode, edit, export, cancel, and confirm the download plays.
-  `npm run check` (compile + lint + test) must pass first.
+- **Cross-browser runtime drive.** Current runtime evidence is recorded in §6.1. Before Chrome moves
+  beyond build-only status or a wider OS claim is made, load the built extension and drive each tool
+  with a real file: decode, edit, export, cancel, and confirm the download plays. `npm run check`
+  (compile + lint + test) must pass first.
 - **Benchmark gates (heavy tools).** The §7 gate table is executed and its numbers recorded before a
   heavy tool is released. A tool that is not green on both browsers does not ship; the audio phase
   ships regardless, since it has no heavy-tool risk.
 - **CI.** `.github/workflows/ci.yml` runs `compile → lint → test → build → build:firefox` on every
-  push and PR and uploads the `.output/` artifacts, so a broken build or type error is caught before
-  merge. Publishing is a separate tag-triggered workflow (see [`./PUBLISHING.md`](./PUBLISHING.md)).
+  push and PR and uploads the `.output/` artifacts. `.github/workflows/e2e.yml` separately runs the
+  Firefox browser coverage described in §6.1. Publishing is a separate tag-triggered workflow (see
+  [`./PUBLISHING.md`](./PUBLISHING.md)).
 
 ## 10. Library table
 
@@ -250,7 +292,7 @@ Shipped-now vs planned-per-phase. Ship only MIT / MPL / LGPL; never the GPL ffmp
 | Package | Version | SPDX | Why | Risk / mitigation |
 | --- | --- | --- | --- | --- |
 | `react` / `react-dom` | 19.2.4 | MIT | App UI + renderer | none |
-| `lamejs` | 1.2.1 (shipped) | LGPL-3.0-or-later | MP3 encode in a worker (MP3 not in WebCodecs) | Unmaintained; pin + vendored at `public/vendor/lame.min.js`. LGPL dynamic use is fine. |
+| `lamejs` | 1.2.1 (shipped) | LGPL-3.0-or-later | MP3 encode only in a worker; it is not used for decode | Unmaintained; pin + vendored at `public/vendor/lame.min.js`. LGPL dynamic use is fine. |
 | `mediabunny` | latest (Phase 2) | MPL-2.0 | WebCodecs muxer/demuxer + trim/convert/compress; zero-dep; no SAB → full speed on Firefox | Newer library; track releases; capability-detect encoders. |
 | `gifenc` | latest (Phase 3) | MIT | GIF encode (not in WebCodecs) | Small, low risk. |
 | `SoundTouchJS` | latest (Phase 3) | LGPL-2.1 | Independent pitch / time-stretch (phase vocoder) | LGPL fine. |

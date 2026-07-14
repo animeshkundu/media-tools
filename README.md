@@ -1,6 +1,6 @@
 # Audio Cutter
 
-Private, offline audio cutting for Firefox and Chrome, entirely in your browser.
+Audio Cutter is the shipped flagship of the `media-tools` repository: private, offline WAV and MP3 cutting and editing for Firefox and Chrome, entirely in your browser.
 
 ![Audio Cutter showing a loaded waveform and trim controls](docs/media/screenshots/audio-cutter-waveform.png)
 

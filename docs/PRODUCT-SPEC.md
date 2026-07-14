@@ -270,11 +270,11 @@ Every heavy tool, and the Phase 2 video compressor in particular, must record an
 
 A tool is not “green” when only one browser passes. Unsupported encoders must be detected before a long run, not discovered after it.
 
-The shipped audio seed currently decodes and copies channels on the main thread in `entrypoints/app/App.tsx`. Only encoding runs through `lib/core/worker.ts`. Moving decode and all growing heavy transforms into workers is a planned requirement, not a claim about the current build.
+The shipped audio pipeline delegates WAV and MP3 decode to the worker created by `lib/core/worker.ts`. MP3 uses WebCodecs `AudioDecoder`, WAV uses direct PCM parsing, and bundled `lamejs` is used only for MP3 encoding. `entrypoints/app/App.tsx` supervises jobs and does not decode audio on the main thread.
 
 ### Bundle size
 
-- **Phase 1:** keep the base package below 1 MB with Web Audio and bundled `lamejs`.
+- **Phase 1:** keep the base package below 1 MB with worker-side WebCodecs MP3 decode, direct WAV PCM parsing, and bundled `lamejs` for MP3 encode only.
 - **Phase 2:** keep WebCodecs and mediabunny additions to hundreds of KB through tree-shaking and targeted imports.
 - **Phase 3:** load roughly 30 MB ffmpeg.wasm assets only for tools that need them. They must never be part of the base bundle or common startup path.
 

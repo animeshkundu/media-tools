@@ -35,7 +35,7 @@ Initial developer-preview release. Private, offline audio editing that runs enti
 
 - Audio input, processing, and output remain local, with no uploads, accounts, or telemetry.
 - Zero install-time permissions and a strict no-egress extension-page Content Security Policy.
-- Machine-verified no-network builds: CI scans both browser bundles for network primitives and fails if any are present.
+- No-network build check: CI greps both built browser bundles for common network primitives (`fetch`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, and `EventSource`) as one defense-in-depth layer.
 
 [Unreleased]: https://github.com/animeshkundu/media-tools/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/animeshkundu/media-tools/releases/tag/v0.1.0

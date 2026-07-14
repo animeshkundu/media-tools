@@ -65,7 +65,7 @@ the accessible role/name is insufficient, and treat a missing accessible role/na
 
 3. **Build the isolated harness.**
    - Create a fresh Firefox profile and download directory for every run.
-   - Bind `media-tools@local` to a deterministic test UUID, temporarily install the built artifact, and
+   - Bind `audiocutter@animesh.kundus.in` to a deterministic test UUID, temporarily install the built artifact, and
      navigate to the resulting `moz-extension://` app URL.
    - Capture browser/driver logs, page errors, attempted requests, and final downloaded files.
    - Guarantee process, profile, object, and file cleanup in a top-level `finally` path.
