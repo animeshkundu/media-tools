@@ -4,7 +4,7 @@ Audio Cutter is the shipped flagship of the `media-tools` repository: private, o
 
 ![Audio Cutter showing a loaded waveform and trim controls](docs/media/screenshots/audio-cutter-waveform.png)
 
-[![CI](https://img.shields.io/github/actions/workflow/status/animeshkundu/media-tools/ci.yml?branch=main&label=CI)](https://github.com/animeshkundu/media-tools/actions/workflows/ci.yml) [![Firefox E2E](https://img.shields.io/github/actions/workflow/status/animeshkundu/media-tools/ci.yml?branch=main&label=Firefox%20E2E)](https://github.com/animeshkundu/media-tools/actions/workflows/ci.yml) [![MIT License](https://img.shields.io/github/license/animeshkundu/media-tools?label=License)](LICENSE) [![Release](https://img.shields.io/github/v/release/animeshkundu/media-tools?include_prereleases&label=Release&color=047857)](https://github.com/animeshkundu/media-tools/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/animeshkundu/media-tools/ci.yml?branch=main&label=CI)](https://github.com/animeshkundu/media-tools/actions/workflows/ci.yml) [![Firefox E2E](https://img.shields.io/github/actions/workflow/status/animeshkundu/media-tools/e2e.yml?branch=main&label=Firefox%20E2E)](https://github.com/animeshkundu/media-tools/actions/workflows/e2e.yml) [![MIT License](https://img.shields.io/github/license/animeshkundu/media-tools?label=License)](LICENSE) [![Release](https://img.shields.io/github/v/release/animeshkundu/media-tools?include_prereleases&label=Release&color=047857)](https://github.com/animeshkundu/media-tools/releases)
 
 [Security policy](./SECURITY.md) · [Changelog](./docs/CHANGELOG.md) · [Contributing](./CONTRIBUTING.md)
 

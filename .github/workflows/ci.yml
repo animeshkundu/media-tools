@@ -1,4 +1,3 @@
-# Activates after this local Git repository is pushed to GitHub and repository secrets are configured.
 name: CI
 
 on: [push, pull_request]

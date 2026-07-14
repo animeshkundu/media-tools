@@ -200,8 +200,8 @@ not runtime support.
 
 | Browser | OS and environment | Evidence | Status |
 | --- | --- | --- | --- |
-| Firefox | Ubuntu | [Firefox E2E](../.github/workflows/e2e.yml) installs the CI-provisioned Playwright Firefox, serves the built Firefox bundle, and exercises WAV input, WAV and MP3 export, cancellation, and corrupt-input handling. | Release-tested as built-bundle page coverage in the CI-provisioned Firefox version. It does not validate extension installation, `moz-extension://`, extension-page CSP behavior, or MP3 input decode. |
-| Firefox | macOS | The local [media capture](media/README.md) installs the unpacked Firefox build through geckodriver and Marionette and captures the real extension page. | Release-tested locally for the captured WAV editing and error flows. No exact Firefox or macOS version is claimed here because the committed artifacts do not record one. |
+| Firefox | Ubuntu | [Firefox E2E](../.github/workflows/e2e.yml) installs the built add-on in the CI-provisioned Firefox (Firefox 151 on Ubuntu at the time of writing) and drives its real `moz-extension://` app page through geckodriver. It exercises WAV cut and export, MP3 export, MP3 input, join, change speed, download signatures, and no-egress resource inspection. | Release-tested as an installed extension with the extension-page CSP enforced. On CI Firefox 151 the MP3 input took the supported branch (decoded via `AudioDecoder` and re-exported); the assertion stays capability-scoped, so an unsupported Firefox must instead show the clear decoder error without a partial download. |
+| Firefox | macOS | The local [media capture](media/README.md) and installed-extension E2E use geckodriver and Marionette to install the unpacked Firefox build and drive its real extension page. | Release-tested locally for the captured WAV editing and error flows. The installed-extension E2E also proved MP3 input decode and WAV re-export in the locally provisioned Firefox. No exact Firefox or macOS version is claimed here. |
 
 The Chrome production bundle is built in CI on Ubuntu, but there is no installed-Chrome E2E suite.
 Chrome is **build-only, not runtime-tested** on any operating system.
@@ -219,8 +219,13 @@ They are API-availability floors, not completed runtime tests.
 MP3 input depends on the browser and operating system accepting the exact `AudioDecoder` MP3
 configuration. WebCodecs API availability alone does not guarantee MP3 decode, so the worker calls
 `AudioDecoder.isConfigSupported` and rejects unsupported MP3 input. Direct PCM WAV parsing does not
-depend on WebCodecs. This matrix will be refined when the upcoming installed-extension Firefox E2E
-confirms MP3 input support on the declared Firefox minimum.
+depend on WebCodecs. The installed-extension Firefox E2E probes the same MP3 configuration before
+loading a real generated MP3. The local macOS run proved MP3 input and WAV re-export in its
+Selenium-Manager-provisioned Firefox. The Ubuntu CI run on Firefox 151 took the supported branch: the
+probed MP3 configuration was accepted by `AudioDecoder`, decoded, and re-exported. The test stays
+capability-scoped so it remains correct if a future or minimum-version Firefox lacks the codec: an
+unsupported result requires the clear user-facing decoder error, an intact app, and no partial
+download.
 
 ## 7. Performance and memory budget
 
