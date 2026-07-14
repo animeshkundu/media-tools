@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#07110f" />
+  <meta name="description" content="Audio Cutter documentation: local editing, privacy boundaries, permissions, supported audio, and safety limits." />
+  <title>Audio Cutter docs</title>
+  <link rel="canonical" href="https://animeshkundu.github.io/media-tools/docs/" />
+  <link rel="icon" href="/media-tools/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/media-tools/styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <header class="site-header">
+    <a class="brand" href="/media-tools/" aria-label="Audio Cutter home">Audio Cutter</a>
+    <nav aria-label="Site">
+      <ul class="site-nav">
+        <li><a href="/media-tools/">Home</a></li>
+        <li><a href="/media-tools/docs/" aria-current="page">Docs</a></li>
+        <li><a href="https://github.com/animeshkundu/media-tools">Source</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <div class="page-wrap">
+      <div class="container">
+
+        <header class="page-header">
+          <div>
+            <p class="eyebrow">Documentation</p>
+            <h1>Audio Cutter docs</h1>
+            <p class="lede">How to cut audio locally, what the extension supports, and how to audit its privacy boundaries.</p>
+          </div>
+        </header>
+
+        <section aria-labelledby="using-heading">
+          <div class="card">
+            <h2 id="using-heading">Using Audio Cutter</h2>
+            <p>Audio Cutter is a browser extension. Click its toolbar icon to open the durable editor page. No account or additional setup is needed.</p>
+
+            <h3>Cutting audio</h3>
+            <ol>
+              <li>Drop a WAV or MP3 onto the drop zone, or focus it and press <kbd>Enter</kbd> or <kbd>Space</kbd> to choose a file.</li>
+              <li>Wait while the file is decoded locally and its waveform appears.</li>
+              <li>Drag the gold handles, or enter exact In and Out times, to select the audio you want to keep.</li>
+              <li>Choose WAV or MP3 output and select <strong>Cut &amp; download</strong>.</li>
+              <li>The editor encodes the selection in a worker and saves it through a standard browser download.</li>
+            </ol>
+
+            <h3>Joining and changing speed</h3>
+            <p>Join mode combines tracks in your chosen order and normalizes differing channel layouts or sample rates when needed. Speed mode supports 0.25× through 4× and shows the estimated result duration; pitch changes with speed.</p>
+
+            <h3>Cancelling work</h3>
+            <p>Select <strong>Cancel</strong> during a worker job to stop it. Audio Cutter reports progress and does not create a partial download after cancellation or failure.</p>
+          </div>
+        </section>
+
+        <section aria-labelledby="privacy-heading">
+          <div class="card">
+            <h2 id="privacy-heading">Local processing and privacy boundaries</h2>
+            <p>The precise promise is:</p>
+            <blockquote class="contract-block">Your audio never leaves your device; no uploads, no accounts, no telemetry; all processing local.</blockquote>
+            <p>Audio Cutter has no server dependency. WAV and MP3 input, waveform analysis, editing, encoding, and output all stay in the extension page and its workers. Encoder assets ship inside the extension.</p>
+            <p>The claim rests first on auditable behavior: the extension declares zero permissions, CI scans both production bundles for <code>fetch</code>, <code>XMLHttpRequest</code>, <code>WebSocket</code>, <code>sendBeacon</code>, and <code>EventSource</code>, and source review verifies that its only tab-opening call resolves to its own bundled page. The CSP is defense in depth rather than proof on its own, because it does not restrict top-level navigation.</p>
+            <p>“Offline” and “no network” describe the extension's audio-processing behavior. This public documentation is a normal HTTPS website, so visiting it uses your network normally.</p>
+
+            <h3>Verify the contract</h3>
+            <ul>
+              <li>Review the <a href="https://github.com/animeshkundu/media-tools/blob/main/docs/PEER-REVIEW.md">peer review</a> and <a href="https://github.com/animeshkundu/media-tools/blob/main/docs/CAPABILITY-CONTRACT.md">capability contract</a>.</li>
+              <li>Inspect both built manifests for the permission list and content-security policy.</li>
+              <li>Search the production bundles for network primitives, as CI does.</li>
+              <li>Observe the extension's network panel while editing: no requests should be made.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section aria-labelledby="permissions-heading">
+          <div class="card">
+            <h2 id="permissions-heading">Permissions and CSP</h2>
+            <table class="data-table" aria-label="Extension permissions">
+              <thead>
+                <tr>
+                  <th scope="col">Permission</th>
+                  <th scope="col">When requested</th>
+                  <th scope="col">Why</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><em>None</em></td>
+                  <td>Never</td>
+                  <td>The manifest declares <code>"permissions": []</code>. Blob downloads use the browser's standard page download and need no <code>downloads</code> permission.</td>
+                </tr>
+              </tbody>
+            </table>
+            <h3>Extension-page content-security policy</h3>
+            <div class="receipt-code">default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'self'; base-uri 'none'</div>
+            <p><code>connect-src 'none'</code> blocks outbound connections from extension pages. <code>form-action 'none'</code> blocks form submissions, and <code>frame-src 'none'</code> blocks frames. CI checks the literal policy in both built manifests.</p>
+          </div>
+        </section>
+
+        <section aria-labelledby="formats-heading">
+          <div class="card">
+            <h2 id="formats-heading">Formats and output behavior</h2>
+            <ul>
+              <li><strong>Input:</strong> WAV and MP3 for cutting, joining, speed changes, and conversion.</li>
+              <li><strong>WAV output:</strong> lossless PCM audio.</li>
+              <li><strong>MP3 output:</strong> 192 kbps encoded audio.</li>
+              <li><strong>Speed range:</strong> 0.25× to 4×, with speed and pitch changing together.</li>
+              <li><strong>Channels:</strong> mono and stereo are accepted; joins normalize mismatched layouts.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section aria-labelledby="limits-heading">
+          <div class="card">
+            <h2 id="limits-heading">Safety limits</h2>
+            <p>Limits keep unexpectedly large or malformed audio from consuming unbounded browser resources.</p>
+            <ul>
+              <li><strong>Input file:</strong> 64 MB maximum.</li>
+              <li><strong>Decoded and in-flight PCM:</strong> 256 MB limits.</li>
+              <li><strong>Channels:</strong> mono or stereo only.</li>
+              <li><strong>Processing:</strong> cancellable workers and a watchdog bound active jobs.</li>
+              <li><strong>Failure behavior:</strong> corrupt or unsupported input reports an error and produces no misleading or partial download.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section aria-labelledby="support-heading">
+          <div class="card">
+            <h2 id="support-heading">Install, support, and source</h2>
+            <p>Audio Cutter is a developer preview for Firefox and Chrome. Signed store listings are coming; current packages are available from the latest GitHub release.</p>
+            <ul>
+              <li><strong>Latest release:</strong> <a href="https://github.com/animeshkundu/media-tools/releases/latest">download Audio Cutter</a></li>
+              <li><strong>Source code:</strong> <a href="https://github.com/animeshkundu/media-tools">github.com/animeshkundu/media-tools</a></li>
+              <li><strong>Issues:</strong> <a href="https://github.com/animeshkundu/media-tools/issues">GitHub Issues</a></li>
+              <li><strong>Security:</strong> <a href="https://github.com/animeshkundu/media-tools/security/policy">security policy</a></li>
+            </ul>
+          </div>
+        </section>
+
+        <footer class="trust-chips" aria-label="Privacy summary">
+          <span>No uploads</span>
+          <span>No account</span>
+          <span>No install permissions</span>
+          <span>No network from the extension</span>
+        </footer>
+
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="/media-tools/">Home</a> ·
+      <a href="/media-tools/docs/">Docs</a> ·
+      <a href="https://github.com/animeshkundu/media-tools">Source on GitHub</a>
+    </p>
+  </footer>
+</body>
+</html>

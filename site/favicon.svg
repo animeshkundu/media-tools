@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Audio Cutter">
+  <rect width="32" height="32" rx="7" fill="#07110f" />
+  <path d="M5 11h3l1.7-4 3.1 18 3.1-15 2.8 11 2.2-9 1.9 6H27" fill="none" stroke="#34d399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M23.5 7.5v17" fill="none" stroke="#fbbf24" stroke-width="2.2" stroke-linecap="round" />
+</svg>

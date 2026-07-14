@@ -1,0 +1,198 @@
+name: Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  pull_request:
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# Allow only one concurrent deployment; cancel in-flight runs for the same group.
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate static site
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        # actions/checkout v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Verify required files exist
+        run: |
+          set -e
+          required=(
+            site/index.html
+            site/docs/index.html
+            site/styles.css
+            site/favicon.svg
+            site/.well-known/security.txt
+            site/media/audio-cutter-waveform.png
+            site/media/audio-cutter-demo-poster.png
+            site/media/audio-cutter-demo.mp4
+            site/media/audio-cutter-demo.webm
+          )
+          for f in "${required[@]}"; do
+            if [ ! -f "$f" ]; then
+              echo "ERROR: required file missing: $f" >&2
+              exit 1
+            fi
+          done
+          echo "All required files present."
+
+      - name: Verify the canonical tagline is present
+        run: |
+          set -e
+          tagline='Private, offline audio cutting for Firefox and Chrome, entirely in your browser.'
+          if ! grep -qF -- "$tagline" site/index.html; then
+            echo "ERROR: site/index.html is missing the canonical tagline." >&2
+            exit 1
+          fi
+          echo "Canonical tagline present."
+
+      - name: Check internal URLs use /media-tools/ base path
+        run: |
+          set -e
+          bad=0
+          # href or src values that start with / but NOT /media-tools/
+          # Allows absolute https:// links and relative paths (no leading slash).
+          while IFS= read -r -d '' file; do
+            # Find href="/..." or src="/..." that do NOT start with /media-tools/
+            if grep -Pn '(href|src)="\/(?!media-tools\/)' "$file"; then
+              echo "ERROR: $file contains a root-relative URL that is not /media-tools/-rooted." >&2
+              bad=1
+            fi
+          done < <(find site -name '*.html' -print0)
+          if [ "$bad" -eq 1 ]; then
+            exit 1
+          fi
+          echo "All internal HTML URLs are /media-tools/-rooted."
+
+      - name: Confirm stylesheet reference resolves inside site/
+        run: |
+          set -e
+          # Every HTML file must link /media-tools/styles.css
+          bad=0
+          while IFS= read -r -d '' file; do
+            if ! grep -q 'href="/media-tools/styles.css"' "$file"; then
+              echo "ERROR: $file does not reference /media-tools/styles.css" >&2
+              bad=1
+            fi
+          done < <(find site -name '*.html' -print0)
+          [ "$bad" -eq 0 ] || exit 1
+          echo "Stylesheet reference verified in all HTML files."
+
+      - name: Check no external executable resources are referenced
+        run: |
+          set -e
+          bad=0
+          # Reject <script src="http..."> or <link rel="preload"> pointing outside,
+          # or any src/href pointing to http(s):// that is not the GitHub repo or a stylesheet.
+          while IFS= read -r -d '' file; do
+            # External script tags
+            if grep -Pn '<script[^>]+src="https?://' "$file"; then
+              echo "ERROR: $file contains an external <script src>." >&2
+              bad=1
+            fi
+            # Remote @import in HTML
+            if grep -Pn "@import\s+url\(['\"]?https?://" "$file"; then
+              echo "ERROR: $file contains a remote @import." >&2
+              bad=1
+            fi
+          done < <(find site -name '*.html' -print0)
+          while IFS= read -r -d '' file; do
+            if grep -Pn "@import\s+url\(['\"]?https?://" "$file"; then
+              echo "ERROR: $file contains a remote @import." >&2
+              bad=1
+            fi
+          done < <(find site -name '*.css' -print0)
+          [ "$bad" -eq 0 ] || exit 1
+          echo "No external executable resources found."
+
+      - name: Check semantic and accessibility markers
+        run: |
+          set -e
+          bad=0
+          while IFS= read -r -d '' file; do
+            # Require skip link
+            if ! grep -q 'class="skip-link"' "$file"; then
+              echo "ERROR: $file is missing a skip link (.skip-link)." >&2
+              bad=1
+            fi
+            # Require <main> landmark
+            if ! grep -q '<main' "$file"; then
+              echo "ERROR: $file is missing a <main> landmark." >&2
+              bad=1
+            fi
+            # Require <h1>
+            if ! grep -q '<h1' "$file"; then
+              echo "ERROR: $file is missing an <h1>." >&2
+              bad=1
+            fi
+            # Require lang attribute on <html>
+            if ! grep -q '<html lang=' "$file"; then
+              echo "ERROR: $file is missing lang attribute on <html>." >&2
+              bad=1
+            fi
+            # Require color-scheme meta
+            if ! grep -q 'name="color-scheme"' "$file"; then
+              echo "ERROR: $file is missing color-scheme meta tag." >&2
+              bad=1
+            fi
+          done < <(find site -name '*.html' -print0)
+          [ "$bad" -eq 0 ] || exit 1
+          echo "Semantic and accessibility markers verified."
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    # Only deploy on pushes to main or manual dispatch — never on pull requests.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: validate
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Check out repository
+        # actions/checkout v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Configure Pages
+        # actions/configure-pages v6.0.0
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
+
+      - name: Upload Pages artifact
+        # actions/upload-pages-artifact v5.0.0
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
+        with:
+          path: site/
+          # .well-known/ is a dot-directory, which upload-pages-artifact excludes
+          # by default; include it so the security.txt is served.
+          include-hidden-files: true
+
+      - name: Deploy to GitHub Pages
+        # actions/deploy-pages v5.0.0
+        id: deploy
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
