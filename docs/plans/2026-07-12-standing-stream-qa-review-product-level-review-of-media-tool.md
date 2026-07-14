@@ -22,13 +22,13 @@ limit, cancellation, or download contracts.
 - `package-lock.json`
 - `.github/workflows/ci.yml`
 - a production-manifest assertion under `tests/` or a small repository verification module
-- `THIRD-PARTY.md`
+- `docs/THIRD-PARTY.md`
 - `docs/VISION.md`
 - `docs/PRODUCT-SPEC.md`
 - `docs/ARCHITECTURE.md`
 - `docs/PUBLISHING.md`
 - `docs/DESIGN.md` where privacy copy is normative
-- `LEARNINGS.md` and `CHANGELOG.md`
+- `docs/LEARNINGS.md` and `docs/CHANGELOG.md`
 
 ### Steps
 
@@ -67,8 +67,8 @@ limit, cancellation, or download contracts.
 - focused worker, limit, lifecycle, and malformed-input tests under `tests/`
 - a small deterministic media fixture set under `tests/fixtures/`
 - `docs/adr/` for the worker decode engine decision
-- `docs/ARCHITECTURE.md`, `docs/PRODUCT-SPEC.md`, `THIRD-PARTY.md`, `LEARNINGS.md`, and
-  `CHANGELOG.md`
+- `docs/ARCHITECTURE.md`, `docs/PRODUCT-SPEC.md`, `docs/THIRD-PARTY.md`, `docs/LEARNINGS.md`, and
+  `docs/CHANGELOG.md`
 - `package.json` and `package-lock.json` only if the selected, audited worker decoder/demuxer needs a
   new exact-pinned dependency
 
@@ -113,7 +113,7 @@ limit, cancellation, or download contracts.
 - `components/Progress.tsx`
 - `assets/tailwind.css`
 - cutter tests and round-trip fixtures under `tests/`
-- `docs/DESIGN.md`, `docs/PRODUCT-SPEC.md`, `LEARNINGS.md`, and `CHANGELOG.md`
+- `docs/DESIGN.md`, `docs/PRODUCT-SPEC.md`, `docs/LEARNINGS.md`, and `docs/CHANGELOG.md`
 - `mocks/audio-cutter.html` if the accepted interaction differs from the current mock
 
 ### Steps
@@ -157,7 +157,7 @@ limit, cancellation, or download contracts.
 - the app tool picker/router under `entrypoints/app/`
 - shared components only where genuinely tool-agnostic
 - focused join tests and fixtures under `tests/`
-- `ROADMAP.md`, `docs/PRODUCT-SPEC.md`, `docs/DESIGN.md`, `LEARNINGS.md`, and `CHANGELOG.md`
+- `docs/ROADMAP.md`, `docs/PRODUCT-SPEC.md`, `docs/DESIGN.md`, `docs/LEARNINGS.md`, and `docs/CHANGELOG.md`
 - `mocks/home.html` or `mocks/batch.html` only if accepted behavior changes
 
 ### Steps
@@ -186,7 +186,7 @@ limit, cancellation, or download contracts.
 - new `lib/tools/audio-convert/` module with UI and worker integration
 - app tool picker/router
 - focused conversion tests and fixtures
-- `ROADMAP.md`, `docs/PRODUCT-SPEC.md`, `docs/DESIGN.md`, `LEARNINGS.md`, and `CHANGELOG.md`
+- `docs/ROADMAP.md`, `docs/PRODUCT-SPEC.md`, `docs/DESIGN.md`, `docs/LEARNINGS.md`, and `docs/CHANGELOG.md`
 
 ### Steps
 
@@ -215,7 +215,7 @@ limit, cancellation, or download contracts.
 - new `lib/tools/audio-speed/` module with UI, DSP, and worker integration
 - app tool picker/router
 - focused speed tests and tonal fixtures
-- `ROADMAP.md`, `docs/PRODUCT-SPEC.md`, `docs/DESIGN.md`, `LEARNINGS.md`, and `CHANGELOG.md`
+- `docs/ROADMAP.md`, `docs/PRODUCT-SPEC.md`, `docs/DESIGN.md`, `docs/LEARNINGS.md`, and `docs/CHANGELOG.md`
 
 ### Steps
 
@@ -240,9 +240,9 @@ limit, cancellation, or download contracts.
 
 - browser production-artifact tests and deterministic fixtures
 - `.github/workflows/ci.yml`
-- `docs/PRODUCT-SPEC.md`, `docs/DESIGN.md`, `docs/ARCHITECTURE.md`, and `ROADMAP.md`
+- `docs/PRODUCT-SPEC.md`, `docs/DESIGN.md`, `docs/ARCHITECTURE.md`, and `docs/ROADMAP.md`
 - compatibility and benchmark evidence under `docs/research/`
-- `LEARNINGS.md` and `CHANGELOG.md`
+- `docs/LEARNINGS.md` and `docs/CHANGELOG.md`
 
 ### Steps
 

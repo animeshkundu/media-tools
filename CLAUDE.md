@@ -12,8 +12,8 @@ The `docs/` suite is primary. Read the relevant documents before changing produc
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - system surfaces, engine choices, worker contracts, module boundaries, and testing strategy.
 - [`docs/PUBLISHING.md`](docs/PUBLISHING.md) - AMO and Chrome Web Store packaging, source submission, secrets, and release process.
 - [`docs/PEER-REVIEW.md`](docs/PEER-REVIEW.md) - cross-lab critic findings, severity, and accepted dispositions. Its FIX-NOW, SPEC, and GATE items are binding.
-- [`ROADMAP.md`](ROADMAP.md) - phase order and current delivery status.
-- [`.docs/`](.docs/) - original market and competitor research. Use it as background; the `docs/` suite is authoritative for current decisions.
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) - phase order and current delivery status.
+- [`docs/research/`](docs/research/) - original market and competitor research. Use it as background; the `docs/` suite is authoritative for current decisions.
 
 ## Architecture - do not violate
 
@@ -55,7 +55,7 @@ These requirements are binding even where the current seed has known debt. Do no
 ### Correctness and release gates
 
 - Define explicit preserve, drop, normalize, and transcode policies for variable frame rate, B-frame reorder, edit lists, negative or nonzero timestamps, fragmented MP4, encoder delay, A/V sync, rotation, pixel aspect ratio, color range, HDR, multiple audio tracks, subtitles, chapters, cover art, and stream-copy container compatibility.
-- Pin exact versions for every shipped dependency, codec, and media engine. Do not use `latest`, `^`, or other drifting ranges for shipped dependencies. [`THIRD-PARTY.md`](THIRD-PARTY.md) must record each pinned version, SPDX license, purpose, notices, source or relink obligations, and artifact-specific build details.
+- Pin exact versions for every shipped dependency, codec, and media engine. Do not use `latest`, `^`, or other drifting ranges for shipped dependencies. [`docs/THIRD-PARTY.md`](docs/THIRD-PARTY.md) must record each pinned version, SPDX license, purpose, notices, source or relink obligations, and artifact-specific build details.
 - Audit the exact ffmpeg build flags and linked libraries before publishing. Do not ship GPL cores accidentally. Complete patent and licensing review for AAC, AVC, HEVC, and other gated codecs, and keep reproducible source packages for AMO review.
 - A malformed-media fuzz and adversarial corpus is a release gate, not optional coverage. Include malformed and truncated containers, corrupt `moov` boxes and atoms, mismatched codec metadata, huge and zero-dimension frames, unusual sample rates and channel layouts, extreme track counts and durations, timestamp edge cases, and encoder backpressure.
 - Turn performance gates into numeric pass or fail criteria: peak memory, maximum input, cancellation latency, wall-clock thresholds per browser, baseline hardware, output quality, A/V sync tolerance, and playback or seek behavior. Recording a number without a threshold is not a gate.
@@ -94,4 +94,4 @@ Use only scripts defined in [`package.json`](package.json).
 
 ## Roadmap
 
-Follow [`ROADMAP.md`](ROADMAP.md) and build in phase order. **Audio Cutter** in [`lib/tools/audio-cutter/`](lib/tools/audio-cutter/) is the shipped flagship and seed; extend its drop-first, progress, cancellation, download, and offline UX rather than bypassing it.
+Follow [`docs/ROADMAP.md`](docs/ROADMAP.md) and build in phase order. **Audio Cutter** in [`lib/tools/audio-cutter/`](lib/tools/audio-cutter/) is the shipped flagship and seed; extend its drop-first, progress, cancellation, download, and offline UX rather than bypassing it.

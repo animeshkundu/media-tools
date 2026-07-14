@@ -21,4 +21,4 @@ npm run build
 npm run build:firefox
 ```
 
-Chrome and Firefox production artifacts are emitted under `.output/`. See `CLAUDE.md` for architecture constraints and `ROADMAP.md` for the build order.
+Chrome and Firefox production artifacts are emitted under `.output/`. See `CLAUDE.md` for architecture constraints and `docs/ROADMAP.md` for the build order.

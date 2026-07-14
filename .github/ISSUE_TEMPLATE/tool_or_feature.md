@@ -1,6 +1,6 @@
 ---
 name: Tool or feature
-about: Propose a new tool or an enhancement (see ROADMAP.md)
+about: Propose a new tool or an enhancement (see docs/ROADMAP.md)
 title: ""
 labels: enhancement
 ---

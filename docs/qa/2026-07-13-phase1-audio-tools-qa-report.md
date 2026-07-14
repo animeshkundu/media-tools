@@ -474,7 +474,7 @@ All shipped DESIGN.md tokens were checked against the production source. No dive
 `mocks/home.html` depicts a home screen with Audio Cutter, Audio Joiner, Audio Converter, and Speed
 Changer as distinct cards. The shipped app (`entrypoints/app/App.tsx`) renders only the Audio Cutter
 with no navigation, tool picker, or routing. The three Phase-1 cores (`join`, `change-speed`,
-`convert`) are correctly implemented as pure logic modules but have no UI entry point. ROADMAP.md
+`convert`) are correctly implemented as pure logic modules but have no UI entry point. docs/ROADMAP.md
 correctly marks these as in-progress.
 
 This is an expected gap at the current phase and is not a bug. The home mock represents a target
@@ -508,9 +508,9 @@ Every DESIGN.md state table entry was checked against `App.tsx`:
 
 All status strings match.
 
-### 6.5 `THIRD-PARTY.md` is missing required fields for `lamejs`
+### 6.5 `docs/THIRD-PARTY.md` is missing required fields for `lamejs`
 
-**File:** `THIRD-PARTY.md`
+**File:** `docs/THIRD-PARTY.md`
 
 The current BOM records the package name, version, SPDX licence, and purpose. The guardrails require
 notices, source/relink obligations, and artifact-specific build details. For `lamejs` (LGPL-3.0):
@@ -520,11 +520,11 @@ notices, source/relink obligations, and artifact-specific build details. For `la
 - `lame.min.js` is a minified custom build; the exact build command or source version that produced it is not recorded.
 - The store submission (AMO and Chrome Web Store) requires a corresponding source package for LGPL works.
 
-**Work item WI-13 — Complete `lamejs` provenance in `THIRD-PARTY.md`**
+**Work item WI-13 — Complete `lamejs` provenance in `docs/THIRD-PARTY.md`**
 
-- Target file: `THIRD-PARTY.md`
+- Target file: `docs/THIRD-PARTY.md`
 - Add: the full LGPL-3.0 notice text, a statement of the corresponding-source obligation (AMO requires a `sources.zip` for LGPL works), the exact build command or provenance note for `public/vendor/lame.min.js`, and its SHA-256 digest.
-- Acceptance criterion: `THIRD-PARTY.md` records everything required by the guardrails and by AMO's source-submission review checklist for an LGPL-licensed file in the package.
+- Acceptance criterion: `docs/THIRD-PARTY.md` records everything required by the guardrails and by AMO's source-submission review checklist for an LGPL-licensed file in the package.
 - Estimated effort: ≤ 30 min.
 
 ---
@@ -605,7 +605,7 @@ the minimum of their range, no drift has occurred yet. The fix is to drop the ca
 | WI-10 | Verify and fix muted-text contrast ratios | `entrypoints/app/App.tsx`, `assets/tailwind.css` | ≤ 30 min |
 | WI-11 | Add semantic prefixes to error and success status messages | `entrypoints/app/App.tsx` | ≤ 20 min |
 | WI-12 | Add Chrome e2e smoke test mirroring the Firefox e2e test | `tests/e2e/audio-cutter.chrome.spec.ts` (new) | ≤ 45 min |
-| WI-13 | Complete `lamejs` provenance in `THIRD-PARTY.md` | `THIRD-PARTY.md` | ≤ 30 min |
+| WI-13 | Complete `lamejs` provenance in `docs/THIRD-PARTY.md` | `docs/THIRD-PARTY.md` | ≤ 30 min |
 | WI-14 | Pin exact versions in `package.json` | `package.json` | ≤ 20 min |
 
 WI-01 through WI-04 and WI-06 through WI-14 are each independently bounded to under one hour. WI-05

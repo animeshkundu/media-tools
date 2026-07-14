@@ -63,11 +63,11 @@ Primary OS: <!-- TODO: choose the primary supported OS. -->
 
 ## Decision records and durable memory
 
-- ADRs live in `docs/adr/` for project-specific decisions; use `docs/adrs/0000-template.md` as the Nygard-style template when the repo uses plural ADR paths.
+- ADRs live in `docs/adr/` for project-specific decisions; use `docs/adr/0000-template.md` as the Nygard-style template.
 - Plans live in `docs/plans/YYYY-MM-DD-slug.md`.
 - Research lives in `docs/research/YYYY-MM-DD-slug.md` with citations to source files or external URLs.
 - Solved problems, incidents, and debugging notes live in `docs/history/YYYY-MM-DD-slug.md`.
-- Durable project learnings live in `LEARNINGS.md`; update it when a future contributor would otherwise rediscover the same fact.
+- Durable project learnings live in `docs/LEARNINGS.md`; update it when a future contributor would otherwise rediscover the same fact.
 
 ## Handoff
 

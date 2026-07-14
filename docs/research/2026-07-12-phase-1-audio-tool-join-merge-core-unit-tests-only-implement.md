@@ -15,7 +15,7 @@ The requested planning artifacts are the only files changed by this research tas
 
 ## Repository findings
 
-- Audio join/merge is the next unchecked Phase 1 item (`ROADMAP.md:3-10`).
+- Audio join/merge is the next unchecked Phase 1 item (`docs/ROADMAP.md:3-10`).
 - The product requirement is to preserve visible order, normalize sample rate and channel layout, and
   concatenate without an unintended gap (`docs/PRODUCT-SPEC.md`, Audio join/merge section).
 - The architecture explicitly identifies pure concat/resample math and join ordering as high-value

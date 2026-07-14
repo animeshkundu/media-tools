@@ -3,7 +3,7 @@
 Status: decision-ready technical design for a cross-browser MV3 WebExtension that transforms local
 audio and video files 100% client-side. This is the deep companion to [`../CLAUDE.md`](../CLAUDE.md)
 (the short, enforceable guardrails) and to [`./PRODUCT-SPEC.md`](./PRODUCT-SPEC.md). Read the market
-context in [`../.docs/ext-2-media-tools.md`](../.docs/ext-2-media-tools.md) first.
+context in [`research/ext-2-media-tools.md`](research/ext-2-media-tools.md) first.
 
 ## 1. Principles that shape every decision
 
@@ -257,7 +257,7 @@ Shipped-now vs planned-per-phase. Ship only MIT / MPL / LGPL; never the GPL ffmp
 | `@ffmpeg/ffmpeg` + `@ffmpeg/core` (FF) / `@ffmpeg/core-mt` (Chrome) | latest (Phase 3, Chrome-first) | LGPL core only (avoid GPL x264/x265; offload H.264/H.265 encode to WebCodecs) | ~30 MB, lazy, Chrome multi-thread only. Keep out of base bundle; disable or WebCodecs-substitute on Firefox. |
 
 `webextension-polyfill` semantics are provided by WXT's `browser` (MPL-2.0). MP3 patents expired 2017.
-Keep this table and licenses in sync with [`../THIRD-PARTY.md`](../THIRD-PARTY.md) as dependencies land.
+Keep this table and licenses in sync with [`THIRD-PARTY.md`](THIRD-PARTY.md) as dependencies land.
 
 ## 11. Open architectural questions (tracked, not blocking)
 
