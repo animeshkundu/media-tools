@@ -1,8 +1,13 @@
 # Plan: Firefox built-extension E2E smoke
 
+> **SUPERSEDED (2026-07-14):** The installed-extension suite now lives in
+> `tests/e2e/audio-cutter.e2e.ts` with setup in `tests/e2e/global-setup.ts`. The shipped CSP uses the
+> stricter `object-src 'none'` directive, and the Firefox E2E workflow is separate from the dual-build
+> CI workflow. The expected paths and steps below are preserved as historical planning context.
+
 - **Date:** 2026-07-12
 - **Owner:** Media Tools maintainers
-- **Work unit:** Standing stream — Firefox E2E/smoke
+- **Work unit:** Standing stream, Firefox E2E/smoke
 - **Controller marker:** `unit-id: c249cded-a6c6-4612-a4e0-a3d2a66aa7d9`
 - **Related research:**
   [`../research/2026-07-12-standing-stream-firefox-e2e-smoke-exercise-the-built-extensi.md`](../research/2026-07-12-standing-stream-firefox-e2e-smoke-exercise-the-built-extensi.md)
@@ -23,24 +28,24 @@ skipped or weakened tests.
 Expected paths; use the repository’s established naming if upstream work introduces equivalent files
 before implementation.
 
-- `package.json`, `package-lock.json` — exact-pin the Firefox WebDriver/test dependencies and add a
+- `package.json`, `package-lock.json`: exact-pin the Firefox WebDriver/test dependencies and add a
   Firefox E2E script; also reconcile existing drifting shipped dependency ranges as required by the
   release gate.
-- `tests/e2e/firefox-smoke.mjs` — browser lifecycle, temporary add-on installation, stable extension
+- `tests/e2e/firefox-smoke.mjs`: browser lifecycle, temporary add-on installation, stable extension
   origin, scenario orchestration, and cleanup.
-- `tests/e2e/helpers/firefox.mjs` — isolated profile, offline/request observation, download waiting, and
+- `tests/e2e/helpers/firefox.mjs`: isolated profile, offline/request observation, download waiting, and
   browser shutdown helpers.
-- `tests/e2e/helpers/media.mjs` — deterministic WAV fixture generation plus independent WAV/MP3
+- `tests/e2e/helpers/media.mjs`: deterministic WAV fixture generation plus independent WAV/MP3
   parsing/decode assertions.
-- `tests/e2e/fixtures/` — only minimal checked-in malformed media that cannot be generated clearly in
+- `tests/e2e/fixtures/`: only minimal checked-in malformed media that cannot be generated clearly in
   code; generated normal and long-running fixtures remain temporary.
-- `tests/manifest.test.ts` or the upstream equivalent — production-manifest CSP and permission
+- `tests/manifest.test.ts` or the upstream equivalent: production-manifest CSP and permission
   assertions for both built artifacts.
-- `.github/workflows/ci.yml` — install a pinned Firefox version/driver, build first, run the smoke
+- `.github/workflows/ci.yml`: install a pinned Firefox version/driver, build first, run the smoke
   against `.output/firefox-mv3`, retain failure diagnostics, and keep both browser builds required.
-- `docs/LEARNINGS.md` or `docs/history/2026-07-12-firefox-e2e.md` — record stable extension-origin,
+- `docs/LEARNINGS.md` or `docs/history/2026-07-12-firefox-e2e.md`: record stable extension-origin,
   temporary-install, offline-observation, and download-test gotchas verified during implementation.
-- `docs/THIRD-PARTY.md` — record any shipped dependency pin/provenance changes; development-only browser
+- `docs/THIRD-PARTY.md`: record any shipped dependency pin/provenance changes; development-only browser
   tooling is identified as non-shipped.
 
 No application file should change merely to make automation easier. Add stable selectors only where

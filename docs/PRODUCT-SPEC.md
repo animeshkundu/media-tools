@@ -60,7 +60,7 @@ The requirements below define target behavior. Shared privacy, offline, performa
 - Show a waveform with in and out handles that select one continuous region by pointer or keyboard.
 - Export the selection as WAV or MP3, with the chosen range and format visible before processing starts.
 - Encode outside the UI thread, report progress, and offer explicit cancellation without creating a partial download.
-- Preserve the shipped drop-first workflow, with no account, upload step, or arbitrary file-size cap.
+- Preserve the shipped drop-first workflow, with no account or upload step, while enforcing the published input and memory safety limits.
 
 **Acceptance criteria**
 
@@ -281,7 +281,7 @@ The shipped audio pipeline delegates WAV and MP3 decode to the worker created by
 ### Accessibility
 
 - Every dropzone must be focusable and operable with Enter and Space. The shipped implementation already does this with `role="button"`, `tabIndex`, and key handling in `lib/core/dropzone.tsx`.
-- Every trim or range handle must be independently focusable, have an accessible name and current value, and support documented keyboard increments. The shipped `lib/tools/audio-cutter/Waveform.tsx` canvas is pointer-driven today, so keyboard-operable handles are a required fix rather than a completed claim.
+- Every trim or range handle must be independently focusable, have an accessible name and current value, and support documented keyboard increments. The shipped `lib/tools/audio-cutter/Waveform.tsx` implementation provides two focusable sliders with fine and coarse keyboard steps.
 - Status changes must use a polite live region. The shipped app already provides `aria-live="polite"` in `entrypoints/app/App.tsx`.
 - Long operations must expose `role="progressbar"` with minimum, maximum, and current values. The shipped `components/Progress.tsx` already provides these semantics.
 - Cancellation, errors, unsupported capabilities, snapped keyframe boundaries, and completed downloads must be perceivable without relying on color alone.
@@ -303,14 +303,12 @@ Operational quality also requires benchmark pass rates, cancellation success, va
 
 ### Free core and Pro split
 
-The free offline core remains the trust and install engine:
+The shipped free offline core is the trust and install engine:
 
-- Audio cut, join, and WAV/MP3 conversion
-- Video trim, mute, and extract audio
-- Basic video compression
-- No ads, watermark, upload, account, or product-imposed size cap beyond the device
+- Audio cut, join, change speed, and WAV/MP3 conversion
+- No ads, watermark, upload, or account; published safety limits bound input and memory use
 
-Pro is a one-time unlock, expected in the roughly $8 to $15 range. It monetizes power and convenience:
+Planned Phase 2 additions to the free core are video trim, mute, audio extraction, and basic video compression. The proposed Pro tier is a one-time unlock, expected in the roughly $8 to $15 range. It would monetize power and convenience:
 
 - Batch workflows
 - Advanced high-bitrate and lossless export options
@@ -321,13 +319,13 @@ Pro is a one-time unlock, expected in the roughly $8 to $15 range. It monetizes 
 
 Delivery phase does not decide entitlement. Basic Phase 2 video jobs stay free. Lossless keyframe video trim and ordinary WAV export are not removed from the free core merely because advanced lossless options can be Pro. There are never ads, affiliate redirects, search-default changes, or a server-processing subscription.
 
-### Offline entitlement design
+### Planned offline entitlement design
 
-Checkout happens outside the extension through a provider such as Gumroad, Paddle, or Lemon Squeezy. The purchase returns an Ed25519-signed license token. Its payload contains the product, purchaser email, and issue date. The extension imports the token, verifies the signature locally with a bundled public key, checks that the product matches, and caches the entitlement in extension storage.
+The Phase 3 proposal places checkout outside the extension through a provider such as Gumroad, Paddle, or Lemon Squeezy. A purchase would return an Ed25519-signed license token containing the product, purchaser email, and issue date. The extension would import the token, verify the signature locally with a bundled public key, check that the product matches, and cache the entitlement in extension storage.
 
-The private signing key never ships in the extension. A modified payload or invalid signature is rejected. After a valid import, Pro startup and media processing require no server call. A user can keep a backup of the token and re-import it after clearing extension storage.
+The private signing key would never ship in the extension. A modified payload or invalid signature would be rejected. After a valid import, Pro startup and media processing would require no server call. A user could keep a backup of the token and re-import it after clearing extension storage.
 
-This design makes deliberate trade-offs:
+This proposed design makes deliberate trade-offs:
 
 - **Sharing and leakage:** an offline token can be copied. Binding the purchaser email in the signed payload is soft enforcement, not device locking. Some sharing is accepted as the cost of avoiding identifiers and mandatory online checks.
 - **Refunds and revocation:** a purely offline token cannot be force-revoked. A best-effort revocation check may be offered on a long interval, but it must be optional, explicitly opt-in, and never required for Pro to keep working offline. Refund handling must state this limitation plainly.

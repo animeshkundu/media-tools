@@ -12,7 +12,7 @@ Audio Cutter is the shipped flagship of the `media-tools` repository: private, o
 
 > **Your audio never leaves your device; no uploads, no accounts, no telemetry; all processing local.**
 
-This rests first on what you can audit: Audio Cutter declares zero permissions, and its built bundle contains no network code—a CI check greps both browser builds for `fetch`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, and `EventSource` and fails the build if any appear. The strict no-egress content-security policy (`connect-src 'none'`) is defense in depth, blocking outbound connections from extension pages even if a bug were introduced; because a content-security policy does not restrict top-level navigation, it is not the sole line of defense. Source review verifies that the only `browser.tabs.create` call opens the extension's own app page through `browser.runtime.getURL` (same-origin) and never navigates to an external URL. The empty permission list and the CSP are also checked in CI against both built manifests. See [docs/PEER-REVIEW.md](docs/PEER-REVIEW.md) and [docs/CAPABILITY-CONTRACT.md](docs/CAPABILITY-CONTRACT.md).
+This rests first on what you can audit: Audio Cutter declares zero permissions, and its built bundle contains no network code. A CI check greps both browser builds for `fetch`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, and `EventSource` and fails the build if any appear. The strict no-egress content-security policy (`connect-src 'none'`) is defense in depth, blocking outbound connections from extension pages even if a bug were introduced; because a content-security policy does not restrict top-level navigation, it is not the sole line of defense. Source review verifies that the only `browser.tabs.create` call opens the extension's own app page through `browser.runtime.getURL` (same-origin) and never navigates to an external URL. The empty permission list and the CSP are also checked in CI against both built manifests. See [docs/PEER-REVIEW.md](docs/PEER-REVIEW.md) and [docs/CAPABILITY-CONTRACT.md](docs/CAPABILITY-CONTRACT.md).
 
 ## Permissions and CSP
 
@@ -39,7 +39,7 @@ default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src
 - **Change playback speed** from 0.25× to 4×; speed and pitch change together, and the estimated output duration is shown before export.
 - **Convert WAV and MP3** locally, with lossless PCM WAV or 192 kbps MP3 output.
 - **No uploads, accounts, ads, telemetry, or watermarks.** Audio input, processing, and output stay in the browser.
-- **Bounded processing** with a 64 MB input limit, 256 MB decoded/in-flight PCM limits, mono/stereo validation, and a processing watchdog.
+- **Bounded processing** with a 64 MiB input limit, 256 MiB decoded/in-flight PCM limits, mono/stereo validation, and a processing watchdog.
 - **Cancellable worker jobs** with progress reporting and no partial download after cancellation or failure.
 - **Accessible controls** for file selection, trim times, status updates, and progress.
 - **Real-Firefox end-to-end coverage** in CI, not browser emulation.
@@ -56,7 +56,7 @@ Drop a WAV or MP3 file, or choose one from your device.
 
 ### Read the waveform
 
-Inspect the loaded audio as a waveform—a visual plot of sound amplitude over time.
+Inspect the loaded audio as a waveform, a visual plot of sound amplitude over time.
 
 ![Audio Cutter showing a loaded waveform](docs/media/screenshots/audio-cutter-waveform.png)
 

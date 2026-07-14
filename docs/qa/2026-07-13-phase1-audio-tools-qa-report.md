@@ -5,9 +5,9 @@
 > worker-side WebCodecs `AudioDecoder` and parses WAV PCM directly in the worker. Bundled `lamejs` is
 > used for MP3 encoding only.
 
-**Date:** 2026-07-13  
-**Scope:** Audio Cutter flagship (`entrypoints/app/`, `lib/tools/audio-cutter/`, `lib/core/`) plus merged Phase-1 cores (`lib/tools/join/`, `lib/tools/change-speed/`, `lib/tools/convert/`)  
-**Out of scope:** Phase-2 video, Phase-3 pitch/time-stretch, store-submission, Pro tier  
+**Date:** 2026-07-13
+**Scope:** Audio Cutter flagship (`entrypoints/app/`, `lib/tools/audio-cutter/`, `lib/core/`) plus merged Phase-1 cores (`lib/tools/join/`, `lib/tools/change-speed/`, `lib/tools/convert/`)
+**Out of scope:** Phase-2 video, Phase-3 pitch/time-stretch, store-submission, Pro tier
 
 ---
 
@@ -17,19 +17,19 @@ The following commands were run from a clean `npm ci` on 2026-07-13:
 
 | Command | Result |
 | --- | --- |
-| `npm run compile` | Pass — no TypeScript errors |
-| `npm run lint` | Pass — no ESLint violations |
-| `npm run test` | **Pass — 7 test files, 68 tests, 0 failures** |
-| `npm run build` | Pass — Chrome MV3, 486.87 kB total |
-| `npm run build:firefox` | Pass — Firefox MV3, 486.87 kB total |
-| CI: CSP manifest guard | Pass — both built manifests verified by `scripts/check-csp.mjs` |
-| CI: egress manifest guard | Pass — both built manifests verified by `scripts/check-manifest-egress.mjs` |
+| `npm run compile` | Pass, no TypeScript errors |
+| `npm run lint` | Pass, no ESLint violations |
+| `npm run test` | **Pass, 7 test files, 68 tests, 0 failures** |
+| `npm run build` | Pass, Chrome MV3, 486.87 kB total |
+| `npm run build:firefox` | Pass, Firefox MV3, 486.87 kB total |
+| CI: CSP manifest guard | Pass, both built manifests verified by `scripts/check-csp.mjs` |
+| CI: egress manifest guard | Pass, both built manifests verified by `scripts/check-manifest-egress.mjs` |
 
 Build artifacts were inspected manually. The Chrome and Firefox manifests produced identical CSP policies and both pass the `validateManifest` and `validateManifestEgress` checks that run in CI.
 
 ---
 
-## Section 1 — Correctness and numeric edge cases
+## Section 1: Correctness and numeric edge cases
 
 ### 1.1 WAV RIFF chunk-size overflow in `encodeWav()`
 
@@ -51,7 +51,7 @@ exhaust typical browser memory well before reaching the overflow point. The gap 
 a pre-rejection before `encodeWav` is the correct fix; the WAV writer itself should not assume the
 caller has already enforced a safe duration.
 
-**Work item WI-01 — Guard `encodeWav()` against RIFF chunk-size overflow**
+**Work item WI-01: Guard `encodeWav()` against RIFF chunk-size overflow**
 
 - Target files: `lib/tools/audio-cutter/audio.ts`
 - Add a guard at the top of `encodeWav()` that throws before allocation when `frames * channelCount * 2 > 2^32 − 37`.
@@ -73,7 +73,7 @@ after `AudioContext` decode), the exported MP3 silently discards all channels af
 export have different policies for the same invalid input. There is no UI copy explaining the MP3
 channel-downmix policy.
 
-**Work item WI-02 — Expose MP3 channel-downmix policy before export**
+**Work item WI-02: Expose MP3 channel-downmix policy before export**
 
 - Target files: `entrypoints/app/App.tsx`, `lib/tools/audio-cutter/encode.worker.ts`
 - When `audio.channels.length > 2`, either (a) display a visible note next to the format selector ("MP3 encodes the first two channels only") or (b) reject at the worker boundary and surface a clear error. Do not silently truncate.
@@ -85,7 +85,7 @@ channel-downmix policy.
 
 ### 1.3 Audio Cutter has no pre-decode input limits
 
-**File:** `entrypoints/app/App.tsx` — the `load()` function
+**File:** `entrypoints/app/App.tsx`, the `load()` function
 
 The function calls `file.arrayBuffer()` (reads the full file into memory), then
 `context.decodeAudioData()` (a second full-file allocation), then `.getChannelData(channel).slice()`
@@ -96,7 +96,7 @@ By contrast, `lib/tools/convert/convert.ts` checks a `MAX_PCM_BYTES = 512 MiB` g
 encoding, and `lib/tools/join/join.ts` enforces a `MAX_JOIN_OUTPUT_BYTES = 512 MiB` limit before
 output allocation. The Audio Cutter core has no equivalent protection.
 
-**Work item WI-03 — Add pre-decode and post-decode limits to Audio Cutter**
+**Work item WI-03: Add pre-decode and post-decode limits to Audio Cutter**
 
 - Target file: `entrypoints/app/App.tsx`
 - Before `file.arrayBuffer()`: reject files above a defined `MAX_INPUT_BYTES` (suggested ≤ 256 MiB) and display a clear message.
@@ -109,7 +109,7 @@ output allocation. The Audio Cutter core has no equivalent protection.
 
 ### 1.4 Main-thread WAV encoding in `convert.ts`
 
-**File:** `lib/tools/convert/convert.ts` — `startWavEncode()`
+**File:** `lib/tools/convert/convert.ts`, `startWavEncode()`
 
 When the output format is `wav`, `startConversion()` calls `startWavEncode()`, which runs the full
 `encodeWav()` computation synchronously inside a `queueMicrotask`. This executes on the main thread.
@@ -126,7 +126,7 @@ This is a Phase-1 core module with no UI entry today. The main-thread block does
 shipped Audio Cutter user. However, the next implementation PR that adds a Convert UI will need this
 fixed before shipping.
 
-**Work item WI-04 — Move convert WAV encoding to the shared worker**
+**Work item WI-04: Move convert WAV encoding to the shared worker**
 
 - Target file: `lib/tools/convert/convert.ts`
 - Replace `startWavEncode()` with a call to `startEncode()` using `format: 'wav'`, consistent with the MP3 path. The shared worker already handles WAV encoding via `encode.worker.ts`.
@@ -138,7 +138,7 @@ fixed before shipping.
 
 ### 1.5 Resampling in join and change-speed runs on the main thread
 
-**Files:** `lib/tools/join/join.ts` — `joinPcm()`, `lib/tools/change-speed/changeSpeed.ts` — `changeSpeed()`
+**Files:** `lib/tools/join/join.ts`, `joinPcm()`, `lib/tools/change-speed/changeSpeed.ts`, `changeSpeed()`
 
 `startJoinedEncode()` calls `joinPcm()` synchronously before `startEncode()`. `joinPcm()` includes
 linear resampling of every channel of every track. For two 30-minute stereo tracks at different
@@ -150,10 +150,10 @@ speed the output length is four times the input length; for a 10-minute stereo 4
 is approximately 530 million interpolation operations on the main thread.
 
 These cores have no UI entry today and the main-thread concern does not affect the shipped tool. The
-correct target architecture routes the entire compute — including resampling — through the worker.
+correct target architecture routes the entire compute, including resampling, through the worker.
 This cannot be fixed without extending the worker protocol, which is a larger PR.
 
-**Work item WI-05 — Move join resampling and speed resampling into the worker**
+**Work item WI-05: Move join resampling and speed resampling into the worker**
 
 - Target files: `lib/tools/join/join.ts`, `lib/tools/change-speed/changeSpeed.ts`, `lib/core/worker.ts`, `lib/tools/audio-cutter/encode.worker.ts`
 - Extend the worker message protocol with `audio-join` and `audio-speed` job kinds. Move `joinPcm()` and `changeSpeed()` into the worker.
@@ -167,7 +167,7 @@ This cannot be fixed without extending the worker protocol, which is a larger PR
 
 ### 1.6 `cutPcm()` uses floating-point seconds as canonical trim state
 
-**File:** `lib/tools/audio-cutter/audio.ts` lines 6–15; `entrypoints/app/App.tsx` — `start`, `end` state
+**File:** `lib/tools/audio-cutter/audio.ts` lines 6–15; `entrypoints/app/App.tsx`, `start`, `end` state
 
 The trim state is stored as floating-point seconds in React state. `cutPcm()` derives frame indices
 via `Math.floor(startSeconds × sampleRate)` and `Math.ceil(endSeconds × sampleRate)`. The displayed
@@ -175,15 +175,15 @@ timecodes, handle positions, selected-duration calculation, and worker request a
 floating-point seconds, so all are derived consistently. For the single encode worker path the
 rounding happens once in `cutPcm()`.
 
-**Verified correct** for the single-tool case. The risk identified in the prior research document —
-different rounding at different call sites — does not currently apply because there is only one call
+**Verified correct** for the single-tool case. The risk identified in the prior research document,
+different rounding at different call sites, does not currently apply because there is only one call
 site. This remains a risk to watch if the codebase adds additional derivations from the same state.
 
 No work item required at current scope.
 
 ---
 
-## Section 2 — Bounded memory
+## Section 2: Bounded memory
 
 ### Summary of current limits
 
@@ -210,7 +210,7 @@ factor of `0.25`, this is `4 × inputLength`. There is a `Number.isSafeInteger` 
 limit. An input of 128 MiB of PCM at `0.25×` produces 512 MiB of output, which would pass the safe-
 integer check but could exhaust memory before the worker receives the buffers.
 
-**Work item WI-06 — Add output-size guard to `changeSpeed()`**
+**Work item WI-06: Add output-size guard to `changeSpeed()`**
 
 - Target file: `lib/tools/change-speed/changeSpeed.ts`
 - After computing `outputLength`, check `outputLength × source.channelData.length × 4 ≤ MAX_PCM_BYTES` (matching the convert limit of 512 MiB) and throw a user-visible error before allocation.
@@ -220,7 +220,7 @@ integer check but could exhaust memory before the worker receives the buffers.
 
 ---
 
-## Section 3 — Progress, cancellation, cleanup, and no partial download
+## Section 3: Progress, cancellation, cleanup, and no partial download
 
 ### 3.1 Cancel button is visible but inert during audio decode
 
@@ -228,7 +228,7 @@ integer check but could exhaust memory before the worker receives the buffers.
 
 `load()` sets `setBusy(true)` before `file.arrayBuffer()` and `decodeAudioData()`. The Cancel button
 is conditionally rendered when `busy === true`. However, `jobRef.current` is only set inside
-`exportAudio()`, so during decode `jobRef.current?.cancel()` is a no-op — the optional-chain short-
+`exportAudio()`, so during decode `jobRef.current?.cancel()` is a no-op, the optional-chain short-
 circuits on `undefined`. A user who clicks Cancel during a slow decode of a large file sees the
 button, clicks it, and nothing changes. No feedback indicates that the cancel was ignored.
 
@@ -236,7 +236,7 @@ This is misleading. The correct behaviour for Phase 1 is either to hide Cancel d
 (showing only the spinner/status) or to implement decode cancellation (hard in the current Web Audio
 path; simpler once decode moves to a worker).
 
-**Work item WI-07 — Hide Cancel button during decode or provide feedback when cancel is unavailable**
+**Work item WI-07: Hide Cancel button during decode or provide feedback when cancel is unavailable**
 
 - Target file: `entrypoints/app/App.tsx`
 - Introduce a second state variable (e.g. `decoding`) or distinguish `busy` phases so the Cancel button is only rendered when `jobRef.current` is set (i.e. during export, not during decode).
@@ -245,13 +245,13 @@ path; simpler once decode moves to a worker).
 
 ---
 
-### 3.2 Export cancellation and no-partial-download — verified correct
+### 3.2 Export cancellation and no-partial-download: verified correct
 
-`lib/core/worker.ts` — `startEncode()`:
+`lib/core/worker.ts`, `startEncode()`:
 
 - `cancel()` calls `worker.terminate()` then rejects the promise via `rejectJob`.
 - The `onmessage` and `onerror` handlers set `settled = true` before terminating, so late messages are ignored.
-- `App.tsx` — `exportAudio()`: `downloadBlob()` is called only inside the `try` block after `await job.result` resolves. The `catch` block sets an error status message and never calls `downloadBlob()`. The `finally` block only clears `busy`.
+- `App.tsx`, `exportAudio()`: `downloadBlob()` is called only inside the `try` block after `await job.result` resolves. The `catch` block sets an error status message and never calls `downloadBlob()`. The `finally` block only clears `busy`.
 
 **Result: no partial download can be created on cancel or worker error.** This matches the product requirement.
 
@@ -259,7 +259,7 @@ path; simpler once decode moves to a worker).
 
 ### 3.3 Download URL revocation
 
-`lib/core/download.ts` — `downloadBlob()`:
+`lib/core/download.ts`, `downloadBlob()`:
 
 Creates an object URL, clicks an anchor, and revokes the URL after 1,000 ms with `window.setTimeout`. This is a standard pattern. The 1 second grace period is sufficient for the browser to start the download. The anchor is removed from the DOM immediately after the click. The object URL is revoked.
 
@@ -288,7 +288,7 @@ several hundred milliseconds to encode the bar sits at 15% for a perceptible pau
 
 ### 3.5 Worker crash during export
 
-**File:** `lib/core/worker.ts` — `worker.onerror` handler
+**File:** `lib/core/worker.ts`, `worker.onerror` handler
 
 A JavaScript exception inside the worker that does not post an error message (for example, an
 out-of-memory OOM crash or a host-terminated worker) fires `worker.onerror`. The handler sets
@@ -300,9 +300,9 @@ the source; not exercised by a live browser test in this review.
 
 ---
 
-## Section 4 — WCAG AA keyboard accessibility and reduced-motion
+## Section 4: WCAG AA keyboard accessibility and reduced-motion
 
-### 4.1 Waveform trim handles — largely aligned
+### 4.1 Waveform trim handles: largely aligned
 
 **File:** `lib/tools/audio-cutter/Waveform.tsx`
 
@@ -323,7 +323,7 @@ the source; not exercised by a live browser test in this review.
 second in the DOM will intercept all pointer events. The keyboard path remains fully operable, but
 the visual feedback for the focused element may be obscured. This is a polish item.
 
-**Work item WI-08 — Prevent focus-target overlap when handles are at minimum separation**
+**Work item WI-08: Prevent focus-target overlap when handles are at minimum separation**
 
 - Target file: `lib/tools/audio-cutter/Waveform.tsx`
 - When the distance between handle positions is less than `w-11` (44 px), offset one handle's `div` upward or adjust `z-index` so the focused one is always on top.
@@ -339,10 +339,10 @@ the visual feedback for the focused element may be obscured. This is a polish it
 All three components use Tailwind `transition` or `transition-all` classes. None has a
 `motion-reduce:transition-none` or `motion-reduce:transition-opacity` override. The transitions are
 decorative color and width changes, not large spatial movements, so they are unlikely to trigger
-vestibular symptoms. However, the binding guardrails (`CLAUDE.md`) explicitly require
+vestibular symptoms. However, the repository guardrails explicitly require
 `prefers-reduced-motion` overrides, and `docs/PRODUCT-SPEC.md` lists it as a required behaviour.
 
-**Work item WI-09 — Add `motion-reduce:transition-none` to all animated components**
+**Work item WI-09: Add `motion-reduce:transition-none` to all animated components**
 
 - Target files: `components/Button.tsx`, `components/Progress.tsx`, `lib/core/dropzone.tsx`
 - Add `motion-reduce:transition-none` to every `transition` or `transition-all` class.
@@ -354,7 +354,7 @@ vestibular symptoms. However, the binding guardrails (`CLAUDE.md`) explicitly re
 
 ### 4.3 Status text contrast
 
-**File:** `entrypoints/app/App.tsx` — bottom `p` element
+**File:** `entrypoints/app/App.tsx`, bottom `p` element
 
 The status line uses `text-emerald-100/60`, which is approximately `#d1fae5` at 60 % opacity over
 `#07110f`. The rendered colour is approximately `#6e9080`. The contrast ratio of `#6e9080` on
@@ -366,7 +366,7 @@ style is applied to several secondary labels in the cutter (`text-emerald-100/60
 `text-emerald-100/70`) and is the most likely contrast failure. The 70 % variant raises the ratio to
 approximately 4.0 : 1, still below 4.5 : 1 for 14 px text.
 
-**Work item WI-10 — Verify and fix muted-text contrast ratios**
+**Work item WI-10: Verify and fix muted-text contrast ratios**
 
 - Target files: `entrypoints/app/App.tsx`, `assets/tailwind.css`
 - Use a browser DevTools colour-picker or automated contrast tool to measure the exact ratio of `text-emerald-100/60` and `text-emerald-100/70` on the page gradient.
@@ -386,12 +386,12 @@ the same 14 px muted-text style with no icon, prefix, or structural distinction.
 `docs/PRODUCT-SPEC.md` accessibility section requires that "cancellation, errors, and completed
 downloads must be perceivable without relying on colour alone."
 
-Because the status text currently uses the same emerald-100/60 colour for all states — not using
-red for errors or green for success — status type already does not rely on colour. However, an
+Because the status text currently uses the same emerald-100/60 colour for all states, not using
+red for errors or green for success, status type already does not rely on colour. However, an
 assistant-technology user relying solely on the live region hears "Done." or an error message without
 a semantic prefix (e.g. "Error:" or "Success:").
 
-**Work item WI-11 — Add semantic prefixes to error and success status messages**
+**Work item WI-11: Add semantic prefixes to error and success status messages**
 
 - Target file: `entrypoints/app/App.tsx`
 - Prepend "Error:" to status messages that represent decode or export failures, and keep success messages as-is or prefix with a visible non-colour cue (e.g. a checkmark character in the text).
@@ -413,7 +413,7 @@ No blocking defect; noted as a polish item for WCAG 2.4.7 (Focus Visible) compli
 
 ---
 
-## Section 5 — Chrome and Firefox build parity
+## Section 5: Chrome and Firefox build parity
 
 ### 5.1 Built manifests
 
@@ -447,14 +447,14 @@ verified correct for both browser layouts.
 
 ### 5.3 Runtime parity not verified in this review
 
-The e2e tests (`tests/e2e/audio-cutter.firefox.spec.ts`) require a built Firefox extension loaded
-through `web-ext` + Playwright. The `npm run test:e2e` command is not run as part of `npm run check`
+At review time, the E2E tests required a built Firefox extension loaded through `web-ext` +
+Playwright. That suite has since been replaced by `tests/e2e/audio-cutter.e2e.ts`. The `npm run test:e2e` command is not run as part of `npm run check`
 (it requires `playwright install firefox` which is not available in the current environment), so
 runtime behaviour on Chrome and Firefox is **not verified by this QA review**. The e2e tests that do
 exist cover the happy path, MP3 export, cancel, and a corrupt-input rejection case against a local
 HTTP server. Chrome runtime behaviour has no corresponding e2e test file.
 
-**Work item WI-12 — Add Chrome e2e smoke test mirroring the Firefox e2e test**
+**Work item WI-12: Add Chrome e2e smoke test mirroring the Firefox e2e test**
 
 - Target file: `tests/e2e/audio-cutter.chrome.spec.ts` (new file)
 - Mirror the four existing Firefox e2e test cases: load+decode+keyboard-trim+WAV export, MP3 export, cancel without partial download, corrupt-input rejection.
@@ -463,9 +463,9 @@ HTTP server. Chrome runtime behaviour has no corresponding e2e test file.
 
 ---
 
-## Section 6 — UX fidelity vs `docs/DESIGN.md` and mocks
+## Section 6: UX fidelity vs `docs/DESIGN.md` and mocks
 
-### 6.1 Design token alignment — verified
+### 6.1 Design token alignment: verified
 
 All shipped DESIGN.md tokens were checked against the production source. No divergence was found:
 
@@ -485,7 +485,7 @@ correctly marks these as in-progress.
 This is an expected gap at the current phase and is not a bug. The home mock represents a target
 state. Each Phase-1 PR adding a tool UI will address this incrementally.
 
-### 6.3 Capability detection — absent for export formats
+### 6.3 Capability detection: absent for export formats
 
 DESIGN.md specifies: "Unsupported formats remain visible but disabled, with adjacent capability copy
 that says why." The current format selector has two options (`wav` and `mp3`); both are always
@@ -496,7 +496,7 @@ The DESIGN.md requirement becomes material when additional formats (AAC, OGG) ar
 No blocking defect for Phase 1. Noted as a future-proofing item to keep in scope for the next tool
 PR.
 
-### 6.4 Status copy fidelity — verified
+### 6.4 Status copy fidelity: verified
 
 Every DESIGN.md state table entry was checked against `App.tsx`:
 
@@ -525,7 +525,7 @@ notices, source/relink obligations, and artifact-specific build details. For `la
 - `lame.min.js` is a minified custom build; the exact build command or source version that produced it is not recorded.
 - The store submission (AMO and Chrome Web Store) requires a corresponding source package for LGPL works.
 
-**Work item WI-13 — Complete `lamejs` provenance in `docs/THIRD-PARTY.md`**
+**Work item WI-13: Complete `lamejs` provenance in `docs/THIRD-PARTY.md`**
 
 - Target file: `docs/THIRD-PARTY.md`
 - Add: the full LGPL-3.0 notice text, a statement of the corresponding-source obligation (AMO requires a `sources.zip` for LGPL works), the exact build command or provenance note for `public/vendor/lame.min.js`, and its SHA-256 digest.
@@ -534,7 +534,7 @@ notices, source/relink obligations, and artifact-specific build details. For `la
 
 ---
 
-## Section 7 — Phase-1 core module review
+## Section 7: Phase-1 core module review
 
 ### 7.1 Join (`lib/tools/join/join.ts`)
 
@@ -551,7 +551,7 @@ notices, source/relink obligations, and artifact-specific build details. For `la
 
 **Gaps:**
 - No output-size limit (WI-06 above).
-- Speed multiplier is clamped silently rather than throwing when the input is outside the valid range. The clamp is the correct UX behaviour (the UI slider will enforce limits) but the error message returned by `clampSpeedFactor` when given an invalid (zero, negative, NaN, Infinity) value says "Speed factor must be a positive finite number." This message is thrown, not a soft clamp — good. The clamp only applies when the factor is finite but outside `[0.25, 4]` — this is correct.
+- Speed multiplier is clamped silently rather than throwing when the input is outside the valid range. The clamp is the correct UX behaviour (the UI slider will enforce limits) but the error message returned by `clampSpeedFactor` when given an invalid (zero, negative, NaN, Infinity) value says "Speed factor must be a positive finite number." This message is thrown, not a soft clamp, good. The clamp only applies when the factor is finite but outside `[0.25, 4]`, this is correct.
 
 ### 7.3 Convert (`lib/tools/convert/convert.ts`)
 
@@ -563,7 +563,7 @@ notices, source/relink obligations, and artifact-specific build details. For `la
 
 ---
 
-## Section 8 — Engineering and provenance
+## Section 8: Engineering and provenance
 
 ### 8.1 Dependency version pinning
 
@@ -581,7 +581,7 @@ In practice the lockfile prevents upgrades during `npm ci`. The risk is that `np
 `ci`) can silently upgrade to a new minor version. Because all three resolved versions happen to be
 the minimum of their range, no drift has occurred yet. The fix is to drop the caret in `package.json`.
 
-**Work item WI-14 — Pin exact versions in `package.json`**
+**Work item WI-14: Pin exact versions in `package.json`**
 
 - Target file: `package.json`
 - Remove `^` from all direct and dev dependency version strings. Regenerate `package-lock.json` with `npm install`.
@@ -602,7 +602,7 @@ the minimum of their range, no drift has occurred yet. The fix is to drop the ca
 | WI-02 | Expose MP3 channel-downmix policy before export | `entrypoints/app/App.tsx`, `lib/tools/audio-cutter/encode.worker.ts` | ≤ 45 min |
 | WI-03 | Add pre-decode and post-decode limits to Audio Cutter | `entrypoints/app/App.tsx` | ≤ 45 min |
 | WI-04 | Move convert WAV encoding to the shared worker | `lib/tools/convert/convert.ts`, `tests/convert.test.ts` | ≤ 40 min |
-| WI-05 | Move join resampling and speed resampling into the worker | `lib/tools/join/join.ts`, `lib/tools/change-speed/changeSpeed.ts`, `lib/core/worker.ts`, `lib/tools/audio-cutter/encode.worker.ts` | > 1 h — architectural |
+| WI-05 | Move join resampling and speed resampling into the worker | `lib/tools/join/join.ts`, `lib/tools/change-speed/changeSpeed.ts`, `lib/core/worker.ts`, `lib/tools/audio-cutter/encode.worker.ts` | > 1 h, architectural |
 | WI-06 | Add output-size guard to `changeSpeed()` | `lib/tools/change-speed/changeSpeed.ts`, `tests/changeSpeed.test.ts` | ≤ 30 min |
 | WI-07 | Hide Cancel button during decode or provide inert feedback | `entrypoints/app/App.tsx` | ≤ 30 min |
 | WI-08 | Prevent focus-target overlap when handles are at minimum separation | `lib/tools/audio-cutter/Waveform.tsx` | ≤ 30 min |

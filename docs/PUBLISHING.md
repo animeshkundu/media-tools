@@ -36,11 +36,9 @@ WXT excludes configuration files, hidden files, tests, and excluded entrypoints 
 1. Set a new semantic version in `package.json` and confirm WXT puts it in the generated manifest.
 2. Run local checks and verify both browser builds.
 3. Create and push a tag such as `v1.2.3`.
-4. The [release workflow](../.github/workflows/release.yml) builds ZIPs for Chrome and Firefox, creates the Firefox sources ZIP, runs `wxt submit`, and attaches all ZIPs to the GitHub Release.
+4. The tag-triggered [release workflow](../.github/workflows/release.yml) runs release checks, builds ZIPs for Chrome and Firefox, creates the Firefox sources ZIP, generates and signs checksums, and attaches the release assets to the GitHub Release. It submits the listed Firefox build to AMO only when the `PUBLISH_FIREFOX` repository variable is `true` and the required secrets are configured.
 
 For first-time local verification, run `wxt submit --dry-run` to check authentication without uploading. `wxt submit init` provides an interactive setup and writes `.env.submit`. That file is local only and must never be committed.
-
-Manual workflow runs should target a version tag so the GitHub Release action has the correct release tag.
 
 ## Review process and timelines
 
@@ -81,13 +79,6 @@ Make screenshots and descriptions match the current shipped feature set.
 
 ## Chrome Web Store
 
-The release workflow includes a manual, optional Chrome publishing job. Enable it only after adding these repository secrets:
+The current release workflow does not publish to the Chrome Web Store. Chrome publishing remains a manual step until a separately reviewed submission job and its credentials are added.
 
-- `CHROME_EXTENSION_ID`
-- `CHROME_CLIENT_ID`
-- `CHROME_CLIENT_SECRET`
-- `CHROME_REFRESH_TOKEN`
-
-The extension has a clear single purpose: process local media files. It also meets the no-remote-code requirement because all executable code, including WASM, is bundled with the extension. Keep those claims true as new tools are added.
-
-This repository is local-git only today. Publishing automation activates after the first GitHub push and repository secret configuration.
+The extension has a clear single purpose: process local audio files. It also meets the no-remote-code requirement because all shipped executable code is bundled with the extension. Keep those claims true as new tools are added.

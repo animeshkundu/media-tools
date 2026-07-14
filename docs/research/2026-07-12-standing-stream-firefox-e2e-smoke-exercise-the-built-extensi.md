@@ -7,7 +7,7 @@
 
 - **Date:** 2026-07-12
 - **Owner:** Media Tools maintainers
-- **Work unit:** Standing stream — Firefox E2E/smoke
+- **Work unit:** Standing stream, Firefox E2E/smoke
 - **Controller marker:** `unit-id: c249cded-a6c6-4612-a4e0-a3d2a66aa7d9`
 
 ## Context
@@ -31,17 +31,16 @@ Phase 2/3 work.
 - There is no E2E runner, Firefox driver, media fixture, browser matrix, or smoke-test script in the
   repository.
 - All dependency declarations currently use drifting caret ranges, including shipped `lamejs`; this
-  conflicts with the exact-pin release gate (`package.json`; `CLAUDE.md`, “Correctness and release
-  gates”).
+  conflicts with the repository's exact-pin release gate (`package.json`).
 
 ### Firefox artifact and runtime boundaries
 
 - The durable host is the full-page app and the background is glue only
-  (`CLAUDE.md`, “Architecture”; `docs/ARCHITECTURE.md`, Sections 2 and 6).
+  (`docs/ARCHITECTURE.md`, Sections 2 and 6).
 - The Firefox build has an explicit Gecko extension ID and declares no required data collection
   (`wxt.config.ts`).
 - The generated extension CSP currently lacks the required default-deny egress directives
-  (`wxt.config.ts`; `CLAUDE.md`, “Privacy and offline contract”).
+  (`wxt.config.ts`; repository privacy and offline contract).
 - A Firefox test must install the generated `.output/firefox-mv3` artifact, not serve source files or
   exercise the Vite development page. A stable test profile/extension UUID is needed so automation can
   navigate directly to the built `app.html`.
@@ -124,7 +123,6 @@ and integration contracts that unit tests cannot prove.
 
 ## Sources
 
-- `CLAUDE.md`
 - `package.json`
 - `wxt.config.ts`
 - `.github/workflows/ci.yml`

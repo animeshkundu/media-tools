@@ -16,7 +16,7 @@ No remote code, codec binaries, WASM modules, models, or fonts are shipped.
 
 ---
 
-## LGPL compliance — lamejs
+## LGPL compliance: lamejs
 
 `lamejs` is licensed under the GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later).
 

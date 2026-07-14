@@ -1,8 +1,8 @@
-# Capability contract — Audio Cutter
+# Capability contract: Audio Cutter
 
 This document records the binding guarantees of Audio Cutter as they are enforced by the shipped code, built artifacts, and configuration. Each claim is grounded in a source location or a machine-enforced build check.
 
-Scope: the currently shipped Audio Cutter suite—cut/trim, join/merge, change speed, and WAV/MP3 conversion. Video tools are not covered until they ship.
+Scope: the currently shipped Audio Cutter suite (cut/trim, join/merge, change speed, and WAV/MP3 conversion). Video tools are not covered until they ship.
 
 ---
 
@@ -111,7 +111,7 @@ Audio Cutter enforces hard input, decoded-data, channel, duration, and in-flight
 
 ## 6. Durable app-page host
 
-The extension UI runs in a full browser tab—a durable host—not in a short-lived popup or the MV3 background process. Closing or dismissing a popup therefore cannot interrupt a job because Audio Cutter does not use a popup for processing.
+The extension UI runs in a full browser tab, which is a durable host, rather than in a short-lived popup or the MV3 background process. Closing or dismissing a popup therefore cannot interrupt a job because Audio Cutter does not use a popup for processing.
 
 **Enforcement:**
 
@@ -144,7 +144,7 @@ Audio input and results remain on the device. Processing occurs in the extension
 4. **Read the background script.** Open `entrypoints/background.ts`. Confirm the sole `browser.tabs.create` call receives `browser.runtime.getURL('/app.html')`, not an external URL.
 5. **Run the manifest guards.** Run `node scripts/check-csp.mjs .output/chrome-mv3/manifest.json .output/firefox-mv3/manifest.json` and `node scripts/check-manifest-egress.mjs`.
 6. **Check release package identity.** Run `npm run zip` and `npm run zip:firefox`. The packages are `.output/audio-cutter-<version>-chrome.zip`, `.output/audio-cutter-<version>-firefox.zip`, and `.output/audio-cutter-<version>-sources.zip`.
-7. **Run the test suite.** `npm run check` runs TypeScript compilation, linting, and Vitest. `npm run test:e2e` builds and lints the production Firefox artifact and drives it in real Firefox.
+7. **Run the test suite.** `npm run check` runs TypeScript compilation, linting, and Vitest. `npm run test:e2e` drives the built production Firefox artifact in real Firefox; `.github/workflows/e2e.yml` builds and lints that artifact first.
 
 ---
 

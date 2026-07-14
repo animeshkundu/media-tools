@@ -26,6 +26,22 @@
   <meta name="twitter:description" content="Private, offline audio cutting for Firefox and Chrome, entirely in your browser." />
   <meta name="twitter:image" content="https://animesh.kundus.in/media-tools/media/audio-cutter-waveform.png" />
   <meta name="twitter:image:alt" content="Audio Cutter showing a loaded waveform with trim handles and local export controls." />
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Audio Cutter",
+      "description": "Private, offline audio cutting for Firefox and Chrome, entirely in your browser.",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Google Chrome, Mozilla Firefox",
+      "url": "https://animesh.kundus.in/media-tools/",
+      "image": "https://animesh.kundus.in/media-tools/media/audio-cutter-waveform.png",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "author": { "@type": "Person", "name": "Animesh Kundu" },
+      "publisher": { "@type": "Person", "name": "Animesh Kundu" }
+    }
+  </script>
 </head>
 <body class="landing-page">
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -226,9 +242,14 @@
         <video controls playsinline preload="metadata" poster="/media-tools/media/audio-cutter-demo-poster.png">
           <source src="/media-tools/media/audio-cutter-demo.mp4" type="video/mp4" />
           <source src="/media-tools/media/audio-cutter-demo.webm" type="video/webm" />
+          <track kind="captions" srclang="en" label="English" src="/media-tools/media/audio-cutter-demo.en.vtt" default />
           Your browser does not support embedded video. You can <a href="/media-tools/media/audio-cutter-demo.mp4">download the MP4 demo</a> or <a href="/media-tools/media/audio-cutter-demo.webm">download the WebM alternate</a> instead.
         </video>
       </div>
+      <details class="video-transcript">
+        <summary>Text description of the demo</summary>
+        <p>The recording starts on Audio Cutter's drop zone, where a local WAV or MP3 can be dropped or chosen. A WAV file is selected, and its waveform appears for inspection. Exact In and Out times are entered, moving the gold trim handles to select the range. WAV output remains selected, then Cut &amp; download is chosen. Audio Cutter confirms that the finished file was downloaded locally without an upload.</p>
+      </details>
     </section>
 
     <section class="section install-section" id="install" aria-labelledby="install-title">

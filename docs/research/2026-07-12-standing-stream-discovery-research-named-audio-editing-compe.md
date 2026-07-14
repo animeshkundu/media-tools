@@ -138,8 +138,8 @@ local processing with no network path, and independent implementation without co
 
 | Issue                                                    | Borrowed pattern                              | Exclusive file ownership                                                                                              | Overlap |
 | -------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------- |
-| _Pending issue link_ — keyboard-operable trim boundaries | Audacity keyboard selection                   | `lib/tools/audio-cutter/Waveform.tsx`; `tests/waveform.test.tsx` (new)                                                | None    |
-| _Pending issue link_ — exact In/Out time fields          | Clideo timestamps; Audacity Selection Toolbar | `entrypoints/app/App.tsx`; `lib/tools/audio-cutter/TrimTimeFields.tsx` (new); `tests/trim-time-fields.test.tsx` (new) | None    |
+| _Pending issue link_, keyboard-operable trim boundaries | Audacity keyboard selection                   | `lib/tools/audio-cutter/Waveform.tsx`; `tests/waveform.test.tsx` (new)                                                | None    |
+| _Pending issue link_, exact In/Out time fields          | Clideo timestamps; Audacity Selection Toolbar | `entrypoints/app/App.tsx`; `lib/tools/audio-cutter/TrimTimeFields.tsx` (new); `tests/trim-time-fields.test.tsx` (new) | None    |
 
 Ownership is disjoint by exact file path; sharing the `tests/` directory does not share a file. No
 other issue in this discovery batch may modify those files. If a task needs a listed file, it must

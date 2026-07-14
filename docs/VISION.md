@@ -39,7 +39,7 @@ Client-side video was difficult before 2024. WebCodecs shipped stable in Firefox
 
 ## The wedge
 
-The universal promise is straightforward: a real installed tool, offline, with no upload, no ads, no account, no watermark, no arbitrary size cap, and minimal permissions. It starts work immediately and remains useful when the network is disabled.
+The universal promise is straightforward: a real installed tool, offline, with no upload, no ads, no account, no watermark, no service-imposed cap, published safety limits, and minimal permissions. It starts work immediately and remains useful when the network is disabled.
 
 The emphasis changes by job:
 

@@ -15,7 +15,7 @@ Record durable project learnings here so future work can avoid rediscovering the
 ### Keep audio memory limits enforced before allocation
 
 - Context: A compact compressed WAV or MP3 file can expand into much larger floating-point PCM during decode and processing.
-- What the repository enforces: Input files are limited to 64 MB, audio is limited to mono or stereo, and decoded or in-flight PCM is limited to 256 MB. WAV metadata, duration, frame counts, sample rates, chunk sizes, and arithmetic are checked before large buffers are allocated.
+- What the repository enforces: Input files are limited to 64 MiB, audio is limited to mono or stereo, and decoded or in-flight PCM is limited to 256 MiB. WAV metadata, duration, frame counts, sample rates, chunk sizes, and arithmetic are checked before large buffers are allocated.
 - What to preserve: New cut, join, change-speed, and conversion paths must reuse or strengthen these checks. Never allocate from untrusted media dimensions before validating safe integer arithmetic and the applicable aggregate limit.
 - Related code: `lib/core/worker.ts`, `lib/tools/audio-cutter/encode.worker.ts`, and `docs/CAPABILITY-CONTRACT.md`.
 
@@ -37,5 +37,5 @@ Record durable project learnings here so future work can avoid rediscovering the
 
 - Context: Successful TypeScript, unit-test, and dual-target build commands do not prove that a packaged extension works in a browser.
 - What the repository enforces: A separate CI job, the Firefox E2E workflow, builds and lints `.output/firefox-mv3`, provisions Firefox and geckodriver through Selenium Manager, installs the built add-on, drives its real `moz-extension://` app page, runs the production-artifact E2E suite, and rejects missing, skipped, flaky, unexpected, or insufficient results.
-- What to preserve: Browser-facing changes need real-Firefox coverage for loading, decode, export, malformed input, progress, cancellation, and download behavior where applicable. Do not replace this gate with mocks or a dev-server-only test.
+- What to preserve: Browser-facing changes need real-Firefox coverage for installed-extension startup, WAV cut and export, MP3 conversion and input, join, speed, download signatures, and no-egress behavior where applicable. Add focused malformed-input, progress, or cancellation scenarios when a change relies on those paths. Do not replace this gate with mocks or a dev-server-only test.
 - Related code: `.github/workflows/e2e.yml`, `tests/e2e/global-setup.ts`, `tests/e2e/playwright.config.ts`, and `tests/e2e/audio-cutter.e2e.ts`.
