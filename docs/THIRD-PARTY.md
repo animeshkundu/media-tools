@@ -1,14 +1,18 @@
-# Third-party software bill of materials
+# Third-party software
 
-Versions are pinned by `package-lock.json`. This list covers packages shipped in the extension bundle; development-only tooling is not shipped.
+Exact shipped runtime dependency BOM. Versions are pinned in `package.json` and `package-lock.json`.
 
-| Package     | Version | SPDX license      | Purpose                      | Source / homepage                              |
-| ----------- | ------: | ----------------- | ---------------------------- | ---------------------------------------------- |
-| `react`     |  19.2.4 | MIT               | Application UI               | https://github.com/facebook/react              |
-| `react-dom` |  19.2.4 | MIT               | Browser UI renderer          | https://github.com/facebook/react              |
-| `lamejs`    |   1.2.1 | LGPL-3.0-or-later | MP3 encoding in a Web Worker | https://github.com/zhuker/lamejs               |
+## How to refresh
 
-No remote code, codec binaries, WASM modules, models, or fonts are shipped in this phase.
+After changing dependencies, run `npm install`, then update the runtime package table below from `package-lock.json` so every shipped package keeps its exact installed version and SPDX license.
+
+| Package     | Version | SPDX license      | Purpose                      | Source / homepage                 |
+| ----------- | ------: | ----------------- | ---------------------------- | --------------------------------- |
+| `lamejs`    |   1.2.1 | LGPL-3.0-or-later | MP3 encoding in a Web Worker | https://github.com/zhuker/lamejs  |
+| `react`     |  19.2.7 | MIT               | Application UI               | https://github.com/facebook/react |
+| `react-dom` |  19.2.7 | MIT               | Browser UI renderer          | https://github.com/facebook/react |
+
+No remote code, codec binaries, WASM modules, models, or fonts are shipped.
 
 ---
 

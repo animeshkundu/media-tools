@@ -1,29 +1,24 @@
-# Activates after this local Git repository is pushed to GitHub and repository secrets are configured.
 name: Release
 
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
-    inputs:
-      publish_chrome:
-        description: Optionally publish the Chrome package to the Chrome Web Store
-        required: false
-        default: false
-        type: boolean
+
+permissions:
+  contents: write
+  id-token: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
@@ -31,51 +26,111 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Create Chrome ZIP
+      - name: Run release checks
+        run: npm run check
+
+      - name: Package Chrome extension
         run: npm run zip
 
-      - name: Create Firefox and source ZIPs
+      - name: Package Firefox extension and sources
         run: npm run zip:firefox
 
-      - name: Publish to Firefox AMO
-        run: npx wxt submit --chrome-zip .output/*-chrome.zip --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/*-sources.zip
+      - name: Generate checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd .output
+          shopt -s nullglob
+          zip_files=( *.zip )
+          (( ${#zip_files[@]} > 0 )) || { echo "No ZIP artifacts found" >&2; exit 1; }
+          sha256sum -- "${zip_files[@]}" > SHA256SUMS
+
+      - name: Install Cosign
+        # v3 of the installer cannot verify a Cosign v3 binary (it fetches a
+        # detached .sig that Cosign v3 no longer publishes); v4 supports it.
+        uses: sigstore/cosign-installer@v4.1.2
+        with:
+          cosign-release: 'v3.0.6'
+
+      - name: Sign release assets with GitHub OIDC
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in .output/*.zip .output/SHA256SUMS; do
+            cosign sign-blob --yes --new-bundle-format --bundle "${file}.sigstore.json" "${file}"
+          done
+
+      - name: Verify the signed checksums (self-check with the documented command)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cosign verify-blob \
+            --new-bundle-format \
+            --bundle .output/SHA256SUMS.sigstore.json \
+            --certificate-identity-regexp '^https://github\.com/animeshkundu/media-tools/\.github/workflows/release\.yml@refs/tags/v[^/]+$' \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            .output/SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            .output/*.zip
+            .output/SHA256SUMS
+            .output/*.sigstore.json
+          fail_on_unmatched_files: true
+          # v0.1.x is a developer preview; mark it a prerelease.
+          prerelease: true
+          body: |
+            **Audio Cutter**: Private, offline audio cutting for Firefox and Chrome, entirely in your browser.
+
+            ### Known limitations
+            - This is a developer preview; signed Firefox and Chrome store listings are coming soon.
+            - Until the Firefox listing is available, the Firefox package must be loaded as a temporary add-on and is cleared when Firefox restarts.
+
+            ### Verify your download
+            Download `audio-cutter-<version>-chrome.zip`, `audio-cutter-<version>-firefox.zip`, `audio-cutter-<version>-sources.zip`, and `SHA256SUMS`, then verify their checksums:
+
+            ```sh
+            sha256sum -c SHA256SUMS
+            ```
+
+            On macOS:
+
+            ```sh
+            shasum -a 256 -c SHA256SUMS
+            ```
+
+            Each asset also has a keyless GitHub OIDC signature bundle. Verify the checksum file before trusting it:
+
+            ```sh
+            cosign verify-blob --new-bundle-format --bundle SHA256SUMS.sigstore.json --certificate-identity-regexp '^https://github\.com/animeshkundu/media-tools/\.github/workflows/release\.yml@refs/tags/v[^/]+$' --certificate-oidc-issuer https://token.actions.githubusercontent.com SHA256SUMS
+            ```
+
+            To verify the ZIP bundles directly, replace `<version>` with the release version:
+
+            ```sh
+            version='<version>'
+            for target in chrome firefox sources; do
+              archive="audio-cutter-${version}-${target}.zip"
+              cosign verify-blob --new-bundle-format --bundle "${archive}.sigstore.json" --certificate-identity-regexp '^https://github\.com/animeshkundu/media-tools/\.github/workflows/release\.yml@refs/tags/v[^/]+$' --certificate-oidc-issuer https://token.actions.githubusercontent.com "${archive}"
+            done
+            ```
+
+            [Changelog](https://github.com/animeshkundu/media-tools/blob/main/docs/CHANGELOG.md)
+
+      # Optional. Set the repository variable PUBLISH_FIREFOX to true and add
+      # FIREFOX_EXTENSION_ID, FIREFOX_JWT_ISSUER, and FIREFOX_JWT_SECRET as
+      # repository Actions secrets. Skipped by default and runs only after the
+      # GitHub Release has been created.
+      - name: Publish listed extension to Firefox AMO
+        if: ${{ vars.PUBLISH_FIREFOX == 'true' }}
         env:
           FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
           FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
           FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
-
-      - name: Attach ZIPs to GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          files: .output/*.zip
-
-  # Optional and manual only. Missing Chrome credentials never affect the Firefox release job.
-  publish_chrome:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_chrome }}
-    needs: release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Create Chrome ZIP
-        run: npm run zip
-
-      - name: Publish to Chrome Web Store
-        run: npx wxt submit --chrome-zip .output/*-chrome.zip --chrome-extension-id "$CHROME_EXTENSION_ID" --chrome-client-id "$CHROME_CLIENT_ID" --chrome-client-secret "$CHROME_CLIENT_SECRET" --chrome-refresh-token "$CHROME_REFRESH_TOKEN"
-        env:
-          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
-          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
-          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
-          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: |
+          npx wxt submit \
+            --firefox-zip .output/*-firefox.zip \
+            --firefox-sources-zip .output/*-sources.zip \
+            --firefox-channel listed

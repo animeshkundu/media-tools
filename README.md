@@ -95,19 +95,35 @@ Until then, use a package from [GitHub Releases](https://github.com/animeshkundu
 
 ## Verify your download
 
-The release workflow produces Chrome, Firefox, and source ZIPs but does not currently publish checksum or signature bundles. You can record a downloaded archive's SHA-256 value with:
+Download `audio-cutter-<version>-chrome.zip`, `audio-cutter-<version>-firefox.zip`, `audio-cutter-<version>-sources.zip`, and `SHA256SUMS` from the [Releases page](https://github.com/animeshkundu/media-tools/releases), then verify their checksums:
 
 ```sh
-sha256sum audio-cutter-<version>-chrome.zip
+sha256sum -c SHA256SUMS
 ```
 
 On macOS:
 
 ```sh
-shasum -a 256 audio-cutter-<version>-chrome.zip
+shasum -a 256 -c SHA256SUMS
 ```
 
-For an independent build comparison, extract `audio-cutter-<version>-sources.zip`, run `npm ci`, then `npm run zip` and `npm run zip:firefox`. Compare the generated archives with the release packages by SHA-256 or by archive contents. Byte-for-byte equality can depend on the local toolchain and packaging metadata.
+Each asset also has a keyless GitHub OIDC signature bundle. Verify the checksum file before trusting it:
+
+```sh
+cosign verify-blob --new-bundle-format --bundle SHA256SUMS.sigstore.json --certificate-identity-regexp '^https://github\.com/animeshkundu/media-tools/\.github/workflows/release\.yml@refs/tags/v[^/]+$' --certificate-oidc-issuer https://token.actions.githubusercontent.com SHA256SUMS
+```
+
+To verify the ZIP bundles directly, replace `<version>` with the release version:
+
+```sh
+version='<version>'
+for target in chrome firefox sources; do
+  archive="audio-cutter-${version}-${target}.zip"
+  cosign verify-blob --new-bundle-format --bundle "${archive}.sigstore.json" --certificate-identity-regexp '^https://github\.com/animeshkundu/media-tools/\.github/workflows/release\.yml@refs/tags/v[^/]+$' --certificate-oidc-issuer https://token.actions.githubusercontent.com "${archive}"
+done
+```
+
+For an independent build comparison, check out the release tag, run `npm ci`, then `npm run zip` and `npm run zip:firefox`. Compare the generated ZIP SHA-256 values with `SHA256SUMS`, or compare the build inputs with `audio-cutter-<version>-sources.zip`. Byte-for-byte equality can depend on the local toolchain and packaging metadata.
 
 ## How it works
 

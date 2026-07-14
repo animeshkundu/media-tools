@@ -10,7 +10,7 @@ Include the affected version, reproduction steps or a proof of concept, the expe
 
 ## Machine-readable policy
 
-A [`security.txt`](.well-known/security.txt) (RFC 9116) accompanies this policy. It is served on the project site at <https://animeshkundu.github.io/media-tools/.well-known/security.txt> and points back to the private advisory form above.
+A [`security.txt`](.well-known/security.txt) (RFC 9116) accompanies this policy. It is served on the project site at <https://animesh.kundus.in/media-tools/.well-known/security.txt> and points back to the private advisory form above.
 
 ## Scope
 
