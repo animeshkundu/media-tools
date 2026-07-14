@@ -1,0 +1,121 @@
+name: Firefox E2E
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  firefox-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      CI: 'true'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Firefox extension
+        run: npm run build:firefox
+
+      - name: Install Playwright Firefox with system dependencies
+        run: npx playwright install --with-deps firefox
+
+      - name: Lint built Firefox extension
+        run: npx web-ext lint --source-dir .output/firefox-mv3
+
+      - name: Run Firefox E2E tests
+        run: npx playwright test --config=playwright.config.ts
+
+      - name: Verify Firefox E2E results
+        if: ${{ always() }}
+        run: |
+          node --input-type=module <<'EOF'
+          import { readFile } from 'node:fs/promises';
+
+          const resultPath = 'test-results/playwright-results.json';
+          let report;
+          try {
+            report = JSON.parse(await readFile(resultPath, 'utf8'));
+          } catch (error) {
+            throw new Error(`Firefox E2E result is missing or invalid: ${error.message}`);
+          }
+
+          const tests = [];
+          const collectTests = (suites = []) => {
+            for (const suite of suites) {
+              for (const spec of suite.specs ?? []) {
+                for (const test of spec.tests ?? []) {
+                  tests.push({ title: spec.title, ...test });
+                }
+              }
+              collectTests(suite.suites);
+            }
+          };
+          collectTests(report.suites);
+
+          const stats = report.stats;
+          for (const name of ['expected', 'skipped', 'unexpected', 'flaky']) {
+            if (!Number.isInteger(stats?.[name]) || stats[name] < 0) {
+              throw new Error(`Firefox E2E result has invalid stats.${name}`);
+            }
+          }
+
+          let passed = 0;
+          const invalid = [];
+          for (const test of tests) {
+            const results = Array.isArray(test.results) ? test.results : [];
+            const finalResult = results.at(-1);
+            const cleanPass =
+              test.expectedStatus === 'passed' &&
+              test.status === 'expected' &&
+              results.length > 0 &&
+              results.every((result) => result.status === 'passed') &&
+              finalResult.status === 'passed';
+            if (cleanPass) passed += 1;
+            else invalid.push(`${test.projectName}: ${test.title}`);
+          }
+
+          const { expected, skipped, unexpected, flaky } = stats;
+          const discovered = tests.length;
+          const classified = expected + skipped + unexpected + flaky;
+          console.log(
+            `Firefox E2E result: discovered=${discovered} expected=${expected} passed=${passed} skipped=${skipped} unexpected=${unexpected} flaky=${flaky}`,
+          );
+
+          if (
+            expected !== passed ||
+            passed < 4 ||
+            skipped > 0 ||
+            unexpected > 0 ||
+            flaky > 0 ||
+            discovered !== classified ||
+            discovered !== passed ||
+            invalid.length > 0 ||
+            (report.errors?.length ?? 0) > 0
+          ) {
+            if (invalid.length > 0) console.error(`Non-passing tests: ${invalid.join('; ')}`);
+            throw new Error('Firefox E2E result gate failed. All discovered tests must pass, with at least 4 passes and no skips.');
+          }
+          EOF
+
+      - name: Upload Firefox E2E failure artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-e2e-failure
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
