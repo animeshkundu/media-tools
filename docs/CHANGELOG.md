@@ -18,6 +18,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Security
 
+## [0.1.3] - 2026-07-14
+
+Parity polish patch: supply-chain, accessibility, SEO, and documentation. No shipped extension code change.
+
+### Added
+
+- SoftwareApplication JSON-LD, demo-video WebVTT captions, and a visible transcript on the project site.
+
+### Changed
+
+- Pinned every GitHub Actions workflow action to a verified commit SHA (ci, e2e, release, and the Copilot setup helper); pages.yml was already pinned.
+- Reframed the unshipped video, mediabunny, and ffmpeg.wasm paths in the architecture docs from present tense to planned Phase 2 and Phase 3.
+
+### Fixed
+
+- Raised the site feature-number text contrast to meet WCAG 1.4.3 (at least 4.5 to 1).
+- Removed em dashes across the documentation and README.
+
 ## [0.1.2] - 2026-07-14
 
 Documentation honesty patch. No functional or bundle change; the Chrome and Firefox extension code is identical to 0.1.1.
@@ -70,7 +88,8 @@ Initial developer-preview release. Private, offline audio editing that runs enti
 - Zero install-time permissions and a strict no-egress extension-page Content Security Policy.
 - No-network build check: CI greps both built browser bundles for common network primitives (`fetch`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, and `EventSource`) as one defense-in-depth layer.
 
-[Unreleased]: https://github.com/animeshkundu/media-tools/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/animeshkundu/media-tools/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/animeshkundu/media-tools/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/animeshkundu/media-tools/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/animeshkundu/media-tools/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/animeshkundu/media-tools/releases/tag/v0.1.0
