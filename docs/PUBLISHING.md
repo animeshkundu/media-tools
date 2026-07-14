@@ -6,7 +6,7 @@ Scope: Firefox AMO publishing playbook, with optional Chrome Web Store guidance.
 
 1. Create a [Firefox Add-on developer account](https://addons.mozilla.org/developers/).
 2. Open the AMO **API Keys** page and generate API credentials. Save the JWT issuer and JWT secret when shown.
-3. Confirm the extension ID. It is `media-tools@local` today. Before publishing, replace it with a real email-form ID or use the AMO-assigned ID for a listed add-on.
+3. Confirm the shipped extension ID, `audiocutter@animesh.kundus.in`, matches the AMO listing and release configuration.
 4. Add these GitHub Actions repository secrets:
    - `FIREFOX_EXTENSION_ID`
    - `FIREFOX_JWT_ISSUER`
@@ -56,12 +56,12 @@ Use semantic `N.N.N` versions in `package.json` and the manifest. Every AMO uplo
 
 [`wxt.config.ts`](../wxt.config.ts) already sets:
 
-- `browser_specific_settings.gecko.id` to `media-tools@local`
+- `browser_specific_settings.gecko.id` to `audiocutter@animesh.kundus.in`
 - `data_collection_permissions: { required: ['none'] }`, required by AMO since 2025-11-03
 - no host permissions
 - default-deny extension CSP:
 
-  `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'self'; base-uri 'none'`
+  `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'`
 
 `wasm-unsafe-eval` is intentionally absent today because the shipped build does not bundle WASM. If
 that changes, review the policy and store-review implications before reintroducing it.

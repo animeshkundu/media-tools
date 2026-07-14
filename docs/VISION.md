@@ -12,7 +12,7 @@ Media Tools is the default privacy-first offline media toolkit across Chrome and
 
 It also becomes one part of a focused "offline tools" suite alongside File Tools and Photo Tools. Each product stays single-purpose, but all three share a recognizable promise: local processing, minimal permissions, no account, and no monetization that compromises trust.
 
-The product is the trusted, mechanically verifiable alternative to upload-based websites. Users do not have to take a privacy claim on faith. They can disconnect the network, complete the job, and read a manifest with no host access or data-collection permission for local-file processing.
+The product is the trusted, auditable alternative to upload-based websites. Users do not have to take a privacy claim on faith. They can disconnect the network, complete the job, and read a manifest with no host access or data-collection permission for local-file processing.
 
 ## Positioning vs the incumbents
 

@@ -1,5 +1,10 @@
 # Three privacy-first browser extensions — program overview & shared architecture
 
+> **SUPERSEDED (2026-07-14):** Web Audio recommendations below are preserved as original research,
+> not as a description of Audio Cutter's shipped decode path. The shipped engine decodes MP3 with
+> worker-side WebCodecs `AudioDecoder` and parses WAV PCM directly in the worker. Bundled `lamejs` is
+> used for MP3 encoding only.
+
 > Decision-ready synthesis of the File / Media / Photo tools research.
 > Read this first, then the three per-extension docs. Last updated 2026-07-12.
 > Per-extension detail: [`ext-1-file-tools.md`](https://github.com/animeshkundu/file-tools/blob/main/docs/research/ext-1-file-tools.md) ·
@@ -37,7 +42,7 @@ We downloaded and unpacked the actual CRX of every category leader. The finding 
 
 **Build-better = be the real thing:** a genuine MV3 offline tool that processes the file the
 moment it's dropped, nothing leaves the device, no ads, no login, minimal permissions —
-mechanically verifiable (users can read the manifest). Cross-browser, one codebase.
+auditable through the manifest (users can read it). Cross-browser, one codebase.
 
 ## 3. The three extensions at a glance
 

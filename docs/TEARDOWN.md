@@ -1,5 +1,10 @@
 # Incumbent teardown — how the "market leaders" are actually built
 
+> **SUPERSEDED (2026-07-14):** Web Audio recommendations below are preserved as historical planning
+> conclusions, not as a description of Audio Cutter's shipped decode path. The shipped engine decodes
+> MP3 with worker-side WebCodecs `AudioDecoder` and parses WAV PCM directly in the worker. Bundled
+> `lamejs` is used for MP3 encoding only.
+
 Source: downloaded each extension's CRX from the Chrome Web Store and unpacked it
 (`research/incumbents/<name>/`). This is what informs _how to build better_.
 
