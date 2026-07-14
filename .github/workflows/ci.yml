@@ -40,6 +40,20 @@ jobs:
       - name: Build Firefox extension
         run: npm run build:firefox
 
+      - name: Verify the built bundle makes no network calls
+        run: |
+          set -euo pipefail
+          js_count=$(find .output -name '*.js' | wc -l | tr -d ' ')
+          if [ "$js_count" -eq 0 ]; then
+            echo "No built JavaScript found to scan" >&2
+            exit 1
+          fi
+          if grep -R -n -E 'fetch\(|XMLHttpRequest|WebSocket|sendBeacon|EventSource' .output --include='*.js'; then
+            echo "ERROR: a network primitive appears in the built bundle above." >&2
+            exit 1
+          fi
+          echo "OK: scanned ${js_count} built JS files across both targets; no network primitives."
+
       - name: Test CSP manifest guard
         run: |
           node --input-type=module <<'EOF'

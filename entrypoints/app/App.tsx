@@ -92,7 +92,7 @@ export default function App() {
         <header className="mb-10 flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-emerald-300">
-              Media Tools
+              Audio Cutter
             </p>
             <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
               {tool === 'cut'
