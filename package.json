@@ -2,7 +2,7 @@
   "name": "media-tools",
   "description": "Cut and export audio offline and privately — nothing is uploaded.",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "wxt",
