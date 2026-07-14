@@ -431,7 +431,7 @@ stays light until a user invokes a heavy tool.
 
 ## Appendix A — sources
 
-- Incumbent teardown: `research/incumbents/TEARDOWN.md`, `research/incumbents/audiocutter/manifest.json`, `.../videocutter/manifest.json`.
+- Incumbent teardown: `docs/TEARDOWN.md`, `research/incumbents/audiocutter/manifest.json`, `.../videocutter/manifest.json`.
 - Chrome demand: `data/snapshots/chrome/2025-01-05/mini_extension_stats.csv` (pinned, verified per-row).
 - Firefox: AMO v5 API (query template §4); slugs `media-conversion-tool`, `ezconvert-audio-trimmer`, `web-apps-by-123apps`, `speed-pitch-changer`, `audio-equalizer-wext`, `katge-video-downloader-trimmer`.
 - Firefox WebCodecs: [WebCodecs API — MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API), [AudioEncoder — MDN](https://developer.mozilla.org/en-US/docs/Web/API/AudioEncoder) (VideoEncoder/AudioEncoder stable Firefox desktop 130+, Sept 2024).

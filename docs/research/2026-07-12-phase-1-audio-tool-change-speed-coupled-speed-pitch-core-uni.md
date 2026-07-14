@@ -21,8 +21,8 @@ The two durable planning artifacts are the explicit exception requested for this
 
 ## Repository findings
 
-1. `ROADMAP.md:3-10` places coupled speed and pitch in Phase 1 and leaves it unimplemented.
-   Independent pitch/time-stretch remains gated in Phase 3 (`ROADMAP.md:20-24`).
+1. `docs/ROADMAP.md:3-10` places coupled speed and pitch in Phase 1 and leaves it unimplemented.
+   Independent pitch/time-stretch remains gated in Phase 3 (`docs/ROADMAP.md:20-24`).
 2. `docs/PRODUCT-SPEC.md:104-117` defines this feature as resampling where speed and pitch move
    together. Its core numerical criterion is output duration equal to input duration divided by the
    multiplier within one audio frame.

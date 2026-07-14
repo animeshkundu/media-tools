@@ -91,7 +91,7 @@ dependency manifests, or existing tests. Do not add dependencies or independent 
 
 ## Documentation disposition
 
-These research and plan artifacts are the durable record for this scoped unit. `LEARNINGS.md`, ADRs,
+These research and plan artifacts are the durable record for this scoped unit. `docs/LEARNINGS.md`, ADRs,
 and changelog files should remain unchanged unless implementation reveals a genuinely reusable
 repository fact; editing them preemptively would violate the work unit's narrow file ownership.
 

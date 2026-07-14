@@ -2,9 +2,9 @@
 
 > Decision-ready synthesis of the File / Media / Photo tools research.
 > Read this first, then the three per-extension docs. Last updated 2026-07-12.
-> Per-extension detail: [`ext-1-file-tools.md`](./ext-1-file-tools.md) ·
-> [`ext-2-media-tools.md`](./ext-2-media-tools.md) · [`ext-3-photo-tools.md`](./ext-3-photo-tools.md).
-> Incumbent source teardown: [`../research/incumbents/TEARDOWN.md`](../research/incumbents/TEARDOWN.md).
+> Per-extension detail: [`ext-1-file-tools.md`](https://github.com/animeshkundu/file-tools/blob/main/docs/research/ext-1-file-tools.md) ·
+> [`ext-2-media-tools.md`](./ext-2-media-tools.md) · [Photo Tools repository](https://github.com/animeshkundu/photo-tools).
+> Incumbent source teardown: [`TEARDOWN.md`](../TEARDOWN.md).
 
 ## 1. The thesis (one paragraph)
 
@@ -119,6 +119,6 @@ manifest transform, shared components) + `packages/file`, `packages/media`, `pac
 - **Chrome demand:** pinned Jan-2025 snapshot (`results/utilities.csv`) + live verification
   (chrome-stats / listings) — counts are dated/banded, ratings are the reliable relative signal.
 - **Incumbent architecture:** firsthand CRX teardown of 8 extensions
-  (`research/incumbents/` + `TEARDOWN.md`).
+  (`docs/TEARDOWN.md`).
 - **Libraries / MV3 / cross-browser:** primary sources (Chrome for Developers, MDN,
   Mozilla Extension Workshop), captured in each per-extension doc's appendix.

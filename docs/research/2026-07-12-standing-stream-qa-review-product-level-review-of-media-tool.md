@@ -14,11 +14,11 @@ out of scope?
 ## Sources reviewed
 
 - Product authority: `docs/VISION.md`, `docs/PRODUCT-SPEC.md`, `docs/DESIGN.md`,
-  `docs/ARCHITECTURE.md`, `docs/PEER-REVIEW.md`, `ROADMAP.md`, and the HTML mocks.
+  `docs/ARCHITECTURE.md`, `docs/PEER-REVIEW.md`, `docs/ROADMAP.md`, and the HTML mocks.
 - Shipped surfaces: `entrypoints/app/`, `entrypoints/background.ts`, `components/`,
   `lib/core/`, `lib/tools/audio-cutter/`, `assets/tailwind.css`, and `public/vendor/lame.min.js`.
 - Verification and packaging: `tests/audio.test.ts`, `wxt.config.ts`, `package.json`,
-  `package-lock.json`, `THIRD-PARTY.md`, and `.github/workflows/ci.yml`.
+  `package-lock.json`, `docs/THIRD-PARTY.md`, and `.github/workflows/ci.yml`.
 - Production artifacts generated on 2026-07-12 under `.output/chrome-mv3/` and
   `.output/firefox-mv3/`.
 
@@ -130,7 +130,7 @@ no RIFF overflow guard. Decode failure and worker crash paths are not tested thr
 
 ### 7. Phase 1 tools
 
-**Current state:** `ROADMAP.md` correctly marks join/merge, conversion, and coupled speed as undone.
+**Current state:** `docs/ROADMAP.md` correctly marks join/merge, conversion, and coupled speed as undone.
 The app has no tool picker or routing despite `mocks/home.html` depicting the suite.
 
 **Gap:** Each tool needs a self-contained module, UI entry, worker job, limits, focused adversarial
@@ -145,7 +145,7 @@ zero production vulnerabilities; installation reports nine development-tree advi
 separate maintenance assessment.
 
 **Gap:** every direct dependency and dev dependency in `package.json` uses a caret range. The
-top-level lockfile entries preserve those ranges. `THIRD-PARTY.md` lists shipped package versions but
+top-level lockfile entries preserve those ranges. `docs/THIRD-PARTY.md` lists shipped package versions but
 omits notices, source/relink obligations, and artifact-specific details required by the guardrails.
 No automated attribution scan exists.
 
@@ -217,5 +217,5 @@ Phase 2 or Phase 3.
 - Plan:
   `docs/plans/2026-07-12-standing-stream-qa-review-product-level-review-of-media-tool.md`
 - Binding findings: `docs/PEER-REVIEW.md`
-- Delivery order: `ROADMAP.md`
+- Delivery order: `docs/ROADMAP.md`
 
