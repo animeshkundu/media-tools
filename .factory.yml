@@ -1,0 +1,3 @@
+# Enables the autonomous product-improvement factory to open improvement PRs on this repo.
+# Presence of this file is the opt-in marker; remove it to disable.
+enabled: true
