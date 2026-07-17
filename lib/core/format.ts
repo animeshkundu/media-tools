@@ -1,8 +1,16 @@
 export function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00.0';
-  const minutes = Math.floor(seconds / 60);
-  const remainder = seconds - minutes * 60;
-  return `${minutes}:${remainder.toFixed(1).padStart(4, '0')}`;
+  const totalTenths = Math.round(seconds * 10);
+  const hours = Math.floor(totalTenths / 36_000);
+  const minutes = Math.floor((totalTenths % 36_000) / 600);
+  const secondTenths = totalTenths % 600;
+  const formattedSeconds = (secondTenths / 10).toFixed(1).padStart(4, '0');
+
+  if (hours >= 1) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${formattedSeconds}`;
+  }
+
+  return `${minutes}:${formattedSeconds}`;
 }
 
 export function formatBytes(bytes: number): string {
