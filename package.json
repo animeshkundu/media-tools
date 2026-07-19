@@ -29,7 +29,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.61.1",
-    "@tailwindcss/vite": "4.3.2",
+    "@tailwindcss/vite": "4.3.3",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@types/selenium-webdriver": "4.35.6",
@@ -40,9 +40,9 @@
     "globals": "17.7.0",
     "prettier": "3.9.5",
     "selenium-webdriver": "4.46.0",
-    "tailwindcss": "4.3.2",
-    "typescript": "5.9.3",
-    "typescript-eslint": "8.63.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "typescript-eslint": "8.64.0",
     "vitest": "4.1.10",
     "web-ext": "10.5.0",
     "wxt": "0.20.27"
