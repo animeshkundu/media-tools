@@ -93,6 +93,10 @@ Render the audio on a 224px high `#0d1e1a` surface with a one-pixel `border-whit
 
 Use an 8px high, fully rounded `bg-white/10` track with a fully rounded emerald-400 fill. Clamp values from 0 to 100 and expose `role="progressbar"`, an accessible label, and current, minimum, and maximum values. The fill width may animate, but it must remain determinate when the engine reports progress. See [`components/Progress.tsx`](../components/Progress.tsx).
 
+### Shareable result card
+
+After a successful export, show a compact latest-export card with a locally rendered waveform thumbnail, a concise tool-specific summary, and “Copy link” plus “Copy as markdown” actions. The thumbnail uses the waveform palette and never retains the output Blob. The product link is the static Media Tools URL; it does not contain, host, or transmit the user’s audio, and the card states that distinction. Clipboard feedback uses a polite live region, and clipboard access stays permission-free with a user-gesture Clipboard API call plus a local `execCommand` fallback. See [`components/ResultCard.tsx`](../components/ResultCard.tsx) and [`lib/core/share.ts`](../lib/core/share.ts).
+
 ### Format and settings select
 
 Place the label above the field in 14px medium `text-emerald-100/70`. The field uses a 12px radius, `border-white/15`, `#0d1e1a`, 16px by 12px padding, and primary text. Keep native keyboard behavior. Unsupported formats remain visible but disabled, with adjacent capability copy that says why. The export control in [`entrypoints/app/App.tsx`](../entrypoints/app/App.tsx) is the shipped baseline.
@@ -148,7 +152,7 @@ The flagship tool uses one stable page shell and swaps the work area without cha
 | Loading and decoding | Keep the dropzone visible but disabled at 50% opacity. Start work immediately after drop. | Bottom status: “Decoding audio locally…” |
 | Ready and editing | Show the file panel, metadata, waveform, trim handles, timecodes, format select, ghost action, and primary export action. | Bottom status: “Drag the gold handles to choose the part you want.” The waveform has an accessible label that identifies the gold trim handles. |
 | Progress and cancel | Disable file replacement, format changes, and export. Show Cancel and a determinate emerald progress bar. | Bottom status names the local job, for example “Encoding WAV in a worker…” Progress exposes `role="progressbar"` and numeric ARIA values. |
-| Success | Fill progress to 100%, create the download, and return controls to ready state. | Bottom status: “Done. Your download was created without uploading the file.” |
+| Success | Fill progress to 100%, create the download, return controls to ready state, and show the shareable result card. | Bottom status: “Done. Your download was created without uploading the file.” The card identifies the latest export and announces clipboard feedback politely. |
 | Decode error | Return to a usable empty state and preserve the selected file only if recovery is possible. | Bottom status: “This browser could not decode that audio file. Try WAV or MP3.” |
 | Capability unavailable | Gray out the unsupported format or tool before processing. Keep alternatives enabled. | Place a concise reason beside the disabled control, such as “AAC export is not available in this browser.” Do not wait for export to fail. |
 | Export error | Stop progress, release the active job, and restore safe controls. | Show the engine message when it is useful, otherwise “Export failed.” |

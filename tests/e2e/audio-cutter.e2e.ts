@@ -270,6 +270,24 @@ async function clickButton(label: string): Promise<void> {
   throw new Error(`Could not find the ${label} button.`);
 }
 
+async function assertResultCard(expectedSummary: string, testCopyActions = false): Promise<void> {
+  const card = await visibleElement('section[aria-label="Share latest export"]');
+  expect(await card.getText()).toContain(expectedSummary);
+  expect(await card.getText()).toContain('The link shares Media Tools, not your audio.');
+  const thumbnail = await card.findElement(By.css('img[alt="Waveform preview of the exported audio"]'));
+  expect(await thumbnail.getAttribute('src')).toMatch(/^data:image\/png;base64,/);
+
+  if (testCopyActions) {
+    await clickButton('Copy link');
+    await waitForText('section[aria-label="Share latest export"] [aria-live="polite"]', 'Link copied.');
+    await clickButton('Copy as markdown');
+    await waitForText(
+      'section[aria-label="Share latest export"] [aria-live="polite"]',
+      'Markdown copied.',
+    );
+  }
+}
+
 async function uploadFiles(filePaths: string[]): Promise<void> {
   const input = await getDriver().findElement(By.css('input[type="file"]'));
   await input.sendKeys(filePaths.join('\n'));
@@ -486,6 +504,7 @@ test.describe('Audio Cutter installed Firefox extension', () => {
 
     await clickButton('Cut & download');
     await waitForText('p[aria-live="polite"]', 'Done.');
+    await assertResultCard('Cut 0:00.5 from the source and exported WAV', true);
     const output = await waitForDownload('cut-source-trimmed.wav');
     const wav = await validateWav(output);
     expect(wavFrames(wav)).toBe(Math.round(SAMPLE_RATE * 0.5));
@@ -520,6 +539,7 @@ test.describe('Audio Cutter installed Firefox extension', () => {
 
     await clickButton('Convert & download');
     await waitForText('p[aria-live="polite"]', 'Done.');
+    await assertResultCard('Converted 0:01.0 of audio to MP3');
     const output = await waitForDownload('mp3-export-source-trimmed.mp3');
     const mp3 = await readFile(output);
     expect(mp3.length).toBeGreaterThan(1_000);
@@ -570,6 +590,7 @@ test.describe('Audio Cutter installed Firefox extension', () => {
 
     await clickButton('Join & download');
     await waitForText('p[aria-live="polite"]', 'Done.');
+    await assertResultCard('Joined 2 tracks into WAV (0:01.0');
     const output = await waitForDownload('joined-audio-trimmed.wav');
     const wav = await validateWav(output);
     expect(wavFrames(wav)).toBe(SAMPLE_RATE);
@@ -587,6 +608,7 @@ test.describe('Audio Cutter installed Firefox extension', () => {
 
     await clickButton('Change speed & download');
     await waitForText('p[aria-live="polite"]', 'Done.');
+    await assertResultCard('Changed speed to 2.00× and exported WAV (0:00.5');
     const output = await waitForDownload('speed-source-trimmed.wav');
     const wav = await validateWav(output);
     expect(wavFrames(wav)).toBe(Math.round(SAMPLE_RATE / 2));

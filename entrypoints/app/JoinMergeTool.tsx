@@ -1,8 +1,10 @@
 import { useRef, useState, type DragEvent } from 'react';
 import { Button } from '@/components/Button';
 import { Progress } from '@/components/Progress';
+import { ResultCard, type ResultCardData } from '@/components/ResultCard';
 import { downloadBlob } from '@/lib/core/download';
 import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
+import { createWaveformThumbnail } from '@/lib/core/share';
 import { MAX_PCM_ENCODE_BYTES, startDecodeFile, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
 import { startJoinedEncode, type DecodedPcmTrack } from '@/lib/tools/join/join';
 
@@ -56,6 +58,7 @@ export function JoinMergeTool() {
   const [status, setStatus] = useState('Select at least two audio files to merge.');
   const [validation, setValidation] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<ResultCardData>();
   const inputRef = useRef<HTMLInputElement>(null);
   const jobRef = useRef<AudioJob<unknown> | undefined>(undefined);
 
@@ -65,6 +68,7 @@ export function JoinMergeTool() {
     setValidation(undefined);
     setBusy(true);
     setProgress(0);
+    setResult(undefined);
     setStatus(`Reading ${selected.length} file${selected.length === 1 ? '' : 's'} on this device…`);
 
     try {
@@ -141,6 +145,7 @@ export function JoinMergeTool() {
     setValidation(undefined);
     setBusy(true);
     setProgress(0);
+    setResult(undefined);
     setStatus(`Joining ${tracks.length} tracks in a worker…`);
     const job = startJoinedEncode(
       tracks.map((track) => ({
@@ -154,6 +159,14 @@ export function JoinMergeTool() {
     try {
       const blob = await job.result;
       downloadBlob(blob, outputName('joined-audio', format));
+      const outputDuration = tracks.reduce((total, track) => total + track.duration, 0);
+      setResult({
+        summary: `Joined ${tracks.length} tracks into ${format.toUpperCase()} (${formatDuration(outputDuration)}, ${formatBytes(blob.size)}).`,
+        thumbnailUrl: createWaveformThumbnail(
+          tracks.map((track) => track.channelData[0]!),
+        ),
+        title: 'Audio merge complete',
+      });
       setProgress(1);
       setStatus('Done. Your merged download was created without uploading files.');
     } catch (error) {
@@ -293,6 +306,7 @@ export function JoinMergeTool() {
           <Progress value={progress} />
         </div>
       )}
+      {result && <ResultCard {...result} />}
       <p aria-live="polite" className="mt-5 text-center text-sm text-emerald-100/60">
         {status}
       </p>

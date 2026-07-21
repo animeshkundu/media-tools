@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Added a local shareable result card after each audio export with a waveform thumbnail, concise result summary, and permission-free link and Markdown copy actions.
+
 ### Changed
 
 ### Deprecated

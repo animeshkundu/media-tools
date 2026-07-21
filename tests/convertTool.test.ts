@@ -3,6 +3,7 @@ import { MAX_INPUT_BYTES, MAX_PCM_ENCODE_BYTES } from '../lib/core/worker';
 
 vi.mock('@/components/Button', () => ({ Button: () => null }));
 vi.mock('@/components/Progress', () => ({ Progress: () => null }));
+vi.mock('@/components/ResultCard', () => ({ ResultCard: () => null }));
 vi.mock('@/lib/core/download', () => ({ downloadBlob: () => undefined }));
 vi.mock('@/lib/core/format', () => ({
   formatBytes: () => '',
@@ -17,6 +18,7 @@ vi.mock('@/lib/core/worker', () => ({
     result: Promise.resolve({ channelData: [new Float32Array(8000)], sampleRate: 8000 }),
   })),
 }));
+vi.mock('@/lib/core/share', () => ({ createWaveformThumbnail: () => '' }));
 vi.mock('@/lib/tools/convert/convert', () => ({
   startConversion: () => ({ cancel: () => undefined, result: Promise.resolve(new Blob()) }),
 }));

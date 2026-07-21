@@ -250,6 +250,7 @@ This is the Phase 2 marquee tool. It does not ship until it passes every benchma
 - All JavaScript, workers, codecs, and WASM must be bundled with the extension. Remote code is forbidden.
 - The manifest must continue to declare no required data collection on Firefox. Users must be able to inspect the manifest, observe minimal permissions, disconnect the network, and complete an export.
 - No hidden telemetry is permitted. Explicit opt-in measurement is separated from processing and is never required to use free or Pro tools.
+- Post-export sharing must expose only a locally built summary and the static Media Tools product URL. It must never upload, embed, or link to the user’s media, and clipboard actions must not add an extension permission.
 
 ### Offline behavior
 
@@ -285,6 +286,7 @@ The shipped audio pipeline delegates WAV and MP3 decode to the worker created by
 - Status changes must use a polite live region. The shipped app already provides `aria-live="polite"` in `entrypoints/app/App.tsx`.
 - Long operations must expose `role="progressbar"` with minimum, maximum, and current values. The shipped `components/Progress.tsx` already provides these semantics.
 - Cancellation, errors, unsupported capabilities, snapped keyframe boundaries, and completed downloads must be perceivable without relying on color alone.
+- A successful export must show a text summary and locally generated preview with one-click link and Markdown copy actions. Clipboard success or failure must be announced through a polite live region.
 
 ## Success metrics
 

@@ -1,8 +1,10 @@
 import { useRef, useState, type DragEvent } from 'react';
 import { Button } from '@/components/Button';
 import { Progress } from '@/components/Progress';
+import { ResultCard, type ResultCardData } from '@/components/ResultCard';
 import { downloadBlob } from '@/lib/core/download';
 import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
+import { createWaveformThumbnail } from '@/lib/core/share';
 import { startDecodeFile, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
 import { startConversion } from '@/lib/tools/convert/convert';
 
@@ -36,12 +38,14 @@ export function ConvertTool() {
   const [status, setStatus] = useState('Drop an audio file to convert to WAV or MP3.');
   const [validation, setValidation] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<ResultCardData>();
   const inputRef = useRef<HTMLInputElement>(null);
   const jobRef = useRef<AudioJob<unknown> | null>(null);
 
   async function loadFile(file: File) {
     setBusy(true);
     setProgress(0);
+    setResult(undefined);
     setValidation(undefined);
     setStatus('Reading audio on this device…');
     try {
@@ -72,6 +76,7 @@ export function ConvertTool() {
     setValidation(undefined);
     setBusy(true);
     setProgress(0);
+    setResult(undefined);
     setStatus(`Encoding ${format.toUpperCase()}…`);
 
     const job = startConversion(
@@ -84,6 +89,11 @@ export function ConvertTool() {
     try {
       const blob = await job.result;
       downloadBlob(blob, outputName(track.file.name, format));
+      setResult({
+        summary: `Converted ${formatDuration(track.duration)} of audio to ${format.toUpperCase()} (${formatBytes(blob.size)}).`,
+        thumbnailUrl: createWaveformThumbnail([track.channelData[0]!]),
+        title: 'Audio conversion complete',
+      });
       setProgress(1);
       setStatus('Done. Your download was created without uploading the file.');
     } catch (error) {
@@ -158,6 +168,7 @@ export function ConvertTool() {
               disabled={busy}
               onClick={() => {
                 setTrack(undefined);
+                setResult(undefined);
                 setStatus('Drop an audio file to convert to WAV or MP3.');
                 setValidation(undefined);
               }}
@@ -216,6 +227,7 @@ export function ConvertTool() {
           <Progress value={progress} />
         </div>
       )}
+      {result && <ResultCard {...result} />}
       <p aria-live="polite" className="mt-5 text-center text-sm text-emerald-100/60">
         {status}
       </p>
