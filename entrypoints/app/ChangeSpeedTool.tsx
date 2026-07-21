@@ -1,8 +1,10 @@
 import { useRef, useState, type DragEvent } from 'react';
 import { Button } from '@/components/Button';
 import { Progress } from '@/components/Progress';
+import { ResultCard, type ResultCardData } from '@/components/ResultCard';
 import { downloadBlob } from '@/lib/core/download';
 import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
+import { createWaveformThumbnail } from '@/lib/core/share';
 import { startDecodeFile, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
 import { startChangeSpeedEncode } from '@/lib/tools/change-speed/changeSpeed';
 
@@ -37,12 +39,14 @@ export function ChangeSpeedTool() {
   const [status, setStatus] = useState('Drop an audio file to adjust its speed.');
   const [validation, setValidation] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<ResultCardData>();
   const inputRef = useRef<HTMLInputElement>(null);
   const jobRef = useRef<AudioJob<unknown> | null>(null);
 
   async function loadFile(file: File) {
     setBusy(true);
     setProgress(0);
+    setResult(undefined);
     setValidation(undefined);
     setStatus('Reading audio on this device…');
     try {
@@ -71,6 +75,7 @@ export function ChangeSpeedTool() {
   async function exportAudio() {
     if (!track) return;
     setValidation(undefined);
+    setResult(undefined);
 
     const job = startChangeSpeedEncode(
       { channelData: track.channelData, sampleRate: track.sampleRate },
@@ -85,6 +90,11 @@ export function ChangeSpeedTool() {
     try {
       const blob = await job.result;
       downloadBlob(blob, outputName(track.file.name, format));
+      setResult({
+        summary: `Changed speed to ${speedFactor.toFixed(2)}× and exported ${format.toUpperCase()} (${formatDuration(outputDuration)}, ${formatBytes(blob.size)}).`,
+        thumbnailUrl: createWaveformThumbnail([track.channelData[0]!]),
+        title: 'Speed change complete',
+      });
       setProgress(1);
       setStatus('Done. Your download was created without uploading the file.');
     } catch (error) {
@@ -161,6 +171,7 @@ export function ChangeSpeedTool() {
               disabled={busy}
               onClick={() => {
                 setTrack(undefined);
+                setResult(undefined);
                 setStatus('Drop an audio file to adjust its speed.');
                 setValidation(undefined);
               }}
@@ -244,6 +255,7 @@ export function ChangeSpeedTool() {
           <Progress value={progress} />
         </div>
       )}
+      {result && <ResultCard {...result} />}
       <p aria-live="polite" className="mt-5 text-center text-sm text-emerald-100/60">
         {status}
       </p>

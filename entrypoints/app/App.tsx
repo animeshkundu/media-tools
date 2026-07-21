@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/Button';
 import { Progress } from '@/components/Progress';
+import { ResultCard, type ResultCardData } from '@/components/ResultCard';
 import { downloadBlob } from '@/lib/core/download';
 import { Dropzone } from '@/lib/core/dropzone';
 import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
+import { createWaveformThumbnail } from '@/lib/core/share';
 import {
   startAnalyze,
   startFileEncode,
@@ -32,12 +34,14 @@ export default function App() {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('Drop an audio file to begin.');
   const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<ResultCardData>();
   const [trimValidation, setTrimValidation] = useState<TrimValidation>();
   const jobRef = useRef<AudioJob<unknown> | undefined>(undefined);
 
   async function load(file: File) {
     setBusy(true);
     setProgress(0);
+    setResult(undefined);
     setStatus('Reading audio in a worker…');
     try {
       const job = startAnalyze(file, setProgress);
@@ -62,6 +66,7 @@ export default function App() {
     if (!audio) return;
     setBusy(true);
     setProgress(0);
+    setResult(undefined);
     setStatus(`Encoding ${format.toUpperCase()} in a worker…`);
     const job = startFileEncode(
       {
@@ -76,6 +81,18 @@ export default function App() {
     try {
       const blob = await job.result;
       downloadBlob(blob, outputName(audio.file.name, format));
+      const waveformStart = Math.floor((start / audio.duration) * audio.waveform.length);
+      const waveformEnd = Math.max(
+        waveformStart + 1,
+        Math.ceil((end / audio.duration) * audio.waveform.length),
+      );
+      setResult({
+        summary: `Cut ${formatDuration(end - start)} from the source and exported ${format.toUpperCase()} (${formatBytes(blob.size)}).`,
+        thumbnailUrl: createWaveformThumbnail([
+          audio.waveform.subarray(waveformStart, waveformEnd),
+        ]),
+        title: 'Audio cut complete',
+      });
       setProgress(1);
       setStatus('Done. Your download was created without uploading the file.');
     } catch (error) {
@@ -211,6 +228,7 @@ export default function App() {
                 disabled={busy}
                 onClick={() => {
                   setAudio(undefined);
+                  setResult(undefined);
                   setTrimValidation(undefined);
                 }}
               >
@@ -279,6 +297,7 @@ export default function App() {
                 <Progress value={progress} />
               </div>
             )}
+            {result && <ResultCard {...result} />}
           </section>
         )}
         {tool === 'cut' && (

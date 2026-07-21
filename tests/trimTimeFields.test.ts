@@ -205,9 +205,11 @@ describe('App trim validation', () => {
     vi.doUnmock('../entrypoints/app/App');
     vi.doUnmock('@/components/Button');
     vi.doUnmock('@/components/Progress');
+    vi.doUnmock('@/components/ResultCard');
     vi.doUnmock('@/lib/core/download');
     vi.doUnmock('@/lib/core/dropzone');
     vi.doUnmock('@/lib/core/format');
+    vi.doUnmock('@/lib/core/share');
     vi.doUnmock('@/lib/core/worker');
     vi.doUnmock('@/lib/tools/audio-cutter/Waveform');
     vi.doUnmock('../entrypoints/app/TrimTimeFields');
@@ -244,6 +246,7 @@ describe('App trim validation', () => {
     vi.doMock('@/components/Progress', () => ({
       Progress: () => createElement('div', { role: 'progressbar' }),
     }));
+    vi.doMock('@/components/ResultCard', () => ({ ResultCard: () => null }));
     vi.doMock('@/lib/core/download', () => ({ downloadBlob: () => undefined }));
     vi.doMock('@/lib/core/dropzone', () => ({
       Dropzone: ({
@@ -274,6 +277,7 @@ describe('App trim validation', () => {
       formatDuration: (seconds: number) => `${seconds.toFixed(1)}s`,
       outputName: () => 'trim-fixture-trimmed.wav',
     }));
+    vi.doMock('@/lib/core/share', () => ({ createWaveformThumbnail: () => '' }));
     vi.doMock('@/lib/core/worker', () => ({
       startAnalyze: vi.fn(() => ({
         cancel: () => undefined,
