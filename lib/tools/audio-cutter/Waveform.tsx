@@ -65,12 +65,20 @@ export function Waveform({ channel, duration, end, onChange, start }: WaveformPr
     if (!context) return;
     context.scale(scale, scale);
     context.clearRect(0, 0, width, height);
-    context.fillStyle = '#0d1e1a';
+    context.fillStyle = '#091915';
     context.fillRect(0, 0, width, height);
+    context.strokeStyle = 'rgba(209, 250, 229, 0.08)';
+    context.lineWidth = 1;
+    context.beginPath();
+    for (let y = height / 4; y < height; y += height / 4) {
+      context.moveTo(0, y + 0.5);
+      context.lineTo(width, y + 0.5);
+    }
+    context.stroke();
 
     const columns = Math.max(1, Math.floor(width));
     const stride = Math.max(1, Math.floor(channel.length / columns));
-    context.strokeStyle = '#34d399';
+    context.strokeStyle = '#6ee7b7';
     context.lineWidth = 1;
     context.beginPath();
     for (let x = 0; x < columns; x += 1) {
@@ -155,7 +163,7 @@ export function Waveform({ channel, duration, end, onChange, start }: WaveformPr
         <canvas
           ref={canvasRef}
           aria-label="Audio waveform. Drag the gold trim handles."
-          className="h-56 w-full touch-none rounded-2xl border border-white/10"
+          className="h-64 w-full touch-none rounded-2xl border border-white/10 shadow-inner shadow-black/20 sm:h-72"
           onPointerDown={(event) => {
             event.currentTarget.setPointerCapture(event.pointerId);
             moveNearestHandle(event);
@@ -195,7 +203,7 @@ export function Waveform({ channel, duration, end, onChange, start }: WaveformPr
           </div>
         ))}
       </div>
-      <p id={instructionsId} className="mt-2 text-sm text-emerald-100/70">
+      <p id={instructionsId} className="mt-2 text-[0.68rem] leading-relaxed text-emerald-100/55">
         Focus an In or Out point. Use Left and Right Arrow keys for 0.01 second steps; hold
         Shift for 0.1 second steps.
       </p>

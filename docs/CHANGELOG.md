@@ -8,8 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- A hosted web app at `/media-tools/app/` that mounts the same four-tool React editor and worker pipeline as the extension.
+- Local source-audio preview in the cutter and production screenshot evidence using a near-limit WAV file.
+
 ### Changed
 
+- Redesigned the shared editor and landing page around a bold studio shell, responsive tool rail, clearer workspaces, and a direct web-app or extension choice.
+- Split privacy messaging precisely: both surfaces process locally with no upload, while zero permissions and no-egress CSP remain extension-only enforcement claims.
+- GitHub Pages now validates and deploys the committed Vite web target with the static site.
 ### Deprecated
 
 ### Removed

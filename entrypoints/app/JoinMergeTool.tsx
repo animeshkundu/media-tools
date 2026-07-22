@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { Button } from '@/components/Button';
 import { Progress } from '@/components/Progress';
 import { downloadBlob } from '@/lib/core/download';
@@ -58,6 +58,13 @@ export function JoinMergeTool() {
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const jobRef = useRef<AudioJob<unknown> | undefined>(undefined);
+
+  useEffect(
+    () => () => {
+      jobRef.current?.cancel();
+    },
+    [],
+  );
 
   async function addFiles(fileList: FileList | File[]) {
     const selected = Array.from(fileList);
@@ -166,12 +173,12 @@ export function JoinMergeTool() {
   }
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-black/20 p-5 shadow-2xl shadow-black/30 sm:p-8">
+    <section className="rounded-[2rem] border border-white/10 bg-black/20 p-2 shadow-[0_32px_100px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:p-3">
       <div
-        className={`rounded-3xl border border-dashed p-8 text-center transition motion-reduce:transition-none ${
+        className={`grid min-h-[17rem] place-content-center rounded-[1.65rem] border border-dashed px-6 py-10 text-center transition motion-reduce:transition-none ${
           busy
-            ? 'cursor-not-allowed border-white/20 bg-white/[0.03] opacity-50'
-            : 'cursor-pointer border-white/20 bg-white/[0.03] hover:border-emerald-400/70'
+            ? 'cursor-not-allowed border-white/15 bg-white/[0.02] opacity-50'
+            : 'cursor-pointer border-white/15 bg-[radial-gradient(circle_at_center,rgba(52,211,153,0.05),transparent_55%)] hover:border-emerald-300/55 hover:bg-emerald-300/[0.035]'
         }`}
         onClick={() => !busy && inputRef.current?.click()}
         onDragOver={(event) => event.preventDefault()}
@@ -197,27 +204,53 @@ export function JoinMergeTool() {
             event.target.value = '';
           }}
         />
-        <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-400 text-2xl text-emerald-950">
-          ⇉
+        <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-300 text-emerald-950 shadow-[0_12px_35px_rgba(52,211,153,0.18)]">
+          <svg
+            aria-hidden="true"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          >
+            <path d="M5 7h5a3 3 0 0 1 3 3v4a3 3 0 0 0 3 3h3M16 14l3 3-3 3M5 17h4" />
+          </svg>
         </div>
-        <p className="text-xl font-semibold">Drop WAV or MP3 files to merge</p>
-        <p className="mt-2 text-emerald-100/60">or click to choose multiple files from this device</p>
+        <p className="text-2xl font-black tracking-[-0.03em] text-white">Drop WAV or MP3 files to merge</p>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-emerald-100/55">
+          Choose multiple files. Add more at any time, then arrange the final running order.
+        </p>
       </div>
 
       {tracks.length > 0 && (
-        <div className="mt-6 space-y-3">
+        <div className="mx-2 mt-5 space-y-2 sm:mx-3">
+          <div className="mb-3 flex items-center justify-between px-1">
+            <p className="text-[0.65rem] font-bold uppercase tracking-[0.13em] text-emerald-100/55">
+              Running order
+            </p>
+            <span className="rounded-full border border-white/10 px-2.5 py-1 text-[0.62rem] font-bold text-emerald-100/55">
+              {tracks.length} {tracks.length === 1 ? 'track' : 'tracks'}
+            </span>
+          </div>
           {tracks.map((track, index) => (
             <div
               key={`${track.file.name}-${track.file.size}-${track.file.lastModified}-${index}`}
-              className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+              className="rounded-2xl border border-white/8 bg-white/[0.025] p-3"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{index + 1}. {track.file.name}</p>
-                  <p className="text-xs text-emerald-100/60">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-emerald-300/15 bg-emerald-300/[0.06] font-mono text-xs font-bold text-emerald-300">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-white">{track.file.name}</p>
+                  <p className="mt-0.5 text-[0.68rem] text-emerald-100/55">
                     {formatBytes(track.file.size)} · {formatDuration(track.duration)} ·{' '}
                     {track.sampleRate.toLocaleString()} Hz
                   </p>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -251,11 +284,11 @@ export function JoinMergeTool() {
       )}
 
       {tracks.length > 0 && (
-      <div className="mt-8 grid gap-5 border-t border-white/10 pt-6 sm:grid-cols-[1fr_auto] sm:items-end">
-        <label className="text-sm font-medium text-emerald-100/70">
+      <div className="mx-2 mt-6 grid gap-5 border-t border-white/8 px-1 pb-3 pt-5 sm:mx-3 sm:grid-cols-[1fr_auto] sm:items-end">
+        <label className="text-xs font-bold uppercase tracking-[0.1em] text-emerald-100/55">
           Export format
           <select
-            className="mt-2 block w-full rounded-xl border border-white/15 bg-[#0d1e1a] px-4 py-3 text-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
+            className="mt-2 block w-full rounded-xl border border-white/12 bg-[#0a1a16] px-4 py-3.5 text-sm font-semibold normal-case tracking-normal text-emerald-50"
             disabled={busy}
             value={format}
             onChange={(event) => setFormat(event.target.value as EncodeFormat)}
@@ -293,7 +326,7 @@ export function JoinMergeTool() {
           <Progress value={progress} />
         </div>
       )}
-      <p aria-live="polite" className="mt-5 text-center text-sm text-emerald-100/60">
+      <p aria-live="polite" className="mt-5 pb-3 text-center text-xs font-medium text-emerald-100/55">
         {status}
       </p>
     </section>

@@ -16,7 +16,7 @@ type TrimTimeFieldsProps = {
 };
 
 const INPUT_CLASSNAME =
-  'mt-2 block w-full rounded-xl border border-white/15 bg-[#0d1e1a] px-4 py-3 text-emerald-50 disabled:cursor-not-allowed disabled:opacity-50';
+  'mt-2 block w-full rounded-xl border border-white/12 bg-[#0a1a16] px-4 py-3 text-sm font-semibold text-emerald-50 disabled:cursor-not-allowed disabled:opacity-50';
 
 export function TrimTimeFields({
   disabled,
@@ -74,8 +74,8 @@ export function TrimTimeFields({
   }
 
   return (
-    <div className="mt-5 grid gap-4 sm:grid-cols-2">
-      <label className="text-sm font-medium text-emerald-100/70">
+    <div className="grid gap-4 sm:grid-cols-2">
+      <label className="text-xs font-bold uppercase tracking-[0.1em] text-emerald-100/55">
         In
         <input
           aria-describedby="trim-time-fields-help"
@@ -90,10 +90,10 @@ export function TrimTimeFields({
           value={start.toFixed(2)}
           onChange={(event) => updateRange('start', event.target.value)}
         />
-        <span className="mt-2 block font-mono text-xs text-amber-200">{formatDuration(start)}</span>
+        <span className="mt-2 block font-mono text-[0.68rem] normal-case tracking-normal text-amber-200">{formatDuration(start)}</span>
       </label>
 
-      <label className="text-sm font-medium text-emerald-100/70">
+      <label className="text-xs font-bold uppercase tracking-[0.1em] text-emerald-100/55">
         Out
         <input
           aria-describedby="trim-time-fields-help"
@@ -108,7 +108,7 @@ export function TrimTimeFields({
           value={end.toFixed(2)}
           onChange={(event) => updateRange('end', event.target.value)}
         />
-        <span className="mt-2 block font-mono text-xs text-amber-200">{formatDuration(end)}</span>
+        <span className="mt-2 block font-mono text-[0.68rem] normal-case tracking-normal text-amber-200">{formatDuration(end)}</span>
       </label>
 
       <p className="sm:col-span-2 text-xs text-emerald-100/60" id="trim-time-fields-help">

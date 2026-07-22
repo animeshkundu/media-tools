@@ -1,10 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import '@/assets/tailwind.css';
-import App from './App';
+import App from '@/entrypoints/app/App';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App surface="extension" />
+    <App surface="web" />
   </React.StrictMode>,
 );

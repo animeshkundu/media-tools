@@ -7,9 +7,10 @@ audio tools and planned client-side video tools. This is the deep companion to
 
 ## 1. Principles that shape every decision
 
-1. **Nothing leaves the device.** No upload, no network for processing, no remote code. The controls
-   are auditable: no host permissions, a strict CSP, bundled dependencies, and no upload path in the
-   shipped source. The manifest and source are both available for review.
+1. **Nothing leaves the device during processing.** Both hosts have no upload or telemetry path in the
+   shipped source. The extension additionally makes the contract auditable through no host permissions,
+   a strict CSP, and bundled dependencies. The hosted app is normal webpage code delivered by GitHub
+   Pages and must not claim those extension-only controls.
 2. **The extension page is the workhorse, the background is glue.** MV3 backgrounds are ephemeral and
    have no DOM. All UI and all heavy compute live in a durable page opened in a tab.
 3. **One codebase, both browsers.** WXT compiles a single MV3 source to Chrome and Firefox. Anything
@@ -20,9 +21,10 @@ audio tools and planned client-side video tools. This is the deep companion to
 5. **Heavy work is cancellable and accountable.** It runs in a Web Worker with progress, an explicit
    cancel, prompt buffer release, and a benchmark gate before any heavy tool ships.
 
-## 2. System architecture (MV3 surfaces)
+## 2. System architecture (shared hosts and MV3 surfaces)
 
-Three surfaces, with a strict division of labor:
+The same React app has two durable hosts. The extension host is opened by lightweight MV3 glue; the
+hosted web app is a static Vite build. Both create the same worker and use the same tools:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -36,6 +38,11 @@ Three surfaces, with a strict division of labor:
 │ APP PAGE  (entrypoints/app/, opened in a TAB - the durable host)              │
 │   React UI: dropzone, tool picker, waveform / video editor, progress, cancel. │
 │   Holds tool state. Spawns and supervises the Web Worker. Triggers downloads. │
+└───────────────┬───────────────────────────────────────────────────────────────┘
+                │ same App component
+┌───────────────┴───────────────────────────────────────────────────────────────┐
+│ HOSTED APP  (web/ → Vite → site/app/, served at /media-tools/app/)             │
+│   Static GitHub Pages host. No extension APIs. Same UI, jobs, limits, worker.  │
 └───────────────┬───────────────────────────────────────────────────────────────┘
                 │ postMessage(input, [transferables])   ◄── {progress|result|error}
                 ▼
@@ -60,7 +67,20 @@ A full page is the only surface that is identical on both browsers and roomy eno
 patterns from the incumbent teardown (heic2jpg, zipmanager): the background orchestrates, the heavy
 work runs in a page/worker, the UI is self-rendered, nothing redirects to a website.
 
-### 2.1 Current shipped state
+### 2.1 Hosted web build
+
+`vite.web.config.ts` builds `web/index.html` and `web/main.tsx` into the committed `site/app/`
+artifact at the `/media-tools/app/` base path. `web/main.tsx` mounts the same
+`entrypoints/app/App.tsx` used by WXT, with only the `surface="web"` trust-copy variant. Vite copies
+`public/vendor/lame.min.js` beside the hashed worker output so worker-side MP3 encoding remains
+bundled and local. The checked-in artifact lets the existing Pages workflow validate and upload the
+complete site without adding executable workflow steps.
+
+GitHub Pages provides no COOP/COEP response headers. Current WAV/MP3 tools need no cross-origin
+isolation. This host therefore does not expand the Phase 2 or Phase 3 engine contract and cannot be
+used to bypass their release gates.
+
+### 2.2 Current shipped state
 
 All shipped WAV and MP3 decode and final encoding are worker-owned. The app page renders and
 supervises jobs but does not decode audio:
@@ -147,6 +167,10 @@ entrypoints/
     App.tsx                     shell: tool routing, file state, worker supervision, status
     (per-tool views land here as the picker grows)
 components/                     presentational, token-only: Button, Progress (+ future Select, Card, Badge, Toggle)
+web/
+  index.html                    hosted-app document shell and static accessibility fallback
+  main.tsx                      mounts the shared App with web-specific trust copy
+vite.web.config.ts              /media-tools/app/ production build into site/app/
 lib/
   core/                         cross-tool infrastructure (the shared "core")
     worker.ts                   worker harness: spawn, progress, cancel, transferables
@@ -259,6 +283,9 @@ download.
   frame-src 'none'; object-src 'none'; base-uri 'none'`. `wasm-unsafe-eval` is not currently
   allowed because no bundled WASM ships today; if that changes later, add it back only with the
   narrowest policy that still preserves the no-upload contract.
+- **Hosted-page distinction.** The web app uses the same no-upload code but does not receive the
+  extension manifest, empty permission declaration, or extension-page CSP. Product copy calls it
+  local processing in the browser tab and keeps mechanical-enforcement claims scoped to the extension.
 - **AMO data-collection disclosure.** `browser_specific_settings.gecko.id = audiocutter@animesh.kundus.in` and
   `data_collection_permissions: { required: ['none'] }` are set (AMO has required this since
   2025-11-03). The honest answer is "none", because there is no telemetry.
@@ -287,7 +314,8 @@ download.
 - **CI.** `.github/workflows/ci.yml` runs `compile → lint → test → build → build:firefox` on every
   push and PR and uploads the `.output/` artifacts. `.github/workflows/e2e.yml` separately runs the
   Firefox browser coverage described in §6.1. Publishing is a separate tag-triggered workflow (see
-  [`./PUBLISHING.md`](./PUBLISHING.md)).
+  [`./PUBLISHING.md`](./PUBLISHING.md). `.github/workflows/pages.yml` independently validates the
+  committed hosted app and static landing site before deployment.
 
 ## 10. Library table
 

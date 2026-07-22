@@ -39,3 +39,10 @@ Record durable project learnings here so future work can avoid rediscovering the
 - What the repository enforces: A separate CI job, the Firefox E2E workflow, builds and lints `.output/firefox-mv3`, provisions Firefox and geckodriver through Selenium Manager, installs the built add-on, drives its real `moz-extension://` app page, runs the production-artifact E2E suite, and rejects missing, skipped, flaky, unexpected, or insufficient results.
 - What to preserve: Browser-facing changes need real-Firefox coverage for installed-extension startup, WAV cut and export, MP3 conversion and input, join, speed, download signatures, and no-egress behavior where applicable. Add focused malformed-input, progress, or cancellation scenarios when a change relies on those paths. Do not replace this gate with mocks or a dev-server-only test.
 - Related code: `.github/workflows/e2e.yml`, `tests/e2e/global-setup.ts`, `tests/e2e/playwright.config.ts`, and `tests/e2e/audio-cutter.e2e.ts`.
+
+### Keep the hosted app on the shared editor boundary
+
+- Context: GitHub Pages serves at `/media-tools/`, while WXT emits extension-only artifacts.
+- What the repository enforces: `vite.web.config.ts` mounts the same `entrypoints/app/App.tsx` from `web/main.tsx`, copies bundled worker assets, and emits the committed `site/app/` artifact with the `/media-tools/app/` base.
+- What to preserve: Never fork tool code for the website. Keep web trust copy scoped to local processing and no upload; do not claim the extension's empty permissions or no-egress CSP for a normal webpage. Pages provides no COOP/COEP headers, so the hosted target must not bypass future engine gates that require cross-origin isolation.
+- Related code: `web/`, `vite.web.config.ts`, `.github/workflows/pages.yml`, and `tests/webSurface.test.ts`.

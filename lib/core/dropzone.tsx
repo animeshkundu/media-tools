@@ -22,9 +22,11 @@ export function Dropzone({ accept, children, disabled, onFile }: DropzoneProps) 
 
   return (
     <div
-      className={`rounded-3xl border border-dashed p-8 text-center transition ${
-        dragging ? 'border-emerald-300 bg-emerald-300/10' : 'border-white/20 bg-white/[0.03]'
-      } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-emerald-400/70'}`}
+      className={`grid min-h-[25rem] place-content-center rounded-[1.65rem] border border-dashed px-6 py-12 text-center transition motion-reduce:transition-none ${
+        dragging
+          ? 'border-emerald-300 bg-emerald-300/[0.09]'
+          : 'border-white/15 bg-[radial-gradient(circle_at_center,rgba(52,211,153,0.05),transparent_55%)]'
+      } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-emerald-300/55 hover:bg-emerald-300/[0.035]'}`}
       onClick={() => !disabled && inputRef.current?.click()}
       onDragEnter={(event) => {
         event.preventDefault();
