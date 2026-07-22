@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/Button';
 import { Progress } from '@/components/Progress';
 import { downloadBlob } from '@/lib/core/download';
@@ -15,6 +15,12 @@ import { ChangeSpeedTool } from './ChangeSpeedTool';
 import { ConvertTool } from './ConvertTool';
 import { JoinMergeTool } from './JoinMergeTool';
 import { TrimTimeFields, type TrimValidation } from './TrimTimeFields';
+import {
+  loadAppPreferences,
+  saveAppPreferences,
+  type AppPreferences,
+  type Tool,
+} from './preferences';
 
 type LoadedAudio = {
   duration: number;
@@ -24,16 +30,36 @@ type LoadedAudio = {
 };
 
 export default function App() {
-  const [tool, setTool] = useState<'cut' | 'join' | 'speed' | 'convert'>('cut');
+  const [preferences, setPreferences] = useState<AppPreferences>(() => loadAppPreferences());
   const [audio, setAudio] = useState<LoadedAudio>();
   const [start, setStart] = useState(0);
   const [end, setEnd] = useState(0);
-  const [format, setFormat] = useState<EncodeFormat>('wav');
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('Drop an audio file to begin.');
   const [busy, setBusy] = useState(false);
   const [trimValidation, setTrimValidation] = useState<TrimValidation>();
   const jobRef = useRef<AudioJob<unknown> | undefined>(undefined);
+  const { tool } = preferences;
+  const format = preferences.formats.cut;
+
+  useEffect(() => {
+    saveAppPreferences(preferences);
+  }, [preferences]);
+
+  function setTool(tool: Tool) {
+    setPreferences((current) => ({ ...current, tool }));
+  }
+
+  function setFormat(tool: Tool, format: EncodeFormat) {
+    setPreferences((current) => ({
+      ...current,
+      formats: { ...current.formats, [tool]: format },
+    }));
+  }
+
+  function setSpeedFactor(speedFactor: number) {
+    setPreferences((current) => ({ ...current, speedFactor }));
+  }
 
   async function load(file: File) {
     setBusy(true);
@@ -170,11 +196,22 @@ export default function App() {
         </div>
 
         {tool === 'join' ? (
-          <JoinMergeTool />
+          <JoinMergeTool
+            format={preferences.formats.join}
+            onFormatChange={(nextFormat) => setFormat('join', nextFormat)}
+          />
         ) : tool === 'speed' ? (
-          <ChangeSpeedTool />
+          <ChangeSpeedTool
+            format={preferences.formats.speed}
+            speedFactor={preferences.speedFactor}
+            onFormatChange={(nextFormat) => setFormat('speed', nextFormat)}
+            onSpeedFactorChange={setSpeedFactor}
+          />
         ) : tool === 'convert' ? (
-          <ConvertTool />
+          <ConvertTool
+            format={preferences.formats.convert}
+            onFormatChange={(nextFormat) => setFormat('convert', nextFormat)}
+          />
         ) : !audio ? (
           <>
             <Dropzone accept="audio/wav,audio/mpeg,.wav,.mp3" disabled={busy} onFile={load}>
@@ -254,7 +291,7 @@ export default function App() {
                   className="mt-2 block w-full rounded-xl border border-white/15 bg-[#0d1e1a] px-4 py-3 text-emerald-50"
                   disabled={busy}
                   value={format}
-                  onChange={(event) => setFormat(event.target.value as EncodeFormat)}
+                  onChange={(event) => setFormat('cut', event.target.value as EncodeFormat)}
                 >
                   <option value="wav">WAV — lossless PCM</option>
                   <option value="mp3">MP3 — 192 kbps</option>

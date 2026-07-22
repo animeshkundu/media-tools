@@ -39,3 +39,10 @@ Record durable project learnings here so future work can avoid rediscovering the
 - What the repository enforces: A separate CI job, the Firefox E2E workflow, builds and lints `.output/firefox-mv3`, provisions Firefox and geckodriver through Selenium Manager, installs the built add-on, drives its real `moz-extension://` app page, runs the production-artifact E2E suite, and rejects missing, skipped, flaky, unexpected, or insufficient results.
 - What to preserve: Browser-facing changes need real-Firefox coverage for installed-extension startup, WAV cut and export, MP3 conversion and input, join, speed, download signatures, and no-egress behavior where applicable. Add focused malformed-input, progress, or cancellation scenarios when a change relies on those paths. Do not replace this gate with mocks or a dev-server-only test.
 - Related code: `.github/workflows/e2e.yml`, `tests/e2e/global-setup.ts`, `tests/e2e/playwright.config.ts`, and `tests/e2e/audio-cutter.e2e.ts`.
+
+### Isolate durable preferences in browser workflows
+
+- Context: The installed-Firefox E2E suite reuses one extension profile, and same-origin `localStorage` survives app-page navigation and reloads within that profile.
+- What the repository enforces: A production-artifact scenario verifies that the last tool and its bounded settings are restored while selected files and decoded media are not.
+- What to preserve: Each browser workflow must explicitly select its intended tool and output format instead of relying on reload defaults. Preference tests must use isolated storage instances so cases cannot leak state.
+- Related code: `entrypoints/app/preferences.ts`, `tests/preferences.test.ts`, and `tests/e2e/audio-cutter.e2e.ts`.
