@@ -15,6 +15,13 @@ type LoadedTrack = {
   sampleRate: number;
 };
 
+type ChangeSpeedToolProps = {
+  format: EncodeFormat;
+  onFormatChange: (format: EncodeFormat) => void;
+  onSpeedFactorChange: (speedFactor: number) => void;
+  speedFactor: number;
+};
+
 export async function decodeFileForChangeSpeed(
   file: File,
   onProgress: (p: number) => void,
@@ -29,10 +36,13 @@ export async function decodeFileForChangeSpeed(
   };
 }
 
-export function ChangeSpeedTool() {
+export function ChangeSpeedTool({
+  format,
+  onFormatChange,
+  onSpeedFactorChange,
+  speedFactor,
+}: ChangeSpeedToolProps) {
   const [track, setTrack] = useState<LoadedTrack>();
-  const [speedFactor, setSpeedFactor] = useState(1);
-  const [format, setFormat] = useState<EncodeFormat>('wav');
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('Drop an audio file to adjust its speed.');
   const [validation, setValidation] = useState<string>();
@@ -182,7 +192,7 @@ export function ChangeSpeedTool() {
                   step={0.05}
                   type="range"
                   value={speedFactor}
-                  onChange={(event) => setSpeedFactor(Number(event.target.value))}
+                  onChange={(event) => onSpeedFactorChange(Number(event.target.value))}
                 />
                 <span className="w-14 text-right font-mono text-emerald-100">{speedFactor.toFixed(2)}×</span>
               </div>
@@ -205,7 +215,7 @@ export function ChangeSpeedTool() {
                 className="mt-2 block w-full rounded-xl border border-white/15 bg-[#0d1e1a] px-4 py-3 text-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
                 disabled={busy}
                 value={format}
-                onChange={(event) => setFormat(event.target.value as EncodeFormat)}
+                onChange={(event) => onFormatChange(event.target.value as EncodeFormat)}
               >
                 <option value="wav">WAV — lossless PCM</option>
                 <option value="mp3">MP3 — 192 kbps</option>

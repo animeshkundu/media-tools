@@ -239,7 +239,7 @@ async function openApp(): Promise<void> {
     30_000,
     'The extension document did not become ready.',
   );
-  await waitForText('h1', 'Audio Cutter');
+  await visibleElement('h1');
   expect(await activeDriver.getCurrentUrl()).toBe(appUrl);
 }
 
@@ -467,9 +467,47 @@ test.describe('Audio Cutter installed Firefox extension', () => {
     expect(await getDriver().getCurrentUrl()).toMatch(/^moz-extension:\/\/[^/]+\/app\.html$/);
   });
 
+  test('restores the last tool and its settings without restoring loaded audio', async () => {
+    await openApp();
+    await clickTab('Change speed');
+    await uploadFiles([speedWav]);
+    await waitForText('p[aria-live="polite"]', 'Set the speed factor and export.');
+    await setFormValue('input[type="range"][aria-label="Speed factor"]', '1.5');
+    await setFormValue('select', 'mp3');
+
+    await getDriver().wait(
+      async () =>
+        getDriver().executeScript<boolean>(`
+          try {
+            const stored = JSON.parse(localStorage.getItem('media-tools:preferences') || 'null');
+            return stored?.tool === 'speed'
+              && stored?.formats?.speed === 'mp3'
+              && stored?.speedFactor === 1.5;
+          } catch {
+            return false;
+          }
+        `),
+      10_000,
+      'The durable preferences were not written to localStorage.',
+    );
+
+    await getDriver().navigate().refresh();
+    await waitForText('h1', 'Change Speed');
+    await waitForText('[role="button"]', 'Drop a WAV or MP3 file here');
+    expect(await getDriver().findElements(By.css('h2'))).toHaveLength(0);
+
+    await uploadFiles([speedWav]);
+    await waitForText('p[aria-live="polite"]', 'Set the speed factor and export.');
+    const speedControl = await visibleElement('input[type="range"][aria-label="Speed factor"]');
+    const formatControl = await visibleElement('select');
+    expect(await speedControl.getAttribute('value')).toBe('1.5');
+    expect(await formatControl.getAttribute('value')).toBe('mp3');
+  });
+
   test('cuts WAV and downloads a valid WAV under extension CSP', async () => {
     await clearDownloads();
     await openApp();
+    await clickTab('Cut audio');
     await uploadFiles([cutWav]);
     await waitForText('h2', path.basename(cutWav));
     await waitForText('p[aria-live="polite"]', 'Drag the gold handles');
@@ -493,6 +531,7 @@ test.describe('Audio Cutter installed Firefox extension', () => {
 
   test('loads tool resources without network egress', async () => {
     await openApp();
+    await clickTab('Cut audio');
     await uploadFiles([noEgressWav]);
     await waitForText('p[aria-live="polite"]', 'Drag the gold handles');
     await visibleElement('canvas[aria-label^="Audio waveform"]');
@@ -529,6 +568,7 @@ test.describe('Audio Cutter installed Firefox extension', () => {
   test('handles MP3 input according to the installed Firefox decoder capability', async () => {
     await clearDownloads();
     await openApp();
+    await clickTab('Cut audio');
     const support = await probeMp3Support();
     expect(support.probeError, 'The AudioDecoder support probe must not throw.').toBeUndefined();
     console.log(
@@ -583,6 +623,7 @@ test.describe('Audio Cutter installed Firefox extension', () => {
     await uploadFiles([speedWav]);
     await waitForText('p[aria-live="polite"]', 'Set the speed factor and export.');
     await setFormValue('input[type="range"][aria-label="Speed factor"]', '2');
+    await setFormValue('select', 'wav');
     await waitForText('section', '2.00×');
 
     await clickButton('Change speed & download');

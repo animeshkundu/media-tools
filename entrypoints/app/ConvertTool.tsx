@@ -15,6 +15,11 @@ type LoadedTrack = {
   sampleRate: number;
 };
 
+type ConvertToolProps = {
+  format: EncodeFormat;
+  onFormatChange: (format: EncodeFormat) => void;
+};
+
 export async function decodeFileForConvert(
   file: File,
   onProgress: (p: number) => void,
@@ -29,9 +34,8 @@ export async function decodeFileForConvert(
   };
 }
 
-export function ConvertTool() {
+export function ConvertTool({ format, onFormatChange }: ConvertToolProps) {
   const [track, setTrack] = useState<LoadedTrack>();
-  const [format, setFormat] = useState<EncodeFormat>('wav');
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('Drop an audio file to convert to WAV or MP3.');
   const [validation, setValidation] = useState<string>();
@@ -173,7 +177,7 @@ export function ConvertTool() {
                 className="mt-2 block w-full rounded-xl border border-white/15 bg-[#0d1e1a] px-4 py-3 text-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
                 disabled={busy}
                 value={format}
-                onChange={(event) => setFormat(event.target.value as EncodeFormat)}
+                onChange={(event) => onFormatChange(event.target.value as EncodeFormat)}
               >
                 <option value="wav">WAV — lossless PCM</option>
                 <option value="mp3">MP3 — 192 kbps</option>

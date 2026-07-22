@@ -52,7 +52,7 @@ The extension requests no browser API permissions beyond those implicitly availa
 "permissions": []
 ```
 
-Audio Cutter does not request `tabs`, `storage`, `cookies`, `history`, `bookmarks`, `downloads`, `nativeMessaging`, microphone, camera, required host permissions, or optional host permissions. User-selected audio enters through standard file inputs or drag and drop, which require no special permission. Finished audio is saved through a user-initiated download from an in-page blob, so the `downloads` permission is unnecessary.
+Audio Cutter does not request `tabs`, `storage`, `cookies`, `history`, `bookmarks`, `downloads`, `nativeMessaging`, microphone, camera, required host permissions, or optional host permissions. User-selected audio enters through standard file inputs or drag and drop, which require no special permission. Finished audio is saved through a user-initiated download from an in-page blob, so the `downloads` permission is unnecessary. Durable UI preferences use the app page's same-origin Web Storage and do not require the browser `storage` permission.
 
 The CI manifest-egress guard checks both built manifests and fails if required, optional, or host permissions are non-empty. The Firefox manifest also declares:
 
@@ -117,6 +117,8 @@ The extension UI runs in a full browser tab, which is a durable host, rather tha
 
 `entrypoints/background.ts` contains only a `browser.action.onClicked` listener that opens `browser.runtime.getURL('/app.html')` in a tab. All React state, worker supervision, progress, cancellation, and downloads live in the extension-owned app page. The background holds no job state, has no file access, makes no network request, and never opens an external URL.
 
+The app stores a versioned preference record in same-origin `localStorage` so it can restore the last selected tool, each tool's WAV/MP3 export choice, and the Change Speed factor after a reload. Restored fields are validated against their supported values and bounds; unavailable, malformed, or unwritable storage falls back to defaults without blocking the app. Selected files, decoded audio, trim points, track lists, progress, status, busy state, and validation state remain in memory only and are never serialized.
+
 ---
 
 ## Privacy summary
@@ -124,6 +126,7 @@ The extension UI runs in a full browser tab, which is a durable host, rather tha
 | What                                       | Accessed?      | Notes                                                                                                 |
 | ------------------------------------------ | -------------- | ----------------------------------------------------------------------------------------------------- |
 | User-selected WAV or MP3 file              | Yes            | Selected by file input or drag and drop; read and processed locally.                                  |
+| Tool preferences                            | Yes            | Last tool and bounded export settings are retained in same-origin `localStorage`; media is not stored. |
 | Output destination                         | On user action | The finished blob is handed to the browser's standard download flow only after successful processing. |
 | Microphone or camera                       | No             | No media-capture call and no permission request.                                                      |
 | Filesystem outside user selection/download | No             | No directory picker or `nativeMessaging`.                                                             |
@@ -132,7 +135,7 @@ The extension UI runs in a full browser tab, which is a durable host, rather tha
 | Network or remote servers                  | No             | Built JavaScript is machine-scanned for network primitives; the strict CSP is defense in depth.       |
 | Telemetry, analytics, or crash reporting   | No             | None is included.                                                                                     |
 
-Audio input and results remain on the device. Processing occurs in the extension-owned app page and its workers, and closing the app tab allows the browser to release its in-memory audio state.
+Audio input and results remain on the device. Processing occurs in the extension-owned app page and its workers, and closing the app tab allows the browser to release its in-memory audio state while retaining only the validated UI preferences described above.
 
 ---
 

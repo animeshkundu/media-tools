@@ -19,6 +19,11 @@ type TrackWithChannelData = {
   channelData: Float32Array[];
 };
 
+type JoinMergeToolProps = {
+  format: EncodeFormat;
+  onFormatChange: (format: EncodeFormat) => void;
+};
+
 export function decodedPcmBytesForTrack(track: TrackWithChannelData): number {
   let totalBytes = 0;
   for (const channel of track.channelData) {
@@ -49,9 +54,8 @@ export function tryRetainDecodedTrack(
   return { ok: true, retainedBytes: projected };
 }
 
-export function JoinMergeTool() {
+export function JoinMergeTool({ format, onFormatChange }: JoinMergeToolProps) {
   const [tracks, setTracks] = useState<JoinTrack[]>([]);
-  const [format, setFormat] = useState<EncodeFormat>('wav');
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('Select at least two audio files to merge.');
   const [validation, setValidation] = useState<string>();
@@ -258,7 +262,7 @@ export function JoinMergeTool() {
             className="mt-2 block w-full rounded-xl border border-white/15 bg-[#0d1e1a] px-4 py-3 text-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
             disabled={busy}
             value={format}
-            onChange={(event) => setFormat(event.target.value as EncodeFormat)}
+            onChange={(event) => onFormatChange(event.target.value as EncodeFormat)}
           >
             <option value="wav">WAV — lossless PCM</option>
             <option value="mp3">MP3 — 192 kbps</option>
