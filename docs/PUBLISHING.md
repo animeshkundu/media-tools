@@ -82,3 +82,18 @@ Make screenshots and descriptions match the current shipped feature set.
 The current release workflow does not publish to the Chrome Web Store. Chrome publishing remains a manual step until a separately reviewed submission job and its credentials are added.
 
 The extension has a clear single purpose: process local audio files. It also meets the no-remote-code requirement because all shipped executable code is bundled with the extension. Keep those claims true as new tools are added.
+
+## Hosted web app
+
+GitHub Pages publishes the static landing page at `/media-tools/` and the shared editor at
+`/media-tools/app/`. The deployable Vite output is committed under `site/app/`, so the existing Pages
+workflow validates and uploads it with the rest of `site/` without a separate build step.
+
+Regenerate it with `npm exec -- vite build --config vite.web.config.ts`, then commit the complete
+`site/app/` result. The build copies bundled `lamejs` and emits the shared audio worker. Verify that
+the artifact contains `site/app/index.html`, a hashed worker, and `site/app/vendor/lame.min.js`.
+Internal URLs must remain rooted at `/media-tools/`.
+
+Website copy must describe local processing and no upload without borrowing the extension's
+mechanical claims. GitHub Pages does not apply the extension manifest, zero-permission declaration,
+or extension-page no-egress CSP.

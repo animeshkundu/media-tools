@@ -14,6 +14,12 @@ After changing dependencies, run `npm install`, then update the runtime package 
 
 No remote code, codec binaries, WASM modules, models, or fonts are shipped.
 
+### Build-only dependencies
+
+| Package | Version | SPDX license | Purpose | Shipped in runtime artifact |
+| --- | ---: | --- | --- | --- |
+| `vite` | 8.1.4 | MIT | Builds the hosted shared editor into `site/app/` | No |
+
 ---
 
 ## LGPL compliance: lamejs

@@ -1,7 +1,8 @@
-import { useRef, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/Button';
 import { Progress } from '@/components/Progress';
 import { downloadBlob } from '@/lib/core/download';
+import { Dropzone } from '../../lib/core/dropzone';
 import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
 import { startDecodeFile, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
 import { startConversion } from '@/lib/tools/convert/convert';
@@ -36,8 +37,14 @@ export function ConvertTool() {
   const [status, setStatus] = useState('Drop an audio file to convert to WAV or MP3.');
   const [validation, setValidation] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const jobRef = useRef<AudioJob<unknown> | null>(null);
+
+  useEffect(
+    () => () => {
+      jobRef.current?.cancel();
+    },
+    [],
+  );
 
   async function loadFile(file: File) {
     setBusy(true);
@@ -100,61 +107,46 @@ export function ConvertTool() {
     }
   }
 
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    const file = event.dataTransfer.files[0];
-    if (file) void loadFile(file);
-  }
-
   return (
-    <section className="rounded-3xl border border-white/10 bg-black/20 p-5 shadow-2xl shadow-black/30 sm:p-8">
+    <section className="rounded-[2rem] border border-white/10 bg-black/20 p-2 shadow-[0_32px_100px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:p-3">
       {!track ? (
-        <div
-          className={`rounded-3xl border border-dashed p-8 text-center transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 motion-reduce:transition-none ${
-            busy
-              ? 'cursor-not-allowed border-white/20 bg-white/[0.03] opacity-50'
-              : 'cursor-pointer border-white/20 bg-white/[0.03] hover:border-emerald-400/70'
-          }`}
-          onClick={() => !busy && inputRef.current?.click()}
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={handleDrop}
-          onKeyDown={(event) => {
-            if (!busy && (event.key === 'Enter' || event.key === ' ')) inputRef.current?.click();
-          }}
-          role="button"
-          tabIndex={busy ? -1 : 0}
-          aria-label="Drop an audio file or press Enter to choose"
-        >
-          <input
-            ref={inputRef}
-            accept={ACCEPTED_AUDIO}
-            className="hidden"
-            disabled={busy}
-            type="file"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void loadFile(file);
-              event.target.value = '';
-            }}
-          />
-          <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-400 text-2xl text-emerald-950">
-            ↻
+        <Dropzone accept={ACCEPTED_AUDIO} disabled={busy} onFile={loadFile}>
+          <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-2xl bg-emerald-300 text-emerald-950 shadow-[0_12px_35px_rgba(52,211,153,0.18)]">
+            <svg
+              aria-hidden="true"
+              className="h-7 w-7"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.8"
+            >
+              <path d="M5 8h13m-3-3 3 3-3 3M19 16H6m3 3-3-3 3-3" />
+            </svg>
           </div>
-          <p className="text-xl font-semibold">Drop a WAV or MP3 file here</p>
-          <p className="mt-2 text-emerald-100/60">or click to choose a file from this device</p>
-        </div>
+          <p className="text-2xl font-black tracking-[-0.03em] text-white sm:text-3xl">
+            Drop a WAV or MP3 file here
+          </p>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-emerald-100/55">
+            Open one local track, choose its new format, and download the conversion.
+          </p>
+        </Dropzone>
       ) : (
-        <>
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="p-4 sm:p-6">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-white/8 pb-5">
             <div>
-              <h2 className="max-w-xl truncate text-xl font-semibold">{track.file.name}</h2>
-              <p className="mt-1 text-sm text-emerald-100/60">
+              <p className="text-[0.65rem] font-bold uppercase tracking-[0.13em] text-emerald-300">
+                Ready to convert
+              </p>
+              <h2 className="mt-1 max-w-xl truncate text-xl font-bold text-white">{track.file.name}</h2>
+              <p className="mt-1.5 text-xs text-emerald-100/55">
                 {formatBytes(track.file.size)} · {formatDuration(track.duration)} ·{' '}
                 {track.sampleRate.toLocaleString()} Hz
               </p>
             </div>
             <button
-              className="rounded-xl border border-white/15 px-4 py-2 text-sm hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 disabled:opacity-50"
+              className="rounded-xl border border-white/12 px-4 py-2.5 text-xs font-bold text-emerald-100/65 hover:bg-white/5 disabled:opacity-50"
               disabled={busy}
               onClick={() => {
                 setTrack(undefined);
@@ -166,11 +158,11 @@ export function ConvertTool() {
             </button>
           </div>
 
-          <div className="mt-8 grid gap-5 border-t border-white/10 pt-6 sm:grid-cols-[1fr_auto] sm:items-end">
-            <label className="text-sm font-medium text-emerald-100/70">
+          <div className="grid gap-5 rounded-3xl border border-white/8 bg-white/[0.025] p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:p-7">
+            <label className="text-xs font-bold uppercase tracking-[0.1em] text-emerald-100/55">
               Export format
               <select
-                className="mt-2 block w-full rounded-xl border border-white/15 bg-[#0d1e1a] px-4 py-3 text-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
+                className="mt-2 block w-full rounded-xl border border-white/12 bg-[#0a1a16] px-4 py-3.5 text-sm font-semibold normal-case tracking-normal text-emerald-50"
                 disabled={busy}
                 value={format}
                 onChange={(event) => setFormat(event.target.value as EncodeFormat)}
@@ -200,7 +192,12 @@ export function ConvertTool() {
               </Button>
             </div>
           </div>
-        </>
+          <div className="mt-4 grid gap-2 text-[0.68rem] text-emerald-100/55 sm:grid-cols-3">
+            <span className="rounded-xl border border-white/8 px-3 py-2">Lossless WAV PCM</span>
+            <span className="rounded-xl border border-white/8 px-3 py-2">Compact 192 kbps MP3</span>
+            <span className="rounded-xl border border-white/8 px-3 py-2">Worker encoded</span>
+          </div>
+        </div>
       )}
 
       {validation && (
@@ -216,7 +213,7 @@ export function ConvertTool() {
           <Progress value={progress} />
         </div>
       )}
-      <p aria-live="polite" className="mt-5 text-center text-sm text-emerald-100/60">
+      <p aria-live="polite" className="mt-5 pb-3 text-center text-xs font-medium text-emerald-100/55">
         {status}
       </p>
     </section>

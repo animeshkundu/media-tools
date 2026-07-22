@@ -1,7 +1,8 @@
-import { useRef, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/Button';
 import { Progress } from '@/components/Progress';
 import { downloadBlob } from '@/lib/core/download';
+import { Dropzone } from '../../lib/core/dropzone';
 import { formatBytes, formatDuration, outputName } from '@/lib/core/format';
 import { startDecodeFile, type AudioJob, type EncodeFormat } from '@/lib/core/worker';
 import { startChangeSpeedEncode } from '@/lib/tools/change-speed/changeSpeed';
@@ -37,8 +38,14 @@ export function ChangeSpeedTool() {
   const [status, setStatus] = useState('Drop an audio file to adjust its speed.');
   const [validation, setValidation] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const jobRef = useRef<AudioJob<unknown> | null>(null);
+
+  useEffect(
+    () => () => {
+      jobRef.current?.cancel();
+    },
+    [],
+  );
 
   async function loadFile(file: File) {
     setBusy(true);
@@ -101,63 +108,48 @@ export function ChangeSpeedTool() {
     }
   }
 
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    const file = event.dataTransfer.files[0];
-    if (file) void loadFile(file);
-  }
-
   const outputDuration = track ? track.duration / speedFactor : 0;
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-black/20 p-5 shadow-2xl shadow-black/30 sm:p-8">
+    <section className="rounded-[2rem] border border-white/10 bg-black/20 p-2 shadow-[0_32px_100px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:p-3">
       {!track ? (
-        <div
-          className={`rounded-3xl border border-dashed p-8 text-center transition motion-reduce:transition-none ${
-            busy
-              ? 'cursor-not-allowed border-white/20 bg-white/[0.03] opacity-50'
-              : 'cursor-pointer border-white/20 bg-white/[0.03] hover:border-emerald-400/70'
-          }`}
-          onClick={() => !busy && inputRef.current?.click()}
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={handleDrop}
-          onKeyDown={(event) => {
-            if (!busy && (event.key === 'Enter' || event.key === ' ')) inputRef.current?.click();
-          }}
-          role="button"
-          tabIndex={busy ? -1 : 0}
-          aria-label="Drop an audio file or press Enter to choose"
-        >
-          <input
-            ref={inputRef}
-            accept={ACCEPTED_AUDIO}
-            className="hidden"
-            disabled={busy}
-            type="file"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void loadFile(file);
-              event.target.value = '';
-            }}
-          />
-          <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-400 text-2xl text-emerald-950">
-            ⏩
+        <Dropzone accept={ACCEPTED_AUDIO} disabled={busy} onFile={loadFile}>
+          <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-2xl bg-emerald-300 text-emerald-950 shadow-[0_12px_35px_rgba(52,211,153,0.18)]">
+            <svg
+              aria-hidden="true"
+              className="h-7 w-7"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.8"
+            >
+              <path d="M4 15a8 8 0 1 1 16 0M12 15l4-5M7 18h10" />
+            </svg>
           </div>
-          <p className="text-xl font-semibold">Drop a WAV or MP3 file here</p>
-          <p className="mt-2 text-emerald-100/60">or click to choose a file from this device</p>
-        </div>
+          <p className="text-2xl font-black tracking-[-0.03em] text-white sm:text-3xl">
+            Drop a WAV or MP3 file here
+          </p>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-emerald-100/55">
+            Choose a local file, set the pace, and hear the difference in the exported track.
+          </p>
+        </Dropzone>
       ) : (
-        <>
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="p-4 sm:p-6">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-white/8 pb-5">
             <div>
-              <h2 className="max-w-xl truncate text-xl font-semibold">{track.file.name}</h2>
-              <p className="mt-1 text-sm text-emerald-100/60">
+              <p className="text-[0.65rem] font-bold uppercase tracking-[0.13em] text-emerald-300">
+                Source track
+              </p>
+              <h2 className="mt-1 max-w-xl truncate text-xl font-bold text-white">{track.file.name}</h2>
+              <p className="mt-1.5 text-xs text-emerald-100/55">
                 {formatBytes(track.file.size)} · {formatDuration(track.duration)} ·{' '}
                 {track.sampleRate.toLocaleString()} Hz
               </p>
             </div>
             <button
-              className="rounded-xl border border-white/15 px-4 py-2 text-sm hover:bg-white/5 disabled:opacity-50"
+              className="rounded-xl border border-white/12 px-4 py-2.5 text-xs font-bold text-emerald-100/65 hover:bg-white/5 disabled:opacity-50"
               disabled={busy}
               onClick={() => {
                 setTrack(undefined);
@@ -169,13 +161,24 @@ export function ChangeSpeedTool() {
             </button>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-            <label className="block text-sm font-medium text-emerald-100/70">
+          <div className="rounded-3xl border border-white/8 bg-white/[0.025] p-5 sm:p-7">
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-[0.65rem] font-bold uppercase tracking-[0.13em] text-emerald-100/55">
+                  Pace control
+                </p>
+                <p className="mt-1 text-sm text-emerald-100/55">Speed and pitch move together.</p>
+              </div>
+              <strong className="font-mono text-3xl tracking-tight text-emerald-200">
+                {speedFactor.toFixed(2)}×
+              </strong>
+            </div>
+            <label className="block text-xs font-bold uppercase tracking-[0.1em] text-emerald-100/55">
               Speed factor
               <div className="mt-3 flex items-center gap-4">
                 <input
                   aria-label="Speed factor"
-                  className="h-2 w-full cursor-pointer appearance-none rounded-full accent-emerald-400 disabled:opacity-50 motion-reduce:transition-none"
+                  className="h-2 w-full cursor-pointer appearance-none rounded-full accent-emerald-300 disabled:opacity-50 motion-reduce:transition-none"
                   disabled={busy}
                   max={4}
                   min={0.25}
@@ -184,10 +187,19 @@ export function ChangeSpeedTool() {
                   value={speedFactor}
                   onChange={(event) => setSpeedFactor(Number(event.target.value))}
                 />
-                <span className="w-14 text-right font-mono text-emerald-100">{speedFactor.toFixed(2)}×</span>
               </div>
             </label>
-            <p className="mt-3 text-sm text-emerald-100/60">
+            <div className="mt-5 grid grid-cols-2 gap-3 text-xs">
+              <p className="rounded-xl border border-white/8 bg-black/10 p-3 text-emerald-100/55">
+                <span className="block text-[0.6rem] font-bold uppercase tracking-[0.1em]">Input</span>
+                <strong className="mt-1 block font-mono text-sm text-white">{formatDuration(track.duration)}</strong>
+              </p>
+              <p className="rounded-xl border border-emerald-300/15 bg-emerald-300/[0.05] p-3 text-emerald-100/55">
+                <span className="block text-[0.6rem] font-bold uppercase tracking-[0.1em]">Estimate</span>
+                <strong className="mt-1 block font-mono text-sm text-emerald-200">~{formatDuration(outputDuration)}</strong>
+              </p>
+            </div>
+            <p className="mt-4 text-xs text-emerald-100/55">
               Input: {formatDuration(track.duration)} → Output: ~{formatDuration(outputDuration)}
               {speedFactor < 1 && (
                 <span className="ml-2 text-amber-300/80">(slower, longer)</span>
@@ -198,11 +210,11 @@ export function ChangeSpeedTool() {
             </p>
           </div>
 
-          <div className="mt-8 grid gap-5 border-t border-white/10 pt-6 sm:grid-cols-[1fr_auto] sm:items-end">
-            <label className="text-sm font-medium text-emerald-100/70">
+          <div className="mt-6 grid gap-5 border-t border-white/8 pt-5 sm:grid-cols-[1fr_auto] sm:items-end">
+            <label className="text-xs font-bold uppercase tracking-[0.1em] text-emerald-100/55">
               Export format
               <select
-                className="mt-2 block w-full rounded-xl border border-white/15 bg-[#0d1e1a] px-4 py-3 text-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
+                className="mt-2 block w-full rounded-xl border border-white/12 bg-[#0a1a16] px-4 py-3.5 text-sm font-semibold normal-case tracking-normal text-emerald-50"
                 disabled={busy}
                 value={format}
                 onChange={(event) => setFormat(event.target.value as EncodeFormat)}
@@ -228,7 +240,7 @@ export function ChangeSpeedTool() {
               </Button>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {validation && (
@@ -244,7 +256,7 @@ export function ChangeSpeedTool() {
           <Progress value={progress} />
         </div>
       )}
-      <p aria-live="polite" className="mt-5 text-center text-sm text-emerald-100/60">
+      <p aria-live="polite" className="mt-5 pb-3 text-center text-xs font-medium text-emerald-100/55">
         {status}
       </p>
     </section>
