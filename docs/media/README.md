@@ -1,21 +1,19 @@
 # Real Firefox media capture
 
-Regenerate the committed Audio Cutter screenshots and demo videos with:
+Regenerate the committed Audio Studio screenshots with:
 
 ```sh
 npm run capture
 ```
 
-The capture script builds the `firefox-mv3` target, installs that unpacked build into a real Firefox session through geckodriver and Marionette, resolves its runtime `moz-extension://` UUID, and captures the rendered extension page at 1280×800. Both videos are assembled with `ffmpeg` from a timed sequence of screenshots taken from that same Firefox session.
+The capture script builds `firefox-mv3`, installs the unpacked production artifact into real Firefox through geckodriver and Marionette, resolves its runtime `moz-extension://` UUID, and drives the shared workspace at 1728×1117. It imports two generated WAV fixtures, changes speed/gain/fades/EQ/zoom/playhead, exports and validates a real MP3, and exercises malformed-input recovery.
 
-Requirements are the repository's installed dependencies plus `ffmpeg` and `ffprobe` on `PATH`. Selenium Manager provisions the pinned geckodriver and resolves Firefox. The script logs the Node version, exact browser binaries, Firefox version, UUID, frame count, video durations, and generated file sizes for each run.
+Requirements are the repository's installed dependencies. Selenium Manager provisions the pinned geckodriver and resolves Firefox.
 
 Generated artifacts:
 
-- `screenshots/audio-cutter-empty.png`: initial audio dropzone.
-- `screenshots/audio-cutter-waveform.png`: real WAV fixture loaded with its rendered waveform.
-- `screenshots/audio-cutter-trim-selected.png`: exact In and Out points selected.
-- `screenshots/audio-cutter-export-done.png`: successful cut and download confirmation.
-- `screenshots/audio-cutter-error.png`: corrupt-audio rejection state.
-- `audio-cutter-demo.mp4`: empty-to-trim-to-export core flow encoded as H.264.
-- `audio-cutter-demo.webm`: the same genuine Firefox frames encoded as VP9.
+- `screenshots/audio-studio-empty.png`: full empty three-pane workspace.
+- `screenshots/audio-studio-imported.png`: two files imported once and arranged sequentially.
+- `screenshots/audio-studio-edited.png`: selected clip and track tuning with a visible timeline.
+- `screenshots/audio-studio-exported.png`: completed local MP3 export and persistent status.
+- `screenshots/audio-studio-error.png`: corrupt-audio rejection toast with a recoverable empty project.

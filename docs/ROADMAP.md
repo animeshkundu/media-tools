@@ -9,8 +9,20 @@
 - [x] Audio format conversion
 - [x] Coupled speed and pitch change
 - [x] Offline volume, fades, peak normalization, and clipping preview
-- [x] One redesigned studio shell shared by the extension and hosted web app
-- [x] GitHub Pages web target at `/media-tools/app/` with the same five audio tools
+- [x] One import-once Audio Studio replacing the tab-per-transform shell
+- [x] GitHub Pages web target at `/media-tools/app/` with the same unified workspace
+
+## Phase 1.5: Bounded audio workspace
+
+- [x] Serializable non-destructive multitrack asset, clip, track, and timeline state
+- [x] iMovie-style three-pane editor with virtualized Canvas waveform timeline and magnetic snapping
+- [x] Main-page Web Audio preview, audio skimming, track graph, mute/solo, pan, EQ, and transport
+- [x] Clip speed, gain, fades, split/delete, zoom, arrangement, and asset reuse in one timeline
+- [x] Deterministic worker WAV/MP3 mixdown with dialogue-driven music ducking
+- [x] Optional worker-owned OPFS cache for bounded inputs and slices
+- [x] Feature-detected, explicit, bounded local voice-over with no install-time permission
+- [ ] Noise suppression, pending a bundled model, quality gate, and worker export design
+- [ ] Large-file streaming and RF64, pending tested quotas, numeric limits, and disk-backed output
 
 ## Phase 2: Video with WebCodecs + mediabunny
 

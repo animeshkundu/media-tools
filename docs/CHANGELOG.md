@@ -8,13 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
-- A hosted web app at `/media-tools/app/` that mounts the same five-tool React editor and worker pipeline as the extension.
+- A hosted web app at `/media-tools/app/` that mounts the same React editor and worker pipelines as the extension.
 - Local source-audio preview in the cutter and production screenshot evidence using a near-limit WAV file.
 - An offline Volume & Fades tool with 0% to 500% gain, linear or logarithmic fade envelopes, -1 dBFS peak normalization, clipping warnings, and worker-owned WAV/MP3 export.
+- Unified Audio Studio with immutable serializable edits, a virtualized Canvas timeline, magnetic snapping, Web Audio preview/skimming, generated local sounds, EQ presets, and worker-rendered stereo WAV/MP3.
+- Deterministic dialogue-driven music ducking and a bounded OPFS worker cache with 8 MiB random-access slices.
+- Feature-detected, explicit, bounded local voice-over recording with no install-time microphone permission.
 
 ### Changed
 
-- Redesigned the shared editor and landing page around a bold studio shell, responsive tool rail, clearer workspaces, and a direct web-app or extension choice.
+- Replaced the separate transform tabs and repeated imports with one iMovie-style three-pane workspace for arrangement, trim, split/delete, speed, gain, fades, EQ, preview, and export.
+- Redesigned the shared extension and hosted editor around a fixed desktop workspace with media library, viewer/inspector, persistent transport feedback, and a full-width timeline.
 - Split privacy messaging precisely: both surfaces process locally with no upload, while zero permissions and no-egress CSP remain extension-only enforcement claims.
 - GitHub Pages now validates and deploys the committed Vite web target with the static site.
 ### Deprecated

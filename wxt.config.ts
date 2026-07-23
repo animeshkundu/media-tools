@@ -10,8 +10,8 @@ export default defineConfig({
     name: 'audio-cutter',
   },
   manifest: ({ browser }) => ({
-    name: 'Audio Cutter',
-    description: 'Private, offline audio cutting for Firefox and Chrome, entirely in your browser.',
+    name: 'Audio Studio',
+    description: 'Private, offline multitrack WAV and MP3 editing for Firefox and Chrome.',
     permissions: [],
     action: {},
     content_security_policy: {

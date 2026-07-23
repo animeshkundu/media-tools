@@ -228,6 +228,9 @@ async function waitForText(selector: string, expected: string | RegExp, timeout 
 
 async function openApp(): Promise<void> {
   const activeDriver = getDriver();
+  // Selenium may treat navigation to the current extension URL as a no-op.
+  // Leave the document first so each test gets a fresh in-memory project.
+  await activeDriver.get('about:blank');
   await activeDriver.get(appUrl);
   await activeDriver.wait(
     async () => {
@@ -242,24 +245,8 @@ async function openApp(): Promise<void> {
     30_000,
     'The extension document did not become ready.',
   );
-  await waitForText('h1', 'Audio Cutter');
+  await waitForText('h1', 'Audio Studio');
   expect(await activeDriver.getCurrentUrl()).toBe(appUrl);
-}
-
-async function clickTab(label: string): Promise<void> {
-  const tabs = await getDriver().findElements(By.css('[role="tab"]'));
-  for (const tab of tabs) {
-    if ((await tab.getText()) === label) {
-      await tab.click();
-      await getDriver().wait(
-        async () => (await tab.getAttribute('aria-selected')) === 'true',
-        10_000,
-        `The ${label} tab was not selected.`,
-      );
-      return;
-    }
-  }
-  throw new Error(`Could not find the ${label} tab.`);
 }
 
 async function clickButton(label: string): Promise<void> {
@@ -444,7 +431,7 @@ async function probeMp3Support(): Promise<Mp3Support> {
   `);
 }
 
-test.describe('Audio Cutter installed Firefox extension', () => {
+test.describe('Audio Studio installed Firefox extension', () => {
   test.beforeAll(async () => {
     await prepareFixtures();
     driver = await buildGeckoDriver();
@@ -466,39 +453,45 @@ test.describe('Audio Cutter installed Firefox extension', () => {
 
   test('app loads under the installed extension origin', async () => {
     await openApp();
-    expect(await (await visibleElement('h1')).getText()).toBe('Audio Cutter');
+    expect(await (await visibleElement('h1')).getText()).toBe('Audio Studio');
+    await waitForText('h2', 'My media');
+    await waitForText('section', 'VIEWER / INSPECTOR');
+    await waitForText('section', 'MULTITRACK TIMELINE');
+    expect(await getDriver().findElements(By.css('[role="tab"]'))).toHaveLength(0);
+    expect(await getDriver().findElements(By.css('button[aria-label="Record voice-over"]'))).toHaveLength(1);
     expect(await getDriver().getCurrentUrl()).toMatch(/^moz-extension:\/\/[^/]+\/app\.html$/);
   });
 
-  test('cuts WAV and downloads a valid WAV under extension CSP', async () => {
+  test('imports once, tunes speed, fades, gain and EQ, then exports valid WAV', async () => {
     await clearDownloads();
     await openApp();
     await uploadFiles([cutWav]);
-    await waitForText('h2', path.basename(cutWav));
-    await waitForText('p[aria-live="polite"]', 'Drag the gold handles');
-    await visibleElement('canvas[aria-label^="Audio waveform"]');
-    const trimInputs = await getDriver().findElements(By.css('input[type="number"]'));
-    expect(trimInputs).toHaveLength(2);
-    await setControlValue(trimInputs[0]!, '0.25');
-    await setControlValue(trimInputs[1]!, '0.75');
-    const handles = await getDriver().findElements(By.css('[role="slider"]'));
-    expect(handles).toHaveLength(2);
-    expect(Number(await handles[0]!.getAttribute('aria-valuenow'))).toBeCloseTo(0.25, 4);
-    expect(Number(await handles[1]!.getAttribute('aria-valuenow'))).toBeCloseTo(0.75, 4);
-    await setFormValue('select', 'wav');
+    await waitForText('p[aria-live="polite"]', 'Ready. 1 file added');
+    await waitForText('[data-testid="multitrack-studio"]', path.basename(cutWav));
+    await visibleElement('canvas[aria-label^="Multitrack waveform timeline"]');
+    await setFormValue('input[aria-label="Selected clip speed"]', '2');
+    await setFormValue('input[aria-label="Selected clip gain"]', '1.2');
+    await setFormValue('input[aria-label="Selected clip fade in"]', '0.1');
+    await setFormValue('input[aria-label="Selected clip fade out"]', '0.1');
+    await setFormValue('select[aria-label="Selected track EQ preset"]', 'bright');
+    await waitForText('label', 'Speed 2.00x');
+    await waitForText('label', 'Fade in 0.10s');
 
-    await clickButton('Cut & download');
-    await waitForText('p[aria-live="polite"]', 'Done.');
-    const output = await waitForDownload('cut-source-trimmed.wav');
+    await clickButton('Export WAV');
+    await waitForText('p[aria-live="polite"]', 'Done. Your multitrack WAV');
+    const output = await waitForDownload('My-audio-project.wav');
     const wav = await validateWav(output);
+    expect(wav.readUInt16LE(22)).toBe(2);
     expect(wavFrames(wav)).toBe(Math.round(SAMPLE_RATE * 0.5));
+    expect(wav.readInt16LE(44)).toBe(0);
+    expect(wav.readInt16LE(46)).toBe(0);
   });
 
-  test('loads tool resources without network egress', async () => {
+  test('loads the unified workspace and imported media without network egress', async () => {
     await openApp();
     await uploadFiles([noEgressWav]);
-    await waitForText('p[aria-live="polite"]', 'Drag the gold handles');
-    await visibleElement('canvas[aria-label^="Audio waveform"]');
+    await waitForText('p[aria-live="polite"]', 'Ready. 1 file added');
+    await visibleElement('canvas[aria-label^="Multitrack waveform timeline"]');
 
     const prefix = appUrl.slice(0, appUrl.lastIndexOf('/') + 1);
     const externalRequests = await getDriver().executeScript<string[]>(
@@ -512,18 +505,16 @@ test.describe('Audio Cutter installed Firefox extension', () => {
     expect(externalRequests, `External requests: ${(externalRequests ?? []).join(', ')}`).toHaveLength(0);
   });
 
-  test('converts WAV input to MP3', async () => {
+  test('exports the edited timeline as playable MP3', async () => {
     await clearDownloads();
     await openApp();
-    await clickTab('Convert WAV / MP3');
-    await waitForText('h1', 'Convert WAV / MP3');
     await uploadFiles([mp3ExportWav]);
-    await waitForText('p[aria-live="polite"]', 'Choose WAV or MP3, then export.');
-    await setFormValue('select', 'mp3');
+    await waitForText('p[aria-live="polite"]', 'Ready. 1 file added');
+    await setFormValue('select[aria-label="Export format"]', 'mp3');
 
-    await clickButton('Convert & download');
-    await waitForText('p[aria-live="polite"]', 'Done.');
-    const output = await waitForDownload('mp3-export-source-trimmed.mp3');
+    await clickButton('Export MP3');
+    await waitForText('p[aria-live="polite"]', 'Done. Your multitrack MP3');
+    const output = await waitForDownload('My-audio-project.mp3');
     const mp3 = await readFile(output);
     expect(mp3.length).toBeGreaterThan(1_000);
     expect(hasMp3Frame(mp3)).toBe(true);
@@ -540,12 +531,11 @@ test.describe('Audio Cutter installed Firefox extension', () => {
     await uploadFiles([mp3Input]);
 
     if (support.supported) {
-      await waitForText('h2', path.basename(mp3Input));
-      await waitForText('p[aria-live="polite"]', 'Drag the gold handles');
-      await visibleElement('canvas[aria-label^="Audio waveform"]');
-      await clickButton('Cut & download');
-      await waitForText('p[aria-live="polite"]', 'Done.');
-      const output = await waitForDownload('mp3-input-source-trimmed.wav');
+      await waitForText('p[aria-live="polite"]', 'Ready. 1 file added');
+      await waitForText('[data-testid="multitrack-studio"]', path.basename(mp3Input));
+      await clickButton('Export WAV');
+      await waitForText('p[aria-live="polite"]', 'Done. Your multitrack WAV');
+      const output = await waitForDownload('My-audio-project.wav');
       await validateWav(output);
       return;
     }
@@ -555,70 +545,54 @@ test.describe('Audio Cutter installed Firefox extension', () => {
       /browser cannot decode.*MP3|browser cannot decode this MP3/i,
     );
     expect(error).toMatch(/MP3/);
-    await waitForText('[role="button"]', 'Drop a WAV or MP3 file here');
-    expect(await (await visibleElement('h1')).getText()).toBe('Audio Cutter');
+    await waitForText('button', 'Drop audio here or choose files');
+    expect(await (await visibleElement('h1')).getText()).toBe('Audio Studio');
     await delay(1_000);
     expect(await readdir(downloadDir)).toEqual([]);
   });
 
-  test('joins two WAV files and downloads valid merged audio', async () => {
+  test('imports two WAV files together and exports their sequential merged timeline', async () => {
     await clearDownloads();
     await openApp();
-    await clickTab('Join / merge');
-    await waitForText('h1', 'Audio Join / Merge');
     await uploadFiles([joinWavOne, joinWavTwo]);
-    await waitForText('p[aria-live="polite"]', 'Ready. 2 tracks added.');
-    await waitForText('section', path.basename(joinWavOne));
-    await waitForText('section', path.basename(joinWavTwo));
+    await waitForText('p[aria-live="polite"]', 'Ready. 2 files added');
+    await waitForText('[data-testid="multitrack-studio"]', path.basename(joinWavOne));
+    await waitForText('[data-testid="multitrack-studio"]', path.basename(joinWavTwo));
+    expect(await getDriver().findElements(By.css('[aria-label="Timeline clips"] button'))).toHaveLength(2);
 
-    await clickButton('Join & download');
-    await waitForText('p[aria-live="polite"]', 'Done.');
-    const output = await waitForDownload('joined-audio-trimmed.wav');
+    await clickButton('Export WAV');
+    await waitForText('p[aria-live="polite"]', 'Done. Your multitrack WAV');
+    const output = await waitForDownload('My-audio-project.wav');
     const wav = await validateWav(output);
     expect(wavFrames(wav)).toBe(SAMPLE_RATE);
   });
 
-  test('changes WAV speed and downloads valid resampled audio', async () => {
-    await clearDownloads();
+  test('reuses one imported asset and adds generated audio to another track', async () => {
     await openApp();
-    await clickTab('Change speed');
-    await waitForText('h1', 'Change Speed');
+    await uploadFiles([joinWavOne]);
+    await waitForText('p[aria-live="polite"]', 'Ready. 1 file added');
+    await clickButton('+');
+    await waitForText('p[aria-live="polite"]', 'added to Dialogue');
+
+    await setFormValue('select[aria-label="Destination track"]', 'track-music');
+    await clickButton('Add Tone');
+    await waitForText('p[aria-live="polite"]', '440 Hz tone added to Music');
+    await waitForText('[data-testid="multitrack-studio"]', '2 local');
+    expect(await getDriver().findElements(By.css('[aria-label="Timeline clips"] button'))).toHaveLength(3);
+  });
+
+  test('splits and deletes a selected clip without reimporting its source', async () => {
+    await openApp();
     await uploadFiles([speedWav]);
-    await waitForText('p[aria-live="polite"]', 'Set the speed factor and export.');
-    await setFormValue('input[type="range"][aria-label="Speed factor"]', '2');
-    await waitForText('section', '2.00×');
-
-    await clickButton('Change speed & download');
-    await waitForText('p[aria-live="polite"]', 'Done.');
-    const output = await waitForDownload('speed-source-trimmed.wav');
-    const wav = await validateWav(output);
-    expect(wavFrames(wav)).toBe(Math.round(SAMPLE_RATE / 2));
-  });
-
-  test('normalizes volume and fades through the production worker', async () => {
-    await clearDownloads();
-    await openApp();
-    await clickTab('Volume & fades');
-    await waitForText('h1', 'Volume & Fades');
-    await uploadFiles([volumeWav]);
-    await waitForText('p[aria-live="polite"]', 'Set gain and fades');
-    await setFormValue('input[type="range"][aria-label="Fade in duration"]', '0.1');
-    await setFormValue('input[type="range"][aria-label="Fade out duration"]', '0.1');
-    await (await visibleElement('input[type="checkbox"]')).click();
-    await waitForText('section', '-1.0 dBFS');
-
-    await clickButton('Apply & download');
-    await waitForText('p[aria-live="polite"]', 'Done.');
-    const output = await waitForDownload('volume-source-trimmed.wav');
-    const wav = await validateWav(output);
-    expect(wavFrames(wav)).toBe(SAMPLE_RATE);
-    expect(wav.readInt16LE(44)).toBe(0);
-    expect(Math.abs(wav.readInt16LE(wav.length - 2))).toBeLessThanOrEqual(1);
-    let outputPeak = 0;
-    for (let offset = 44; offset < wav.length; offset += 2) {
-      outputPeak = Math.max(outputPeak, Math.abs(wav.readInt16LE(offset)));
-    }
-    expect(outputPeak / 0x7fff).toBeCloseTo(10 ** (-1 / 20), 3);
+    await waitForText('p[aria-live="polite"]', 'Ready. 1 file added');
+    await setFormValue('input[aria-label="Timeline playhead"]', '0.5');
+    await clickButton('Split at playhead');
+    await waitForText('p[aria-live="polite"]', 'Clip split at the playhead');
+    expect(await getDriver().findElements(By.css('[aria-label="Timeline clips"] button'))).toHaveLength(2);
+    await clickButton('Delete clip');
+    await waitForText('p[aria-live="polite"]', 'Clip removed from the timeline');
+    expect(await getDriver().findElements(By.css('[aria-label="Timeline clips"] button'))).toHaveLength(1);
+    await waitForText('[data-testid="multitrack-studio"]', '1 local');
   });
 });
 

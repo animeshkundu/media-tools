@@ -1,8 +1,8 @@
-# Audio Cutter
+# Audio Studio
 
-Audio Cutter is the shipped flagship of the `media-tools` repository: private, offline WAV and MP3 cutting and editing for Firefox and Chrome, entirely in your browser.
+Audio Studio is the shipped flagship of the `media-tools` repository: a private, offline, iMovie-style WAV and MP3 workspace for Firefox and Chrome. Import audio once, edit everything on one timeline, and export the finished mix.
 
-![Audio Cutter showing a loaded waveform and trim controls](docs/media/screenshots/audio-cutter-waveform.png)
+![Audio Studio with two edited clips in its three-pane workspace](docs/media/screenshots/audio-studio-edited.png)
 
 [![CI](https://img.shields.io/github/actions/workflow/status/animeshkundu/media-tools/ci.yml?branch=main&label=CI)](https://github.com/animeshkundu/media-tools/actions/workflows/ci.yml) [![Firefox E2E](https://img.shields.io/github/actions/workflow/status/animeshkundu/media-tools/e2e.yml?branch=main&label=Firefox%20E2E)](https://github.com/animeshkundu/media-tools/actions/workflows/e2e.yml) [![MIT License](https://img.shields.io/github/license/animeshkundu/media-tools?label=License)](LICENSE) [![Release](https://img.shields.io/github/v/release/animeshkundu/media-tools?include_prereleases&label=Release&color=047857)](https://github.com/animeshkundu/media-tools/releases)
 
@@ -12,11 +12,11 @@ Audio Cutter is the shipped flagship of the `media-tools` repository: private, o
 
 > **Your audio never leaves your device; no uploads, no accounts, no telemetry; all processing local.**
 
-This rests first on what you can audit: Audio Cutter declares zero permissions, and its built bundle contains no network code. A CI check greps both browser builds for `fetch`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, and `EventSource` and fails the build if any appear. The strict no-egress content-security policy (`connect-src 'none'`) is defense in depth, blocking outbound connections from extension pages even if a bug were introduced; because a content-security policy does not restrict top-level navigation, it is not the sole line of defense. Source review verifies that the only `browser.tabs.create` call opens the extension's own app page through `browser.runtime.getURL` (same-origin) and never navigates to an external URL. The empty permission list and the CSP are also checked in CI against both built manifests. See [docs/PEER-REVIEW.md](docs/PEER-REVIEW.md) and [docs/CAPABILITY-CONTRACT.md](docs/CAPABILITY-CONTRACT.md).
+This rests first on what you can audit: Audio Studio declares zero install-time permissions, and its built bundle contains no network code. A CI check greps both browser builds for `fetch`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, and `EventSource` and fails the build if any appear. The strict no-egress content-security policy (`connect-src 'none'`) is defense in depth, blocking outbound connections from extension pages even if a bug were introduced; because a content-security policy does not restrict top-level navigation, it is not the sole line of defense. Source review verifies that the only `browser.tabs.create` call opens the extension's own app page through `browser.runtime.getURL` (same-origin) and never navigates to an external URL. The empty permission list and the CSP are also checked in CI against both built manifests. See [docs/PEER-REVIEW.md](docs/PEER-REVIEW.md) and [docs/CAPABILITY-CONTRACT.md](docs/CAPABILITY-CONTRACT.md).
 
 ## Permissions and CSP
 
-Audio Cutter ships with an empty permission list and a strict no-egress content-security policy. Both are checked in CI against the built Chrome and Firefox manifests on every change.
+Audio Studio ships with an empty permission list and a strict no-egress content-security policy. Both are checked in CI against the built Chrome and Firefox manifests on every change.
 
 Declared permissions:
 
@@ -34,55 +34,55 @@ default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src
 
 ## Features
 
-- **Cut and trim audio** by loading a WAV or MP3, viewing its waveform, and setting precise in and out points before export.
-- **Join or merge tracks** in a chosen order, normalizing mono/stereo channel layout and differing sample rates when needed.
-- **Change playback speed** from 0.25× to 4×; speed and pitch change together, and the estimated output duration is shown before export.
-- **Convert WAV and MP3** locally, with lossless PCM WAV or 192 kbps MP3 output.
+- **Import once and edit together.** Reuse WAV/MP3 assets across clips without re-reading the same file or switching tools.
+- **Arrange, trim, split, merge, zoom, and snap** on one non-destructive multitrack Canvas timeline.
+- **Fine-tune every selection** with 0.25x–4x coupled speed/pitch, clip gain, fades, track volume/pan, EQ presets, mute/solo, and dialogue-driven music ducking.
+- **Listen while editing** with local Web Audio preview, seeking, scrubbing, and opt-in audio skimming.
+- **Record voice-over locally** after an explicit browser prompt; no microphone permission is requested at install time.
+- **Export WAV or MP3** through a cancellable authoritative mixdown worker.
 - **No uploads, accounts, ads, telemetry, or watermarks.** Audio input, processing, and output stay in the browser.
 - **Bounded processing** with a 64 MiB input limit, 256 MiB decoded/in-flight PCM limits, mono/stereo validation, and a processing watchdog.
 - **Cancellable worker jobs** with progress reporting and no partial download after cancellation or failure.
-- **Accessible controls** for file selection, trim times, status updates, and progress.
+- **Accessible controls** for file selection, clip selection, keyboard nudging, exact inspector settings, status, and progress.
 - **Real-Firefox end-to-end coverage** in CI, not browser emulation.
 - **One MV3 codebase** for Chrome and Firefox.
 - **Zero install-time permissions.**
 
 ## Screenshots
 
-### Start with local audio
+### Start with one workspace
 
-Drop a WAV or MP3 file, or choose one from your device.
+The media library, viewer/inspector, transport, and multitrack timeline are visible from the first frame.
 
-![Audio Cutter empty state with its local audio dropzone](docs/media/screenshots/audio-cutter-empty.png)
+![Audio Studio empty three-pane workspace](docs/media/screenshots/audio-studio-empty.png)
 
-### Read the waveform
+### Import once
 
-Inspect the loaded audio as a waveform, a visual plot of sound amplitude over time.
+Choose one or many local files. Each immutable source appears in the library and on the chosen track.
 
-![Audio Cutter showing a loaded waveform](docs/media/screenshots/audio-cutter-waveform.png)
+![Audio Studio with two imported local assets](docs/media/screenshots/audio-studio-imported.png)
 
-### Select the trim
+### Edit in context
 
-Drag the gold handles or enter exact in and out times to choose the audio to keep.
+Selection connects the inspector and timeline. Tune speed, gain, fades, EQ, placement, zoom, and playhead without changing source buffers.
 
-![Audio Cutter showing a selected trim range](docs/media/screenshots/audio-cutter-trim-selected.png)
+![Audio Studio showing clip and track edits](docs/media/screenshots/audio-studio-edited.png)
 
 ### Export locally
 
 Create the finished download in the browser without uploading the source audio.
 
-![Audio Cutter confirming a completed local export](docs/media/screenshots/audio-cutter-export-done.png)
+![Audio Studio confirming a local MP3 export](docs/media/screenshots/audio-studio-exported.png)
 
 ### Friendly failures
 
 Corrupt or unsupported audio fails with a clear message instead of a misleading download.
 
-![Audio Cutter showing a corrupt-audio error](docs/media/screenshots/audio-cutter-error.png)
-
-[Watch the short real-Firefox demo (MP4)](docs/media/audio-cutter-demo.mp4) · [WebM alternate](docs/media/audio-cutter-demo.webm)
+![Audio Studio showing a corrupt-audio error](docs/media/screenshots/audio-studio-error.png)
 
 ## Install
 
-Audio Cutter is a developer preview. Store listings are coming soon:
+Audio Studio is a developer preview. Store listings are coming soon:
 
 - **Firefox (AMO):** coming soon
 - **Chrome (Chrome Web Store):** coming soon
@@ -127,7 +127,7 @@ For an independent build comparison, check out the release tag, run `npm ci`, th
 
 ## How it works
 
-A durable extension app page owns the interface and operation lifetime. Page-owned Web Workers analyze and decode WAV/MP3 input and perform final WAV/MP3 encoding, while the app supervises progress, cancellation, and local blob downloads. Audio is processed as PCM (pulse-code modulation: raw, uncompressed sample values) at a sample rate (the number of samples recorded each second); the waveform is the visual summary used to choose a cut. All runtime code and encoder assets are bundled with the extension and guarded by the strict no-egress CSP. Read the [vision](docs/VISION.md), [product specification](docs/PRODUCT-SPEC.md), [architecture](docs/ARCHITECTURE.md), and [design guide](docs/DESIGN.md).
+A durable extension app page owns the interface and operation lifetime. Page-owned Web Workers analyze and decode WAV/MP3 input and perform final WAV/MP3 encoding, multitrack mixdown, and optional bounded OPFS caching, while the app supervises progress, cancellation, and local blob downloads. Web Audio is used only for user-initiated multitrack preview; deterministic worker DSP remains authoritative for export. Audio is processed as PCM (pulse-code modulation: raw, uncompressed sample values) at a sample rate (the number of samples recorded each second); the waveform is the visual summary used to choose a cut. All runtime code and encoder assets are bundled with the extension and guarded by the strict no-egress CSP. Read the [vision](docs/VISION.md), [product specification](docs/PRODUCT-SPEC.md), [architecture](docs/ARCHITECTURE.md), and [design guide](docs/DESIGN.md).
 
 ## Development
 
@@ -145,6 +145,8 @@ npm run check
 npm run test
 npm run test:e2e
 ```
+
+Regenerate the committed hosted app with `npm run build:web`.
 
 To load an unpacked production build:
 
