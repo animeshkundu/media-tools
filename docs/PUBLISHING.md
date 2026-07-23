@@ -33,10 +33,13 @@ WXT excludes configuration files, hidden files, tests, and excluded entrypoints 
 
 ## Release process
 
-1. Set a new semantic version in `package.json` and confirm WXT puts it in the generated manifest.
-2. Run local checks and verify both browser builds.
-3. Create and push a tag such as `v1.2.3`.
-4. The tag-triggered [release workflow](../.github/workflows/release.yml) runs release checks, builds ZIPs for Chrome and Firefox, creates the Firefox sources ZIP, generates and signs checksums, and attaches the release assets to the GitHub Release. It submits the listed Firefox build to AMO only when the `PUBLISH_FIREFOX` repository variable is `true` and the required secrets are configured.
+1. Set the same new semantic `N.N.N` version in `package.json`, `package-lock.json`, and the lockfile root package entry.
+2. Move the release notes from `Unreleased` to a matching `## [N.N.N]` section in `docs/CHANGELOG.md`.
+3. Run local checks, verify both browser builds, and merge the version change to `main`.
+4. The [release workflow](../.github/workflows/release.yml) runs for every push to `main`. It exits successfully when `vN.N.N` already exists. For a new version it runs the full check and real-Firefox E2E gates, builds the Chrome and Firefox ZIPs and Firefox sources ZIP, validates the packaged manifest versions, generates and signs checksums, creates the version tag, and publishes the GitHub Release.
+5. If asset publication fails after a tag is created, manually dispatch the Release workflow on `main` with `force` enabled. This rebuilds and replaces the GitHub Release assets but deliberately does not resubmit the same version to AMO.
+
+Do not push release tags manually. The workflow creates the tag only after the exact `main` commit passes its release gates. It submits the listed Firefox build to AMO only on the original `main` push when the `PUBLISH_FIREFOX` repository variable is `true` and the required secrets are configured.
 
 For first-time local verification, run `wxt submit --dry-run` to check authentication without uploading. `wxt submit init` provides an interactive setup and writes `.env.submit`. That file is local only and must never be committed.
 
@@ -66,6 +69,19 @@ that changes, review the policy and store-review implications before reintroduci
 
 Recheck these values in each release review, especially after changing the extension ID or adding capabilities.
 
+## Release asset verification
+
+Releases created before the main-branch automation used a tag ref in their Sigstore identity. New releases use the protected `main` workflow ref. Verify either generation with:
+
+```sh
+cosign verify-blob \
+  --new-bundle-format \
+  --bundle SHA256SUMS.sigstore.json \
+  --certificate-identity-regexp '^https://github\.com/animeshkundu/media-tools/\.github/workflows/release\.yml@refs/(heads/main|tags/v[^/]+)$' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  SHA256SUMS
+```
+
 ## Store-listing asset checklist
 
 - Icons at 16, 32, 48, 96, and 128 pixels, already in `public/icon/`
@@ -86,8 +102,9 @@ The extension has a clear single purpose: process local audio files. It also mee
 ## Hosted web app
 
 GitHub Pages publishes the static landing page at `/media-tools/` and the shared editor at
-`/media-tools/app/`. The deployable Vite output is committed under `site/app/`, so the existing Pages
-workflow validates and uploads it with the rest of `site/` without a separate build step.
+`/media-tools/app/`. The deployable Vite output is committed under `site/app/`. The Pages workflow
+also rebuilds it from source before validation and deployment, so a merge cannot publish stale
+committed output.
 
 Regenerate it with `npm exec -- vite build --config vite.web.config.ts`, then commit the complete
 `site/app/` result. The build copies bundled `lamejs` and emits the shared audio worker. Verify that

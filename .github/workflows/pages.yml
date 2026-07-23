@@ -6,17 +6,30 @@ on:
       - main
     paths:
       - 'site/**'
+      - 'web/**'
+      - 'entrypoints/app/**'
+      - 'lib/**'
+      - 'assets/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.web.config.ts'
       - '.github/workflows/pages.yml'
   pull_request:
+    branches:
+      - main
     paths:
       - 'site/**'
+      - 'web/**'
+      - 'entrypoints/app/**'
+      - 'lib/**'
+      - 'assets/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.web.config.ts'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
-
-# Allow only one concurrent deployment; cancel in-flight runs for the same group.
-concurrency:
-  group: pages-deploy
-  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -25,21 +38,32 @@ jobs:
   validate:
     name: Validate static site
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
+    timeout-minutes: 15
 
     steps:
       - name: Check out repository
-        # actions/checkout v4.2.2
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build hosted app
+        run: npm run build:web
 
       - name: Verify required files exist
         run: |
-          set -e
+          set -euo pipefail
           required=(
             site/index.html
             site/docs/index.html
+            site/app/index.html
+            site/app/vendor/lame.min.js
             site/styles.css
             site/favicon.svg
             site/.well-known/security.txt
@@ -54,6 +78,10 @@ jobs:
               exit 1
             fi
           done
+          find site/app/assets -type f -name '*.js' -print -quit | grep -q . || {
+            echo "ERROR: hosted app JavaScript bundle is missing" >&2
+            exit 1
+          }
           echo "All required files present."
 
       - name: Verify the canonical tagline is present
@@ -162,9 +190,13 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Only deploy on pushes to main or manual dispatch — never on pull requests.
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: validate
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
@@ -176,15 +208,24 @@ jobs:
 
     steps:
       - name: Check out repository
-        # actions/checkout v4.2.2
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build hosted app
+        run: npm run build:web
 
       - name: Configure Pages
-        # actions/configure-pages v6.0.0
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
 
       - name: Upload Pages artifact
-        # actions/upload-pages-artifact v5.0.0
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
         with:
           path: site/
@@ -193,6 +234,5 @@ jobs:
           include-hidden-files: true
 
       - name: Deploy to GitHub Pages
-        # actions/deploy-pages v5.0.0
         id: deploy
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128

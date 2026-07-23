@@ -21,11 +21,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Redesigned the shared extension and hosted editor around a fixed desktop workspace with media library, viewer/inspector, persistent transport feedback, and a full-width timeline.
 - Split privacy messaging precisely: both surfaces process locally with no upload, while zero permissions and no-egress CSP remain extension-only enforcement claims.
 - GitHub Pages now validates and deploys the committed Vite web target with the static site.
+- CI, Firefox E2E, release, Pages, and cloud-agent setup now use current SHA-pinned action releases, explicit main and merge-queue triggers where applicable, bounded timeouts, and safer concurrency.
 ### Deprecated
 
 ### Removed
 
 ### Fixed
+
+- Main-branch version bumps now trigger the gated release pipeline automatically instead of requiring a separately pushed tag.
+- CI now uploads the hidden `.output` browser builds and fails instead of silently succeeding when release or build artifacts are missing.
+- Pages rebuilds the hosted app from source before validation and deployment and no longer lets pull-request validation cancel a production deployment.
 
 ### Security
 
