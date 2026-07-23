@@ -143,6 +143,22 @@ export function startFileEncode(
   );
 }
 
+export function startFileTransform(
+  file: File,
+  request: object,
+  onProgress: (value: number) => void,
+  cancelMessage = 'Audio processing cancelled.',
+): EncodeJob {
+  return startFileWorker(
+    { ...request, file },
+    file,
+    onProgress,
+    (message) =>
+      message.type === 'result' ? new Blob([message.buffer], { type: message.mime }) : undefined,
+    cancelMessage,
+  );
+}
+
 export function startDecodeFile(
   file: File,
   onProgress: (value: number) => void,

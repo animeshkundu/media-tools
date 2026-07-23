@@ -2,7 +2,7 @@
 
 This document records the binding guarantees of Audio Cutter as they are enforced by the shipped code, built artifacts, and configuration. Each claim is grounded in a source location or a machine-enforced build check.
 
-Scope: the currently shipped Audio Cutter suite (cut/trim, join/merge, change speed, and WAV/MP3 conversion). Video tools are not covered until they ship.
+Scope: the currently shipped Audio Cutter suite (cut/trim, join/merge, change speed, volume/fades, and WAV/MP3 conversion). Video tools are not covered until they ship.
 
 ---
 
@@ -66,11 +66,11 @@ That Firefox field is a machine-readable declaration to AMO and users; it is not
 
 ## 3. Audio analysis, decode, and encode run off the UI thread
 
-File analysis, WAV parsing, MP3 decode, region decode, and final WAV or MP3 encoding are delegated to a dedicated Web Worker. This keeps file decoding and encoding away from the React UI thread.
+File analysis, WAV parsing, MP3 decode, region decode, volume/fade DSP, and final WAV or MP3 encoding are delegated to a dedicated Web Worker. This keeps file decoding, the shipped volume transform, and encoding away from the React UI thread.
 
 **Enforcement:**
 
-`lib/core/worker.ts` spawns a `Worker` backed by `lib/tools/audio-cutter/encode.worker.ts` for analyze, file-decode, file-encode, and PCM-encode jobs. The worker reads the selected `File`, parses and decodes supported WAV or MP3 input, reports fractional progress from 0 to 1, and returns analyzed waveform data, decoded PCM, or a complete encoded result. Bundled `lamejs` performs MP3 encoding inside that worker.
+`lib/core/worker.ts` spawns a `Worker` backed by `lib/tools/audio-cutter/encode.worker.ts` for analyze, file-decode, file-encode, file-transform, and PCM-encode jobs. The worker reads the selected `File`, parses and decodes supported WAV or MP3 input, reports fractional progress from 0 to 1, and returns analyzed waveform data, decoded PCM, or a complete encoded result. Volume gain, fades, peak scanning, and normalization operate in-place on the bounded worker PCM. Bundled `lamejs` performs MP3 encoding inside that worker.
 
 The worker is terminated on success, cancellation, reported error, and unexpected crash (`worker.onerror`). Every job exposes a `cancel()` handle, and the worker has a 30-second stalled-processing watchdog that is reset by progress.
 
@@ -84,7 +84,7 @@ A download is offered only after a worker returns a complete result buffer. Canc
 
 **Enforcement:**
 
-In `lib/core/worker.ts`, a result promise resolves only after the worker sends a complete `{ type: 'result' }` message. Cancellation calls `worker.terminate()` and rejects the promise; worker and application errors reject it as well. The cut, join, speed, and conversion views call `downloadBlob` only after awaiting a successfully resolved job. Their rejection paths never call the download helper.
+In `lib/core/worker.ts`, a result promise resolves only after the worker sends a complete `{ type: 'result' }` message. Cancellation calls `worker.terminate()` and rejects the promise; worker and application errors reject it as well. The cut, join, speed, volume/fades, and conversion views call `downloadBlob` only after awaiting a successfully resolved job. Their rejection paths never call the download helper.
 
 ---
 
@@ -101,11 +101,12 @@ Audio Cutter enforces hard input, decoded-data, channel, duration, and in-flight
 | PCM passed to final encode             | 256 MiB                     | `MAX_PCM_ENCODE_BYTES` in `lib/core/worker.ts`                                                                      |
 | Retained decoded PCM for join inputs   | 256 MiB aggregate           | `entrypoints/app/JoinMergeTool.tsx`                                                                                 |
 | Projected joined or speed-adjusted PCM | 256 MiB                     | `lib/tools/join/join.ts` and `lib/tools/change-speed/changeSpeed.ts`                                                |
+| Volume/fade transform                  | In-place within decoded cap | `lib/tools/volume-fades/volumeFades.ts` and `lib/tools/audio-cutter/encode.worker.ts`                               |
 | Audio channels                         | 2 (mono or stereo)          | `MAX_PCM_CHANNELS` / `MAX_CHANNELS` and tool validators                                                             |
 | Decoded duration                       | 30 minutes                  | `MAX_DURATION_SECONDS` in `lib/tools/audio-cutter/encode.worker.ts`                                                 |
 | Stalled worker interval                | 30 seconds without progress | `WATCHDOG_MS` in `lib/tools/audio-cutter/encode.worker.ts`                                                          |
 
-`validateFile` rejects empty inputs and files over 64 MiB before a worker starts; the worker repeats those checks. WAV metadata and MP3 frame preflight validate channel counts, duration, decoded byte projections, safe integer arithmetic, and supported structure before full decode. The join and change-speed paths calculate projected PCM sizes before allocating their output arrays. WAV encoding also rejects output that would overflow the classic RIFF 32-bit size fields.
+`validateFile` rejects empty inputs and files over 64 MiB before a worker starts; the worker repeats those checks. WAV metadata and MP3 frame preflight validate channel counts, duration, decoded byte projections, safe integer arithmetic, and supported structure before full decode. The join and change-speed paths calculate projected PCM sizes before allocating their output arrays. Volume and fade processing validates controls and PCM shape, then transforms the existing decoded allocation in place. WAV encoding also rejects output that would overflow the classic RIFF 32-bit size fields.
 
 ---
 

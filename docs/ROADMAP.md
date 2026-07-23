@@ -8,8 +8,9 @@
 - [x] Audio join / merge
 - [x] Audio format conversion
 - [x] Coupled speed and pitch change
+- [x] Offline volume, fades, peak normalization, and clipping preview
 - [x] One redesigned studio shell shared by the extension and hosted web app
-- [x] GitHub Pages web target at `/media-tools/app/` with the same four audio tools
+- [x] GitHub Pages web target at `/media-tools/app/` with the same five audio tools
 
 ## Phase 2: Video with WebCodecs + mediabunny
 

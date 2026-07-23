@@ -15,6 +15,7 @@ import { ChangeSpeedTool } from './ChangeSpeedTool';
 import { ConvertTool } from './ConvertTool';
 import { JoinMergeTool } from './JoinMergeTool';
 import { TrimTimeFields, type TrimValidation } from './TrimTimeFields';
+import { VolumeFadesTool } from './VolumeFadesTool';
 
 type LoadedAudio = {
   duration: number;
@@ -23,7 +24,7 @@ type LoadedAudio = {
   waveform: Float32Array;
 };
 
-type ToolId = 'cut' | 'join' | 'speed' | 'convert';
+type ToolId = 'cut' | 'join' | 'speed' | 'volume' | 'convert';
 
 type AppProps = {
   surface?: 'extension' | 'web';
@@ -32,6 +33,7 @@ type AppProps = {
 const TOOLS: {
   description: string;
   id: ToolId;
+  intro: string;
   label: string;
   shortLabel: string;
 }[] = [
@@ -40,24 +42,35 @@ const TOOLS: {
     label: 'Audio Cutter',
     shortLabel: 'Cut audio',
     description: 'Frame the exact moment you want.',
+    intro: 'Find the moment. Set the edges. Export a clean cut without sending your audio anywhere.',
   },
   {
     id: 'join',
     label: 'Audio Join / Merge',
     shortLabel: 'Join / merge',
     description: 'Arrange tracks into one clean file.',
+    intro: 'Build one continuous track from WAV and MP3 files, in exactly the order you choose.',
   },
   {
     id: 'speed',
     label: 'Change Speed',
     shortLabel: 'Change speed',
     description: 'Slow down or race from 0.25x to 4x.',
+    intro: 'Shift the pace from a slow study pass to a fast listen. Speed and pitch move together.',
+  },
+  {
+    id: 'volume',
+    label: 'Volume & Fades',
+    shortLabel: 'Volume & fades',
+    description: 'Set gain, fades, and peak normalization.',
+    intro: 'Shape gain and fade boundaries, or normalize the final peak to -1 dBFS, entirely offline.',
   },
   {
     id: 'convert',
     label: 'Convert WAV / MP3',
     shortLabel: 'Convert WAV / MP3',
     description: 'Move between WAV and MP3 locally.',
+    intro: 'Turn WAV into a compact MP3 or recover a lossless PCM WAV, entirely on this device.',
   },
 ];
 
@@ -66,6 +79,7 @@ function ToolGlyph({ id }: { id: ToolId }) {
     cut: 'M6 7.5 18 16.5M6 16.5 18 7.5M5.5 5.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z',
     join: 'M5 7h5a3 3 0 0 1 3 3v4a3 3 0 0 0 3 3h3M16 14l3 3-3 3M5 17h4',
     speed: 'M4 15a8 8 0 1 1 16 0M12 15l4-5M7 17h10',
+    volume: 'M4 12h3l2-6 4 12 2-6h5M5 21h14',
     convert: 'M5 8h13m-3-3 3 3-3 3M19 16H6m3 3-3-3 3-3',
   };
 
@@ -257,7 +271,7 @@ export default function App({ surface = 'extension' }: AppProps) {
                 </div>
               )}
               <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-emerald-100/55 lg:hidden">
-                4 tools
+                5 tools
               </span>
             </div>
 
@@ -331,13 +345,7 @@ export default function App({ surface = 'extension' }: AppProps) {
                   {activeTool.label}
                 </h1>
                 <p className="mt-4 max-w-2xl text-base leading-relaxed text-emerald-100/58 sm:text-lg">
-                  {tool === 'cut'
-                    ? 'Find the moment. Set the edges. Export a clean cut without sending your audio anywhere.'
-                    : tool === 'join'
-                      ? 'Build one continuous track from WAV and MP3 files, in exactly the order you choose.'
-                      : tool === 'speed'
-                        ? 'Shift the pace from a slow study pass to a fast listen. Speed and pitch move together.'
-                        : 'Turn WAV into a compact MP3 or recover a lossless PCM WAV, entirely on this device.'}
+                  {activeTool.intro}
                 </p>
               </div>
               <div className="flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/[0.08] px-4 py-2 text-xs font-bold text-emerald-200">
@@ -356,6 +364,8 @@ export default function App({ surface = 'extension' }: AppProps) {
                 <JoinMergeTool />
               ) : tool === 'speed' ? (
                 <ChangeSpeedTool />
+              ) : tool === 'volume' ? (
+                <VolumeFadesTool />
               ) : tool === 'convert' ? (
                 <ConvertTool />
               ) : !audio ? (
