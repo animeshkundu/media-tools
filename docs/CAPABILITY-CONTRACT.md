@@ -2,7 +2,7 @@
 
 This document records the binding guarantees of Audio Cutter as they are enforced by the shipped code, built artifacts, and configuration. Each claim is grounded in a source location or a machine-enforced build check.
 
-Scope: the currently shipped Audio Cutter suite (cut/trim, join/merge, change speed, volume/fades, and WAV/MP3 conversion). Video tools are not covered until they ship.
+Scope: the currently shipped Audio Cutter suite (cut/trim, join/merge, Multitrack Studio, change speed, volume/fades, and WAV/MP3 conversion). Video tools are not covered until they ship.
 
 ---
 
@@ -66,7 +66,7 @@ That Firefox field is a machine-readable declaration to AMO and users; it is not
 
 ## 3. Audio analysis, decode, and encode run off the UI thread
 
-File analysis, WAV parsing, MP3 decode, region decode, volume/fade DSP, and final WAV or MP3 encoding are delegated to a dedicated Web Worker. This keeps file decoding, the shipped volume transform, and encoding away from the React UI thread.
+File analysis, WAV parsing, MP3 decode, region decode, volume/fade DSP, multitrack mixdown, and final WAV or MP3 encoding are delegated to dedicated Web Workers. This keeps file decoding, shipped export transforms, and encoding away from the React UI thread.
 
 **Enforcement:**
 
@@ -74,7 +74,13 @@ File analysis, WAV parsing, MP3 decode, region decode, volume/fade DSP, and fina
 
 The worker is terminated on success, cancellation, reported error, and unexpected crash (`worker.onerror`). Every job exposes a `cancel()` handle, and the worker has a 30-second stalled-processing watchdog that is reset by progress.
 
-Join normalization/concatenation and change-speed resampling currently run on the app page before their resulting PCM is handed to the worker for final encoding. Those transforms are bounded as described below, but moving them off the UI thread remains deferred work.
+Join normalization/concatenation and change-speed resampling currently run on the app page before their resulting PCM is handed to the worker for final encoding. Those transforms are bounded as described below, but moving them off the UI thread remains deferred work. Multitrack mixdown does not use those main-thread paths: `mixdown.worker.ts` owns resampling, fades, EQ, pan, mute/solo, deterministic auto-ducking, mixing, and stereo WAV encoding.
+
+### 3.1 Multitrack preview is app-page Web Audio, not export processing
+
+`MultitrackAudioEngine` creates Web Audio graphs only for user-initiated project preview because `AudioContext` is unavailable in worker scope. Each source passes through clip gain, track gain, stereo pan, EQ, a role bus, and the master bus. A live RMS detector controls the music role bus when dialogue-driven ducking is enabled.
+
+This preview graph is disposable and is not the authoritative output. Export always starts a fresh dedicated mixdown worker, and a download is created only from its complete deterministic WAV result. The engine cannot access or modify audio from other tabs, streams, or applications.
 
 ---
 
@@ -84,7 +90,7 @@ A download is offered only after a worker returns a complete result buffer. Canc
 
 **Enforcement:**
 
-In `lib/core/worker.ts`, a result promise resolves only after the worker sends a complete `{ type: 'result' }` message. Cancellation calls `worker.terminate()` and rejects the promise; worker and application errors reject it as well. The cut, join, speed, volume/fades, and conversion views call `downloadBlob` only after awaiting a successfully resolved job. Their rejection paths never call the download helper.
+In `lib/core/worker.ts` and `lib/tools/multitrack/startMixdown.ts`, a result promise resolves only after the worker sends a complete `{ type:'result' }` message. Cancellation calls `worker.terminate()` and rejects the promise; worker and application errors reject it as well. The cut, join, multitrack, speed, volume/fades, and conversion views call `downloadBlob` only after awaiting a successfully resolved job. Their rejection paths never call the download helper.
 
 ---
 
@@ -102,11 +108,17 @@ Audio Cutter enforces hard input, decoded-data, channel, duration, and in-flight
 | Retained decoded PCM for join inputs   | 256 MiB aggregate           | `entrypoints/app/JoinMergeTool.tsx`                                                                                 |
 | Projected joined or speed-adjusted PCM | 256 MiB                     | `lib/tools/join/join.ts` and `lib/tools/change-speed/changeSpeed.ts`                                                |
 | Volume/fade transform                  | In-place within decoded cap | `lib/tools/volume-fades/volumeFades.ts` and `lib/tools/audio-cutter/encode.worker.ts`                               |
+| Multitrack tracks / clips              | 16 / 128                     | `lib/tools/multitrack/schema.ts`                                                                                   |
+| Multitrack project duration            | 30 minutes                   | `lib/tools/multitrack/schema.ts`                                                                                   |
+| Multitrack worst-case working set      | 256 MiB                      | `lib/tools/multitrack/mixdown.ts`                                                                                  |
+| OPFS source file / random-access slice | 64 MiB / 8 MiB               | `lib/tools/multitrack/opfs.ts` and `lib/tools/multitrack/opfs.worker.ts`                                           |
 | Audio channels                         | 2 (mono or stereo)          | `MAX_PCM_CHANNELS` / `MAX_CHANNELS` and tool validators                                                             |
 | Decoded duration                       | 30 minutes                  | `MAX_DURATION_SECONDS` in `lib/tools/audio-cutter/encode.worker.ts`                                                 |
 | Stalled worker interval                | 30 seconds without progress | `WATCHDOG_MS` in `lib/tools/audio-cutter/encode.worker.ts`                                                          |
 
-`validateFile` rejects empty inputs and files over 64 MiB before a worker starts; the worker repeats those checks. WAV metadata and MP3 frame preflight validate channel counts, duration, decoded byte projections, safe integer arithmetic, and supported structure before full decode. The join and change-speed paths calculate projected PCM sizes before allocating their output arrays. Volume and fade processing validates controls and PCM shape, then transforms the existing decoded allocation in place. WAV encoding also rejects output that would overflow the classic RIFF 32-bit size fields.
+`validateFile` rejects empty inputs and files over 64 MiB before a worker starts; the worker repeats those checks. WAV metadata and MP3 frame preflight validate channel counts, duration, decoded byte projections, safe integer arithmetic, and supported structure before full decode. The join and change-speed paths calculate projected PCM sizes before allocating their output arrays. Volume and fade processing validates controls and PCM shape, then transforms the existing decoded allocation in place. Before Multitrack starts another full decode, analyzed duration and sample rate are projected conservatively as stereo against already retained project PCM. Multitrack export then accounts for retained PCM, Web Audio preview copies, worker transfer snapshots, stereo output PCM, the dialogue detector buffer, the ducking envelope, and encoded WAV. WAV encoding also rejects output that would overflow the classic RIFF 32-bit size fields.
+
+OPFS is optional origin-private caching, not a larger processing envelope. `opfs.worker.ts` streams a selected bounded file into a session-isolated directory, rejects path traversal, verifies the cache through bounded readback, caps random-access slices at 8 MiB, removes a partial entry after a failed or cancelled write, clears the current session on normal teardown, and removes stale session directories after 24 hours. Browsers without OPFS continue with bounded in-memory assets and an explicit status message.
 
 ---
 
@@ -127,7 +139,7 @@ The extension UI runs in a full browser tab, which is a durable host, rather tha
 | User-selected WAV or MP3 file              | Yes            | Selected by file input or drag and drop; read and processed locally.                                  |
 | Output destination                         | On user action | The finished blob is handed to the browser's standard download flow only after successful processing. |
 | Microphone or camera                       | No             | No media-capture call and no permission request.                                                      |
-| Filesystem outside user selection/download | No             | No directory picker or `nativeMessaging`.                                                             |
+| Filesystem outside user selection/download | Origin-private cache only | Multitrack may cache bounded selected files in OPFS; it has no path access, directory picker, or `nativeMessaging`. |
 | Browser cookies, history, or bookmarks     | No             | No corresponding API permission.                                                                      |
 | External pages or tabs                     | No             | The only created tab is the extension's own app page returned by `browser.runtime.getURL`.            |
 | Network or remote servers                  | No             | Built JavaScript is machine-scanned for network primitives; the strict CSP is defense in depth.       |
@@ -154,6 +166,8 @@ Audio input and results remain on the device. Processing occurs in the extension
 The following are not claimed as completed capabilities:
 
 - **Main-thread transforms for two tools.** Join normalization/concatenation and change-speed resampling currently run on the app page; only their final encoding runs in the worker. Large inputs within the enforced limits may briefly reduce UI responsiveness during those transforms.
-- **Disk-backed processing and output.** Decoded PCM and encoded output are held in memory. There is no streaming disk-backed output or RF64 path; classic WAV output is rejected before its RIFF size fields could overflow.
+- **Disk-backed processing and output.** Multitrack can cache a bounded selected source in OPFS, but decoded PCM and encoded output are held in memory. There is no streaming disk-backed decode/mix/output or RF64 path; classic WAV output is rejected before its RIFF size fields could overflow. Multi-gigabyte projects are not supported.
+- **Multitrack recording and noise suppression.** The editor does not request microphone permission and does not ship a noise-suppression model. Tone, silence, and click assets are generated locally.
+- **Multitrack project persistence.** Timeline state is serializable, but this release does not save or reopen arrangements with their source assets. Projects are session-only and the UI tells users to export before closing the app tab.
 - **Input and output formats.** The shipped suite accepts supported PCM WAV and MP3 input and exports WAV or MP3. It does not claim arbitrary audio-codec support.
 - **Video tools.** No video tool is shipped. This contract does not cover planned video work.

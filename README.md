@@ -36,6 +36,7 @@ default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src
 
 - **Cut and trim audio** by loading a WAV or MP3, viewing its waveform, and setting precise in and out points before export.
 - **Join or merge tracks** in a chosen order, normalizing mono/stereo channel layout and differing sample rates when needed.
+- **Build a multitrack mix** with immutable clip edits, magnetic snapping, track gain/pan/EQ, dialogue-driven music ducking, local Web Audio preview, and worker-rendered stereo WAV.
 - **Change playback speed** from 0.25× to 4×; speed and pitch change together, and the estimated output duration is shown before export.
 - **Convert WAV and MP3** locally, with lossless PCM WAV or 192 kbps MP3 output.
 - **No uploads, accounts, ads, telemetry, or watermarks.** Audio input, processing, and output stay in the browser.
@@ -71,6 +72,16 @@ Drag the gold handles or enter exact in and out times to choose the audio to kee
 Create the finished download in the browser without uploading the source audio.
 
 ![Audio Cutter confirming a completed local export](docs/media/screenshots/audio-cutter-export-done.png)
+
+### Arrange a local multitrack mix
+
+Import dialogue, music, and effects into the four-pane Multitrack Studio. Raw assets remain unchanged while the timeline stores serializable offsets, fades, and mix settings.
+
+![Multitrack Studio media library and inspector](docs/media/screenshots/multitrack-studio.png)
+
+The virtualized Canvas timeline draws only visible tracks and time, selecting a bounded peak-cache level for the current zoom.
+
+![Multitrack Studio Canvas timeline](docs/media/screenshots/multitrack-timeline.png)
 
 ### Friendly failures
 
@@ -127,7 +138,7 @@ For an independent build comparison, check out the release tag, run `npm ci`, th
 
 ## How it works
 
-A durable extension app page owns the interface and operation lifetime. Page-owned Web Workers analyze and decode WAV/MP3 input and perform final WAV/MP3 encoding, while the app supervises progress, cancellation, and local blob downloads. Audio is processed as PCM (pulse-code modulation: raw, uncompressed sample values) at a sample rate (the number of samples recorded each second); the waveform is the visual summary used to choose a cut. All runtime code and encoder assets are bundled with the extension and guarded by the strict no-egress CSP. Read the [vision](docs/VISION.md), [product specification](docs/PRODUCT-SPEC.md), [architecture](docs/ARCHITECTURE.md), and [design guide](docs/DESIGN.md).
+A durable extension app page owns the interface and operation lifetime. Page-owned Web Workers analyze and decode WAV/MP3 input and perform final WAV/MP3 encoding, multitrack mixdown, and optional bounded OPFS caching, while the app supervises progress, cancellation, and local blob downloads. Web Audio is used only for user-initiated multitrack preview; deterministic worker DSP remains authoritative for export. Audio is processed as PCM (pulse-code modulation: raw, uncompressed sample values) at a sample rate (the number of samples recorded each second); the waveform is the visual summary used to choose a cut. All runtime code and encoder assets are bundled with the extension and guarded by the strict no-egress CSP. Read the [vision](docs/VISION.md), [product specification](docs/PRODUCT-SPEC.md), [architecture](docs/ARCHITECTURE.md), and [design guide](docs/DESIGN.md).
 
 ## Development
 
@@ -145,6 +156,8 @@ npm run check
 npm run test
 npm run test:e2e
 ```
+
+Regenerate the committed hosted app with `npm run build:web`.
 
 To load an unpacked production build:
 

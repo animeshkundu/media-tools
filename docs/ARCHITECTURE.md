@@ -101,6 +101,14 @@ resampling currently run on the app page before final worker encoding. The next 
 to move those remaining transforms off the UI thread and preserve worker ownership as planned video
 engines and formats are added.
 
+Multitrack Studio adds a split preview/export architecture:
+
+- `schema.ts` keeps assets, clips, tracks, selection, tempo, playhead, viewport, and ducking settings as strict serializable data. PCM and `AudioBuffer` values live outside that state.
+- `MultitrackAudioEngine` runs only in the durable app page because Web Audio is unavailable in workers. It creates source -> clip gain -> track gain -> stereo pan -> EQ -> role bus -> master graphs for project-local preview.
+- `mixdown.worker.ts` is authoritative for output. It validates the project, applies deterministic PCM DSP and dialogue-driven music ducking, encodes stereo WAV, and returns only a complete result.
+- `opfs.worker.ts` streams bounded files into a session-isolated extension-origin cache, verifies stored data through reads of at most 8 MiB per slice, clears the active session during normal teardown, and removes stale sessions after 24 hours. It is not a large-file processing bypass.
+- `CanvasTimeline.tsx` keeps one viewport-sized backing canvas, draws only visible time and track ranges, and selects an appropriate precomputed peak level for the current zoom.
+
 ## 3. Tech choices and rationale
 
 | Layer | Choice | Why (not the alternative) |
@@ -147,6 +155,19 @@ type WorkerMessage =
   | { type: 'error';    message: string };
 ```
 
+Multitrack uses separate discriminated worker channels so storage and mixdown failures cannot be confused with the shared decoder:
+
+```ts
+type MixdownRequest = { type: 'mixdown'; input: MultitrackMixInput };
+type OPFSRequest =
+  | { type: 'store'; requestId: number; sessionId: string; key: string; file: File }
+  | { type: 'read-slice'; requestId: number; sessionId: string; key: string; start: number; length: number }
+  | { type: 'remove'; requestId: number; sessionId: string; key: string }
+  | { type: 'cleanup-stale'; requestId: number; sessionId: string; cutoffTimestamp: number }
+  | { type: 'clear-session'; requestId: number; sessionId: string }
+  | { type: 'cancel'; requestId: number };
+```
+
 Rules the harness (`lib/core/worker.ts`) already enforces and every tool inherits:
 
 - **Transfer, do not copy.** Channel buffers and file `ArrayBuffer`s are passed as transferables so a
@@ -187,6 +208,7 @@ lib/
       Waveform.tsx              canvas waveform + draggable handles
       encode.worker.ts          the actual DSP/encode (runs in the worker)
     volume-fades/                  gain envelopes, peak analysis, worker job adapter
+    multitrack/                    schema, Canvas, Web Audio preview, DSP export, OPFS workers
     (audio-join/, audio-speed/, video-trim/, video-mute/, video-extract-audio/, video-compress/ …)
 ```
 

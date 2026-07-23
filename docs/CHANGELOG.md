@@ -8,9 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
-- A hosted web app at `/media-tools/app/` that mounts the same five-tool React editor and worker pipeline as the extension.
+- A hosted web app at `/media-tools/app/` that mounts the same React editor and worker pipelines as the extension.
 - Local source-audio preview in the cutter and production screenshot evidence using a near-limit WAV file.
 - An offline Volume & Fades tool with 0% to 500% gain, linear or logarithmic fade envelopes, -1 dBFS peak normalization, clipping warnings, and worker-owned WAV/MP3 export.
+- Multitrack Studio with immutable serializable edits, a virtualized Canvas timeline, magnetic snapping, Web Audio preview, generated local sounds, EQ presets, and worker-rendered stereo WAV.
+- Deterministic dialogue-driven music ducking and a bounded OPFS worker cache with 8 MiB random-access slices.
 
 ### Changed
 

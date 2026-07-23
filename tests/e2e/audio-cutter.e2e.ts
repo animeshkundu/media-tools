@@ -578,6 +578,33 @@ test.describe('Audio Cutter installed Firefox extension', () => {
     expect(wavFrames(wav)).toBe(SAMPLE_RATE);
   });
 
+  test('builds and exports a non-destructive multitrack mix', async () => {
+    await clearDownloads();
+    await openApp();
+    await clickTab('Multitrack studio');
+    await waitForText('h1', 'Multitrack Studio');
+    await waitForText('section', 'MEDIA LIBRARY');
+    await waitForText('section', 'INSPECTOR / FX RACK');
+    await waitForText('section', 'MULTITRACK TIMELINE');
+    await visibleElement('canvas[aria-label^="Multitrack waveform timeline"]');
+    await uploadFiles([joinWavOne]);
+    await waitForText('p[aria-live="polite"]', 'Ready. 1 file added');
+    await waitForText('[data-testid="multitrack-studio"]', path.basename(joinWavOne));
+
+    await setFormValue('select', 'track-music');
+    await clickButton('Add Tone');
+    await waitForText('p[aria-live="polite"]', '440 Hz tone added to Music');
+    await waitForText('[data-testid="multitrack-studio"]', '2 local');
+
+    await clickButton('Export mix WAV');
+    await waitForText('p[aria-live="polite"]', 'Done. Your multitrack WAV');
+    const output = await waitForDownload('My-audio-project.wav');
+    const wav = await validateWav(output);
+    expect(wav.readUInt16LE(22)).toBe(2);
+    expect(wav.readUInt32LE(24)).toBe(48_000);
+    expect(wavFrames(wav)).toBe(48_000);
+  });
+
   test('changes WAV speed and downloads valid resampled audio', async () => {
     await clearDownloads();
     await openApp();

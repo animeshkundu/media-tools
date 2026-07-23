@@ -540,6 +540,37 @@ async function main() {
     await screenshot(driver, path.join(STAGING_DIR, 'audio-cutter-export-done.png'));
     nextFrame = await captureFrames(driver, nextFrame, 10);
 
+    const multitrackTab = await findByText(driver, '[role="tab"]', 'Multitrack studio');
+    await multitrackTab.click();
+    await waitForText(driver, 'h1', 'Multitrack Studio');
+    await driver.executeScript('window.scrollTo(0, 0);');
+    const multitrackInput = await driver.findElement(By.css('input[type="file"]'));
+    await multitrackInput.sendKeys(FIXTURE_WAV);
+    await waitForText(driver, 'p[aria-live="polite"]', 'Ready. 1 file added');
+    const targetTrack = await driver.findElement(
+      By.css('[data-testid="multitrack-studio"] select'),
+    );
+    await driver.executeScript(
+      "arguments[0].value = 'track-music'; arguments[0].dispatchEvent(new Event('change', { bubbles: true }));",
+      targetTrack,
+    );
+    const addTone = await findByText(driver, 'button', 'Add Tone');
+    await addTone.click();
+    await waitForText(driver, 'p[aria-live="polite"]', '440 Hz tone added');
+    await screenshot(driver, path.join(STAGING_DIR, 'multitrack-studio.png'));
+    nextFrame = await captureFrames(driver, nextFrame, 8);
+
+    const timelineCanvas = await waitForSelector(
+      driver,
+      'canvas[aria-label^="Multitrack waveform timeline"]',
+    );
+    await driver.executeScript(
+      (element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }),
+      timelineCanvas,
+    );
+    await screenshot(driver, path.join(STAGING_DIR, 'multitrack-timeline.png'));
+    nextFrame = await captureFrames(driver, nextFrame, 8);
+
     const videos = await encodeVideos(nextFrame);
 
     await navigateToApp(driver, appUrl);
@@ -567,6 +598,14 @@ async function main() {
         path.join(SCREENSHOT_DIR, 'audio-cutter-export-done.png'),
       ],
       [path.join(STAGING_DIR, 'audio-cutter-error.png'), path.join(SCREENSHOT_DIR, 'audio-cutter-error.png')],
+      [
+        path.join(STAGING_DIR, 'multitrack-studio.png'),
+        path.join(SCREENSHOT_DIR, 'multitrack-studio.png'),
+      ],
+      [
+        path.join(STAGING_DIR, 'multitrack-timeline.png'),
+        path.join(SCREENSHOT_DIR, 'multitrack-timeline.png'),
+      ],
       [videos.mp4, path.join(MEDIA_DIR, 'audio-cutter-demo.mp4')],
       [videos.webm, path.join(MEDIA_DIR, 'audio-cutter-demo.webm')],
     ];
