@@ -48,8 +48,8 @@ hosted web app is a static Vite build. Both create the same worker and use the s
                 ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ WEB WORKER  (spawned by the app page - the compute engine)                     │
-│   Tier A: WebCodecs MP3 decode, direct WAV PCM parse, native WAV encode,       │
-│           and lamejs MP3 encode.                                                │
+│   Tier A: WebCodecs MP3 decode, direct WAV PCM parse, bounded PCM transforms,  │
+│           native WAV encode, and lamejs MP3 encode.                            │
 │   Tier B: WebCodecs + mediabunny demux/mux/trim/convert/compress (planned).    │
 │   Tier C: ffmpeg.wasm (planned, Chrome-first) for GIF / exotic containers.    │
 │   Reports progress, honors cancel (terminate), releases buffers on exit.      │
@@ -88,15 +88,18 @@ supervises jobs but does not decode audio:
 - `lib/core/worker.ts` creates the dedicated worker backed by
   `lib/tools/audio-cutter/encode.worker.ts`. Convert, Join, and Change Speed initiate full-file decode
   through `startDecodeFile`; Audio Cutter delegates analysis and selected-region decode through the
-  same worker harness.
+  same worker harness. Volume & Fades analyzes a compact waveform for its settings preview, then sends
+  the original file and transform settings to a fresh worker for full decode, in-place DSP, and encode.
 - MP3 decode uses worker-side WebCodecs `AudioDecoder`, guarded by
   `AudioDecoder.isConfigSupported`, and feeds `EncodedAudioChunk` values to the decoder.
 - WAV decode uses worker-side direct PCM parsing in `decodeWavRegion`.
 - `lamejs` is bundled for worker-side MP3 encoding only. It is not an MP3 decoder.
 
-Bounded join normalization and concatenation plus Change Speed resampling currently run on the app
-page before final worker encoding. The next architecture step is to move those transforms off the UI
-thread and preserve worker ownership as planned video engines and formats are added.
+Volume gain, fade envelopes, peak scanning, and normalization run in-place in the worker and reuse its
+bounded decoded PCM allocation. Bounded join normalization and concatenation plus Change Speed
+resampling currently run on the app page before final worker encoding. The next architecture step is
+to move those remaining transforms off the UI thread and preserve worker ownership as planned video
+engines and formats are added.
 
 ## 3. Tech choices and rationale
 
@@ -131,6 +134,7 @@ type WorkerRequest =
   | { kind: 'audio-cut';   input: AudioJob }      // channels/sampleRate/start/end/format
   | { kind: 'audio-join';  input: JoinJob }        // ordered decoded buffers → one output
   | { kind: 'audio-speed'; input: SpeedJob }       // resample factor (coupled speed+pitch)
+  | { kind: 'audio-volume'; input: VolumeJob }     // gain/fades/-1 dBFS peak normalization
   | { kind: 'video-trim';  input: VideoTrimJob }   // File + in/out + mode: 'keyframe'|'exact'
   | { kind: 'video-mute';  input: VideoMuteJob }   // File → remux dropping the audio track
   | { kind: 'video-extract-audio'; input: ExtractJob }
@@ -182,6 +186,7 @@ lib/
     audio-cutter/
       Waveform.tsx              canvas waveform + draggable handles
       encode.worker.ts          the actual DSP/encode (runs in the worker)
+    volume-fades/                  gain envelopes, peak analysis, worker job adapter
     (audio-join/, audio-speed/, video-trim/, video-mute/, video-extract-audio/, video-compress/ …)
 ```
 
@@ -223,7 +228,7 @@ not runtime support.
 
 | Browser | OS and environment | Evidence | Status |
 | --- | --- | --- | --- |
-| Firefox | Ubuntu | [Firefox E2E](../.github/workflows/e2e.yml) installs the built add-on in the CI-provisioned Firefox (Firefox 151 on Ubuntu at the time of writing) and drives its real `moz-extension://` app page through geckodriver. It exercises WAV cut and export, MP3 export, MP3 input, join, change speed, download signatures, and no-egress resource inspection. | Release-tested as an installed extension with the extension-page CSP enforced. On CI Firefox 151 the MP3 input took the supported branch (decoded via `AudioDecoder` and re-exported); the assertion stays capability-scoped, so an unsupported Firefox must instead show the clear decoder error without a partial download. |
+| Firefox | Ubuntu | [Firefox E2E](../.github/workflows/e2e.yml) installs the built add-on in the CI-provisioned Firefox (Firefox 151 on Ubuntu at the time of writing) and drives its real `moz-extension://` app page through geckodriver. It exercises WAV cut and export, MP3 export, MP3 input, join, change speed, volume/fade normalization, download signatures, and no-egress resource inspection. | Release-tested as an installed extension with the extension-page CSP enforced. On CI Firefox 151 the MP3 input took the supported branch (decoded via `AudioDecoder` and re-exported); the assertion stays capability-scoped, so an unsupported Firefox must instead show the clear decoder error without a partial download. |
 | Firefox | macOS | The local [media capture](media/README.md) and installed-extension E2E use geckodriver and Marionette to install the unpacked Firefox build and drive its real extension page. | Locally exercised, not CI-gated: the captured WAV editing and error flows, plus a local installed-extension E2E run that exercised MP3 input decode and WAV re-export in the provisioned Firefox. macOS-local Firefox startup is a known flake, so CI Ubuntu is the release authority; no exact Firefox or macOS version is claimed here. |
 
 The Chrome production bundle is built in CI on Ubuntu, but there is no installed-Chrome E2E suite.

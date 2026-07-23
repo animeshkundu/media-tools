@@ -5,7 +5,7 @@ Record durable project learnings here so future work can avoid rediscovering the
 ## Current repo facts
 
 - Repo: `animeshkundu/media-tools`
-- Product: Audio Cutter, a WXT Manifest V3 Chrome and Firefox extension for cutting, joining/merging, changing the speed of, and converting WAV and MP3 audio locally.
+- Product: Audio Cutter, a WXT Manifest V3 Chrome and Firefox extension for cutting, joining/merging, changing speed, adjusting volume/fades, and converting WAV and MP3 audio locally.
 - Stack: WXT 0.20, React 19, strict TypeScript, Tailwind CSS 4, Vitest, and Playwright.
 - Main verification: `npm run check` for compile, lint, and unit/component tests; `npm run build` and `npm run build:firefox` for production artifacts; `npm run test:e2e` for the built extension in real Firefox.
 - OS contract: No single desktop OS is product-primary; required automated verification runs on Ubuntu Linux through `ubuntu-latest`.
@@ -16,7 +16,7 @@ Record durable project learnings here so future work can avoid rediscovering the
 
 - Context: A compact compressed WAV or MP3 file can expand into much larger floating-point PCM during decode and processing.
 - What the repository enforces: Input files are limited to 64 MiB, audio is limited to mono or stereo, and decoded or in-flight PCM is limited to 256 MiB. WAV metadata, duration, frame counts, sample rates, chunk sizes, and arithmetic are checked before large buffers are allocated.
-- What to preserve: New cut, join, change-speed, and conversion paths must reuse or strengthen these checks. Never allocate from untrusted media dimensions before validating safe integer arithmetic and the applicable aggregate limit.
+- What to preserve: New cut, join, change-speed, volume/fade, and conversion paths must reuse or strengthen these checks. Never allocate from untrusted media dimensions before validating safe integer arithmetic and the applicable aggregate limit.
 - Related code: `lib/core/worker.ts`, `lib/tools/audio-cutter/encode.worker.ts`, and `docs/CAPABILITY-CONTRACT.md`.
 
 ### Treat cancellation as a worker-lifecycle guarantee
@@ -46,3 +46,10 @@ Record durable project learnings here so future work can avoid rediscovering the
 - What the repository enforces: `vite.web.config.ts` mounts the same `entrypoints/app/App.tsx` from `web/main.tsx`, copies bundled worker assets, and emits the committed `site/app/` artifact with the `/media-tools/app/` base.
 - What to preserve: Never fork tool code for the website. Keep web trust copy scoped to local processing and no upload; do not claim the extension's empty permissions or no-egress CSP for a normal webpage. Pages provides no COOP/COEP headers, so the hosted target must not bypass future engine gates that require cross-origin isolation.
 - Related code: `web/`, `vite.web.config.ts`, `.github/workflows/pages.yml`, and `tests/webSurface.test.ts`.
+
+### Normalize the final envelope, not the source peak
+
+- Context: A fade can remove the sample that held the source peak. Calculating normalization gain before applying the envelope can therefore miss the promised final target.
+- What the repository enforces: Volume & Fades scans the post-envelope signal first, derives gain from that peak, and then mutates the decoded worker PCM in place. Silence stays silent rather than receiving an unbounded gain.
+- What to preserve: Peak normalization must target the final DSP signal, reject non-finite controls and samples, preserve sample ratios, and avoid a second full-size PCM allocation.
+- Related code: `lib/tools/volume-fades/volumeFades.ts` and `tests/volumeFades.test.ts`.

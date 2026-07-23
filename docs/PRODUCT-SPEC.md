@@ -32,6 +32,7 @@ Delivery phase and paid entitlement are separate decisions. Several Phase 2 tool
 | Audio join / merge | MVP / Phase 1 | CHEAP | It reuses decoded audio buffers and fills an open Firefox job. |
 | Audio format convert to WAV / MP3 | MVP / Phase 1 | CHEAP | Conversion has proven demand, with native PCM WAV and bundled `lamejs` for MP3. |
 | Change audio speed, coupled speed and pitch | MVP / Phase 1 | CHEAP | Resampling adds a useful export job on the same audio engine. |
+| Adjust volume, fades, and peak normalization | MVP / Phase 1 | CHEAP | Direct PCM gain envelopes add a durable export job without becoming a live-playback modifier. |
 | Extract audio from video | Fast-follow / Phase 2 | MEDIUM | Mediabunny can demux or transcode the audio without an upload. |
 | Mute / remove audio from video | Fast-follow / Phase 2 | MEDIUM | Lossless track removal fills a category gap with no dedicated extension competitor. |
 | Video cut / trim | Fast-follow / Phase 2 | MEDIUM | Firefox is unserved, and users need both fast keyframe cuts and exact cuts. |
@@ -46,7 +47,7 @@ Delivery phase and paid entitlement are separate decisions. Several Phase 2 tool
 | Tool | Reason |
 | --- | --- |
 | Tab or stream audio capture | Firefox support is limited, broader access weakens the permission story, and capture is not a local-file job. |
-| Real-time equalizer or volume boost | Both stores already serve it, and it changes live playback rather than exporting a transformed file. |
+| Real-time equalizer or volume boost | Both stores already serve it, and it changes live playback rather than exporting a transformed file. Offline volume and fade export remains in scope. |
 | YouTube or stream downloader | It is legally fraught, saturated by tools such as VideoDownloadHelper at 1.8 million users, and belongs to a different product. |
 
 ## Per-tool functional requirements + acceptance criteria
@@ -115,6 +116,23 @@ The requirements below define target behavior. Shared privacy, offline, performa
 - Given a tonal fixture, when speed is changed through resampling, then measured pitch changes by the same ratio rather than being independently preserved.
 - Given the user needs independent pitch or duration control, then the UI identifies the Phase 3 pitch and time-stretch tool instead of implying this tool can do it.
 - Given the network is disabled, when the speed export completes, then a playable output is downloaded without a processing request. When the user cancels instead, processing stops, buffers are released, and no download is created.
+
+### Adjust volume, fades, and peak normalization
+
+**Functional requirements**
+
+- Let the user set export gain from 0% through 500%, with the equivalent decibel value visible.
+- Offer sample-aligned fade-in and fade-out durations with linear-amplitude and logarithmic -60 dB ramp curves.
+- Offer one-click peak normalization against the final post-fade signal with a -1 dBFS target while preserving relative dynamics.
+- Show conservative source and output peak estimates, using amber from -2 dBFS through 0 dBFS and red above 0 dBFS, before export starts.
+- Decode, transform, and encode WAV or MP3 entirely in the cancellable worker without allocating a second full-size PCM output.
+
+**Acceptance criteria**
+
+- Given a constant PCM fixture and linear fades, when the transform runs, then the first and last selected fade samples are silent, the unity endpoints are sample-aligned, and the output duration is unchanged.
+- Given a non-silent fixture and normalization enabled, when export completes, then the post-fade output peak is -1 dBFS within one 16-bit PCM quantization step and sample ratios are preserved.
+- Given manual gain projects a peak above 0 dBFS, when settings change, then the UI identifies potential clipping before export without silently clamping the floating-point transform.
+- Given the network is disabled or export is cancelled, then the worker makes no processing request, emits no partial download, and leaves the source file unchanged.
 
 ### Extract audio from video
 
@@ -305,7 +323,7 @@ Operational quality also requires benchmark pass rates, cancellation success, va
 
 The shipped free offline core is the trust and install engine:
 
-- Audio cut, join, change speed, and WAV/MP3 conversion
+- Audio cut, join, change speed, volume/fades, and WAV/MP3 conversion
 - No ads, watermark, upload, or account; published safety limits bound input and memory use
 
 Planned Phase 2 additions to the free core are video trim, mute, audio extraction, and basic video compression. The proposed Pro tier is a one-time unlock, expected in the roughly $8 to $15 range. It would monetize power and convenience:

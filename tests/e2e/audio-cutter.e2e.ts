@@ -47,6 +47,7 @@ let mp3Input = '';
 let joinWavOne = '';
 let joinWavTwo = '';
 let speedWav = '';
+let volumeWav = '';
 
 function createWav(durationSeconds: number, frequency: number): Buffer {
   const sampleCount = Math.round(SAMPLE_RATE * durationSeconds);
@@ -107,6 +108,7 @@ async function prepareFixtures(): Promise<void> {
   joinWavOne = path.join(workDir, 'join-one.wav');
   joinWavTwo = path.join(workDir, 'join-two.wav');
   speedWav = path.join(workDir, 'speed-source.wav');
+  volumeWav = path.join(workDir, 'volume-source.wav');
 
   await Promise.all([
     writeFile(cutWav, createWav(1, 440)),
@@ -115,6 +117,7 @@ async function prepareFixtures(): Promise<void> {
     writeFile(joinWavOne, createWav(0.4, 330)),
     writeFile(joinWavTwo, createWav(0.6, 550)),
     writeFile(speedWav, createWav(1, 275)),
+    writeFile(volumeWav, createWav(1, 440)),
     createMp3Fixture(mp3Input),
   ]);
 }
@@ -590,6 +593,32 @@ test.describe('Audio Cutter installed Firefox extension', () => {
     const output = await waitForDownload('speed-source-trimmed.wav');
     const wav = await validateWav(output);
     expect(wavFrames(wav)).toBe(Math.round(SAMPLE_RATE / 2));
+  });
+
+  test('normalizes volume and fades through the production worker', async () => {
+    await clearDownloads();
+    await openApp();
+    await clickTab('Volume & fades');
+    await waitForText('h1', 'Volume & Fades');
+    await uploadFiles([volumeWav]);
+    await waitForText('p[aria-live="polite"]', 'Set gain and fades');
+    await setFormValue('input[type="range"][aria-label="Fade in duration"]', '0.1');
+    await setFormValue('input[type="range"][aria-label="Fade out duration"]', '0.1');
+    await (await visibleElement('input[type="checkbox"]')).click();
+    await waitForText('section', '-1.0 dBFS');
+
+    await clickButton('Apply & download');
+    await waitForText('p[aria-live="polite"]', 'Done.');
+    const output = await waitForDownload('volume-source-trimmed.wav');
+    const wav = await validateWav(output);
+    expect(wavFrames(wav)).toBe(SAMPLE_RATE);
+    expect(wav.readInt16LE(44)).toBe(0);
+    expect(Math.abs(wav.readInt16LE(wav.length - 2))).toBeLessThanOrEqual(1);
+    let outputPeak = 0;
+    for (let offset = 44; offset < wav.length; offset += 2) {
+      outputPeak = Math.max(outputPeak, Math.abs(wav.readInt16LE(offset)));
+    }
+    expect(outputPeak / 0x7fff).toBeCloseTo(10 ** (-1 / 20), 3);
   });
 });
 

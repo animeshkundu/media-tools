@@ -214,6 +214,7 @@ describe('App trim validation', () => {
     vi.doUnmock('../entrypoints/app/ChangeSpeedTool');
     vi.doUnmock('../entrypoints/app/ConvertTool');
     vi.doUnmock('../entrypoints/app/JoinMergeTool');
+    vi.doUnmock('../entrypoints/app/VolumeFadesTool');
 
     const globals = globalThis as Record<string, unknown>;
     for (const [key, value] of Object.entries(originalGlobals)) {
@@ -326,6 +327,7 @@ describe('App trim validation', () => {
     vi.doMock('../entrypoints/app/ChangeSpeedTool', () => ({ ChangeSpeedTool: () => null }));
     vi.doMock('../entrypoints/app/ConvertTool', () => ({ ConvertTool: () => null }));
     vi.doMock('../entrypoints/app/JoinMergeTool', () => ({ JoinMergeTool: () => null }));
+    vi.doMock('../entrypoints/app/VolumeFadesTool', () => ({ VolumeFadesTool: () => null }));
 
     const { document, window } = parseHTML('<!doctype html><html><body><div id="root"></div></body></html>');
     const location = new URL('http://localhost/app.html');

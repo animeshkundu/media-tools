@@ -1,4 +1,9 @@
 import { cutPcm, type AudioPcm } from './audio';
+import {
+  applyVolumeFadesInPlace,
+  validateVolumeFadeOptions,
+  type VolumeFadeOptions,
+} from '../volume-fades/volumeFades';
 
 interface Mp3EncoderInstance {
   encodeBuffer(left: Int16Array, right?: Int16Array): Int8Array;
@@ -26,6 +31,12 @@ export type AudioRequest =
       format: 'wav' | 'mp3';
       sampleRate: number;
       startSeconds: number;
+    }
+  | {
+      type: 'volume-fades';
+      file: File;
+      format: 'wav' | 'mp3';
+      options: VolumeFadeOptions;
     };
 
 export type WorkerReply =
@@ -146,7 +157,11 @@ async function readWavMetadata(file: Blob): Promise<WavMetadata> {
 }
 
 function readSample(view: DataView, offset: number, metadata: WavMetadata): number {
-  if (metadata.format === 3) return Math.max(-1, Math.min(1, view.getFloat32(offset, true)));
+  if (metadata.format === 3) {
+    const sample = view.getFloat32(offset, true);
+    if (!Number.isFinite(sample)) throw new Error('WAV audio samples must be finite.');
+    return Math.max(-1, Math.min(1, sample));
+  }
   if (metadata.bitsPerSample === 8) return (view.getUint8(offset) - 128) / 128;
   if (metadata.bitsPerSample === 16) return view.getInt16(offset, true) / 0x8000;
   if (metadata.bitsPerSample === 24) {
@@ -393,7 +408,7 @@ async function decodeMp3(
       selectionStart,
       Math.min(projectedFrames, Math.round(request.endSeconds * sampleRate)),
     );
-  } else if (request.type === 'decode-file') {
+  } else if (request.type === 'decode-file' || request.type === 'volume-fades') {
     selectionEnd = projectedFrames;
   }
 
@@ -567,7 +582,12 @@ function writeAscii(view: DataView, offset: number, value: string): void {
   for (let index = 0; index < value.length; index += 1) view.setUint8(offset + index, value.charCodeAt(index));
 }
 
-async function encodeWav(source: AudioPcm, send: SendReply): Promise<ArrayBuffer> {
+async function encodeWav(
+  source: AudioPcm,
+  send: SendReply,
+  progressStart = 0.6,
+  progressSpan = 0.35,
+): Promise<ArrayBuffer> {
   const channelCount = source.channels.length;
   if (channelCount < 1) throw new Error('No audio channels to encode.');
   const frames = source.channels.reduce((min, ch) => Math.min(min, ch.length), Infinity);
@@ -599,7 +619,7 @@ async function encodeWav(source: AudioPcm, send: SendReply): Promise<ArrayBuffer
         view.setInt16(44 + (frame * channelCount + channel) * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
       }
     }
-    send({ type: 'progress', value: 0.6 + (0.35 * frameEnd) / frames });
+    send({ type: 'progress', value: progressStart + (progressSpan * frameEnd) / frames });
     await Promise.resolve();
   }
   return buffer;
@@ -614,7 +634,12 @@ function toInt16(source: Float32Array, start: number, end: number): Int16Array {
   return output;
 }
 
-async function encodeMp3(source: AudioPcm, send: SendReply): Promise<ArrayBuffer> {
+async function encodeMp3(
+  source: AudioPcm,
+  send: SendReply,
+  progressStart = 0.6,
+  progressSpan = 0.35,
+): Promise<ArrayBuffer> {
   const channels = source.channels.slice(0, 2);
   if (channels.length < 1 || !channels[0]?.length) throw new Error('No audio data to encode.');
   const frames = channels.reduce((min, ch) => Math.min(min, ch.length), Infinity);
@@ -629,7 +654,7 @@ async function encodeMp3(source: AudioPcm, send: SendReply): Promise<ArrayBuffer
       channels[1] ? toInt16(channels[1], offset, end) : undefined,
     );
     if (chunk.length) chunks.push(new Uint8Array(chunk));
-    send({ type: 'progress', value: 0.6 + 0.35 * (end / frames) });
+    send({ type: 'progress', value: progressStart + progressSpan * (end / frames) });
     await Promise.resolve();
   }
   const finalChunk = encoder.flush();
@@ -692,6 +717,9 @@ async function runAudioRequest(request: AudioRequest, send: SendReply): Promise<
       throw new Error('The selected audio region is invalid.');
     }
     if (request.format !== 'wav' && request.format !== 'mp3') throw new Error('Unsupported output format.');
+  } else if (request.type === 'volume-fades') {
+    if (request.format !== 'wav' && request.format !== 'mp3') throw new Error('Unsupported output format.');
+    validateVolumeFadeOptions(request.options);
   }
 
   send({ type: 'progress', value: 0 });
@@ -725,8 +753,18 @@ async function runAudioRequest(request: AudioRequest, send: SendReply): Promise<
       );
       return;
     }
+    if (request.type === 'volume-fades') {
+      applyVolumeFadesInPlace(pcm, request.options, (value) =>
+        send({ type: 'progress', value: 0.6 + value * 0.15 }),
+      );
+    }
     try {
-      const buffer = request.format === 'wav' ? await encodeWav(pcm, send) : await encodeMp3(pcm, send);
+      const progressStart = request.type === 'volume-fades' ? 0.75 : 0.6;
+      const progressSpan = request.type === 'volume-fades' ? 0.2 : 0.35;
+      const buffer =
+        request.format === 'wav'
+          ? await encodeWav(pcm, send, progressStart, progressSpan)
+          : await encodeMp3(pcm, send, progressStart, progressSpan);
       send({ type: 'progress', value: 1 });
       send(
         {
@@ -769,16 +807,34 @@ async function runAudioRequest(request: AudioRequest, send: SendReply): Promise<
     return;
   }
 
-  const decoded = await decodeWavRegion(
-    request.file,
-    metadata,
-    request.startSeconds,
-    request.endSeconds,
-    send,
-  );
+  const decoded =
+    request.type === 'volume-fades'
+      ? await decodeWavRegion(
+          request.file,
+          metadata,
+          0,
+          metadata.frames / metadata.sampleRate,
+          send,
+        )
+      : await decodeWavRegion(
+          request.file,
+          metadata,
+          request.startSeconds,
+          request.endSeconds,
+          send,
+        );
+  if (request.type === 'volume-fades') {
+    applyVolumeFadesInPlace(decoded, request.options, (value) =>
+      send({ type: 'progress', value: 0.6 + value * 0.15 }),
+    );
+  }
   try {
+    const progressStart = request.type === 'volume-fades' ? 0.75 : 0.6;
+    const progressSpan = request.type === 'volume-fades' ? 0.2 : 0.35;
     const buffer =
-      request.format === 'wav' ? await encodeWav(decoded, send) : await encodeMp3(decoded, send);
+      request.format === 'wav'
+        ? await encodeWav(decoded, send, progressStart, progressSpan)
+        : await encodeMp3(decoded, send, progressStart, progressSpan);
     send({ type: 'progress', value: 1 });
     send(
       {

@@ -63,7 +63,7 @@ The app background combines a deep green base with restrained emerald and amber 
 Desktop uses a 320 px tool rail and a fluid workspace capped at 1184 px. The rail contains:
 
 1. Product identity and current surface.
-2. Four persistent tool tabs with a glyph, short label, one-line description, and index.
+2. Five persistent tool tabs with a glyph, short label, one-line description, and index.
 3. Surface-specific trust evidence and the current input/format contract.
 
 Below 1024 px the rail becomes a compact top area and the tool tabs become a horizontally scrollable row. The editor must remain usable at 320 px without horizontal page overflow.
@@ -93,6 +93,10 @@ The drop area remains visible so more tracks can be added. Loaded tracks appear 
 ### Change Speed
 
 Make the factor the visual focus. Show the numeric factor at display size, a native range control, and separate Input and Estimate duration cards. State that speed and pitch move together.
+
+### Volume & Fades
+
+Keep this an export-only transform rather than a live-playback surface. The left pane shows a conservative post-transform waveform estimate, source and output peak values, and a text-labeled safe, warning, or potential-clipping state. Emerald is safe, amber covers -2 dBFS through 0 dBFS, and red is reserved for estimates above 0 dBFS. The right pane groups the 0% to 500% gain slider, -1 dBFS normalization, fade-in and fade-out duration controls, and linear or logarithmic curve selection. Enabling normalization disables manual gain and explains that the final post-fade peak controls the export gain.
 
 ### Convert
 
