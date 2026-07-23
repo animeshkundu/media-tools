@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
-import { Builder, By, type WebElement } from 'selenium-webdriver';
+import { Builder, By, Key, type WebElement } from 'selenium-webdriver';
 import {
   Context,
   Driver as FirefoxDriver,
@@ -460,6 +460,86 @@ test.describe('Audio Studio installed Firefox extension', () => {
     expect(await getDriver().findElements(By.css('[role="tab"]'))).toHaveLength(0);
     expect(await getDriver().findElements(By.css('button[aria-label="Record voice-over"]'))).toHaveLength(1);
     expect(await getDriver().getCurrentUrl()).toMatch(/^moz-extension:\/\/[^/]+\/app\.html$/);
+  });
+
+  test('desktop panes resize by keyboard within their accessible bounds', async () => {
+    await getDriver().manage().window().setRect({ width: 1_600, height: 1_000, x: 0, y: 0 });
+    await openApp();
+
+    const libraryDivider = await visibleElement(
+      '[role="separator"][aria-label="Resize media library and inspector"]',
+    );
+    expect(await libraryDivider.getAttribute('aria-controls')).toBe(
+      'media-library-pane inspector-pane',
+    );
+    const initialLibrarySize = Number(await libraryDivider.getAttribute('aria-valuenow'));
+    expect(await libraryDivider.getAttribute('aria-valuetext')).toBe(
+      `${initialLibrarySize} percent media library width`,
+    );
+    await libraryDivider.sendKeys(Key.ARROW_RIGHT);
+    await getDriver().wait(
+      async () => Number(await libraryDivider.getAttribute('aria-valuenow')) > initialLibrarySize,
+      10_000,
+      'The media library divider did not resize with the keyboard.',
+    );
+    expect(await libraryDivider.getAttribute('aria-valuetext')).toBe(
+      `${initialLibrarySize + 2} percent media library width`,
+    );
+
+    const timelineDivider = await visibleElement(
+      '[role="separator"][aria-label="Resize timeline and inspector"]',
+    );
+    expect(await timelineDivider.getAttribute('aria-controls')).toBe(
+      'inspector-pane timeline-pane',
+    );
+    const initialTimelineSize = Number(await timelineDivider.getAttribute('aria-valuenow'));
+    expect(await timelineDivider.getAttribute('aria-valuetext')).toBe(
+      `${initialTimelineSize} pixels timeline height`,
+    );
+    await timelineDivider.sendKeys(Key.ARROW_UP);
+    await getDriver().wait(
+      async () => Number(await timelineDivider.getAttribute('aria-valuenow')) > initialTimelineSize,
+      10_000,
+      'The timeline divider did not resize with the keyboard.',
+    );
+
+    await timelineDivider.sendKeys(Key.HOME);
+    const timelinePane = await visibleElement('.studio-timeline-pane');
+    const timelineCanvas = await visibleElement(
+      'canvas[aria-label^="Multitrack waveform timeline"]',
+    );
+    await getDriver().wait(
+      async () => {
+        const paneRect = await timelinePane.getRect();
+        const canvasRect = await timelineCanvas.getRect();
+        return canvasRect.y + canvasRect.height <= paneRect.y + paneRect.height + 1;
+      },
+      10_000,
+      'The timeline canvas did not settle inside its resized pane.',
+    );
+
+    await timelineDivider.sendKeys(Key.END);
+    const expandedTimelineMaximum = Number(
+      await timelineDivider.getAttribute('aria-valuemax'),
+    );
+    await getDriver().manage().window().setRect({ width: 1_280, height: 768, x: 0, y: 0 });
+    await getDriver().wait(
+      async () => {
+        const value = Number(await timelineDivider.getAttribute('aria-valuenow'));
+        const maximum = Number(await timelineDivider.getAttribute('aria-valuemax'));
+        return maximum < expandedTimelineMaximum && value <= maximum;
+      },
+      10_000,
+      'The timeline pane did not reclamp after the workspace shrank.',
+    );
+    const upperPanesRect = await (await visibleElement('.studio-upper-panes')).getRect();
+    expect(upperPanesRect.height).toBeGreaterThan(0);
+
+    await getDriver().manage().window().setRect({ width: 1_600, height: 1_000, x: 0, y: 0 });
+    await libraryDivider.sendKeys(Key.ENTER);
+    await timelineDivider.sendKeys(Key.ENTER);
+    expect(Number(await libraryDivider.getAttribute('aria-valuenow'))).toBe(34);
+    expect(Number(await timelineDivider.getAttribute('aria-valuenow'))).toBe(330);
   });
 
   test('imports once, tunes speed, fades, gain and EQ, then exports valid WAV', async () => {

@@ -4,8 +4,11 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type CSSProperties,
   type DragEvent,
+  type KeyboardEvent,
   type MouseEvent,
+  type PointerEvent,
 } from 'react';
 import { Progress } from '../../../components/Progress';
 import { downloadBlob } from '../../core/download';
@@ -28,6 +31,17 @@ import {
   type MultitrackPcmAsset,
 } from './mixdown';
 import { OPFSAssetManager, OPFSOperationCancelledError } from './opfs';
+import {
+  DEFAULT_LIBRARY_PANE_PERCENT,
+  DEFAULT_TIMELINE_PANE_HEIGHT,
+  MAX_LIBRARY_PANE_PERCENT,
+  MAX_TIMELINE_PANE_HEIGHT,
+  MIN_LIBRARY_PANE_PERCENT,
+  MIN_TIMELINE_PANE_HEIGHT,
+  maximumTimelinePaneHeight,
+  resizeLibraryPane,
+  resizeTimelinePane,
+} from './paneLayout';
 import {
   buildPeakPyramid,
   buildPeakPyramidFromOverview,
@@ -59,6 +73,19 @@ import { VoiceOverRecorder } from './voiceRecorder';
 type PcmAssetMap = Record<AudioAssetId, MultitrackPcmAsset>;
 type PeakMap = Record<AudioAssetId, PeakPyramid>;
 type GeneratorKind = 'tone' | 'silence' | 'click';
+type PaneResizeState =
+  | {
+      axis: 'horizontal';
+      pointerPosition: number;
+      startValue: number;
+      containerSize: number;
+    }
+  | {
+      axis: 'vertical';
+      pointerPosition: number;
+      startValue: number;
+      containerSize: number;
+    };
 
 const ACCEPTED_AUDIO = 'audio/wav,audio/mpeg,.wav,.mp3';
 const GENERATED_SAMPLE_RATE = 48_000;
@@ -144,6 +171,15 @@ export function MultitrackTool() {
   const [format, setFormat] = useState<EncodeFormat>('wav');
   const [progress, setProgress] = useState(0);
   const [meterPeak, setMeterPeak] = useState(0);
+  const [libraryPanePercent, setLibraryPanePercent] = useState(
+    DEFAULT_LIBRARY_PANE_PERCENT,
+  );
+  const [timelinePaneHeight, setTimelinePaneHeight] = useState(
+    DEFAULT_TIMELINE_PANE_HEIGHT,
+  );
+  const [timelinePaneMaximum, setTimelinePaneMaximum] = useState(
+    MAX_TIMELINE_PANE_HEIGHT,
+  );
   const [status, setStatus] = useState(
     'Import a WAV or MP3, or add a generated sound to begin.',
   );
@@ -160,6 +196,9 @@ export function MultitrackTool() {
   const timelineRef = useRef(timeline);
   const pcmRef = useRef(pcmByAssetId);
   const peaksRef = useRef(peaksByAssetId);
+  const workspaceRef = useRef<HTMLElement>(null);
+  const upperPanesRef = useRef<HTMLDivElement>(null);
+  const paneResizeRef = useRef<PaneResizeState | undefined>(undefined);
 
   const duration = projectDuration(timeline);
   const selectedTrack = timeline.tracks.find(
@@ -176,6 +215,26 @@ export function MultitrackTool() {
     () => peakCacheBytes(peaksByAssetId),
     [peaksByAssetId],
   );
+
+  useEffect(() => {
+    const workspace = workspaceRef.current;
+    if (!workspace) return;
+    const syncTimelinePaneBounds = () => {
+      const maximum = maximumTimelinePaneHeight(workspace.clientHeight);
+      setTimelinePaneMaximum(maximum);
+      setTimelinePaneHeight((current) =>
+        resizeTimelinePane(current, 0, workspace.clientHeight),
+      );
+    };
+    syncTimelinePaneBounds();
+    if (typeof ResizeObserver === 'function') {
+      const observer = new ResizeObserver(syncTimelinePaneBounds);
+      observer.observe(workspace);
+      return () => observer.disconnect();
+    }
+    window.addEventListener('resize', syncTimelinePaneBounds);
+    return () => window.removeEventListener('resize', syncTimelinePaneBounds);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -775,6 +834,68 @@ export function MultitrackTool() {
     void importFiles(event.dataTransfer.files);
   }
 
+  function beginPaneResize(
+    event: PointerEvent<HTMLDivElement>,
+    axis: PaneResizeState['axis'],
+  ): void {
+    const containerSize =
+      axis === 'horizontal'
+        ? upperPanesRef.current?.clientWidth
+        : workspaceRef.current?.clientHeight;
+    if (!containerSize) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    paneResizeRef.current = {
+      axis,
+      containerSize,
+      pointerPosition: axis === 'horizontal' ? event.clientX : event.clientY,
+      startValue: axis === 'horizontal' ? libraryPanePercent : timelinePaneHeight,
+    };
+  }
+
+  function continuePaneResize(event: PointerEvent<HTMLDivElement>): void {
+    const resize = paneResizeRef.current;
+    if (!resize || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    const pointerPosition = resize.axis === 'horizontal' ? event.clientX : event.clientY;
+    const delta = pointerPosition - resize.pointerPosition;
+    if (resize.axis === 'horizontal') {
+      setLibraryPanePercent(resizeLibraryPane(resize.startValue, delta, resize.containerSize));
+    } else {
+      setTimelinePaneHeight(resizeTimelinePane(resize.startValue, delta, resize.containerSize));
+    }
+  }
+
+  function endPaneResize(): void {
+    paneResizeRef.current = undefined;
+  }
+
+  function handleLibraryDividerKey(event: KeyboardEvent<HTMLDivElement>): void {
+    const step = event.shiftKey ? 5 : 2;
+    let next: number | undefined;
+    if (event.key === 'ArrowLeft') next = libraryPanePercent - step;
+    if (event.key === 'ArrowRight') next = libraryPanePercent + step;
+    if (event.key === 'Home') next = MIN_LIBRARY_PANE_PERCENT;
+    if (event.key === 'End') next = MAX_LIBRARY_PANE_PERCENT;
+    if (event.key === 'Enter') next = DEFAULT_LIBRARY_PANE_PERCENT;
+    if (next === undefined) return;
+    event.preventDefault();
+    setLibraryPanePercent(resizeLibraryPane(next, 0, 1));
+  }
+
+  function handleTimelineDividerKey(event: KeyboardEvent<HTMLDivElement>): void {
+    const step = event.shiftKey ? 60 : 24;
+    const workspaceHeight = workspaceRef.current?.clientHeight ?? 0;
+    const maximum = maximumTimelinePaneHeight(workspaceHeight);
+    let next: number | undefined;
+    if (event.key === 'ArrowUp') next = timelinePaneHeight + step;
+    if (event.key === 'ArrowDown') next = timelinePaneHeight - step;
+    if (event.key === 'Home') next = MIN_TIMELINE_PANE_HEIGHT;
+    if (event.key === 'End') next = maximum;
+    if (event.key === 'Enter') next = DEFAULT_TIMELINE_PANE_HEIGHT;
+    if (next === undefined) return;
+    event.preventDefault();
+    setTimelinePaneHeight(resizeTimelinePane(next, 0, workspaceHeight));
+  }
+
   const projectedBytes =
     duration > 0
       ? projectedMixWorkingBytes({ state: timeline, pcmByAssetId }) + retainedPeakBytes
@@ -782,12 +903,20 @@ export function MultitrackTool() {
 
   return (
     <section
+      ref={workspaceRef}
       className="flex min-h-[calc(100vh-4rem)] flex-col gap-2 bg-[#111216] p-2 sm:p-3 xl:h-[calc(100vh-4rem)] xl:min-h-[44rem] xl:overflow-hidden"
       data-testid="multitrack-studio"
+      style={
+        {
+          '--studio-inspector-pane': `${100 - libraryPanePercent}fr`,
+          '--studio-library-pane': `${libraryPanePercent}fr`,
+          '--studio-timeline-height': `${timelinePaneHeight}px`,
+        } as CSSProperties
+      }
     >
       <div
         aria-label="Editing toolbar"
-        className="flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-white/8 bg-[#25262b] px-2.5 py-2 shadow-[0_1px_0_rgba(0,0,0,0.7)]"
+        className="flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-[#25262b] px-2.5 py-2 shadow-[0_1px_0_rgba(0,0,0,0.7),0_8px_28px_rgba(0,0,0,0.16)]"
         role="toolbar"
       >
         <div className="flex items-center gap-1.5">
@@ -843,8 +972,12 @@ export function MultitrackTool() {
         </div>
       </div>
 
-      <div className="grid min-h-[25rem] flex-[1.25] gap-2 xl:min-h-0 xl:basis-0 xl:grid-cols-[minmax(20rem,0.68fr)_minmax(38rem,1.32fr)]">
+      <div
+        ref={upperPanesRef}
+        className="studio-upper-panes grid gap-2"
+      >
         <section
+          id="media-library-pane"
           className={`relative overflow-y-auto rounded-lg border bg-[#202126] p-3 shadow-[0_18px_50px_rgba(0,0,0,0.24)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
             dragging ? 'border-[#62b4ff] ring-2 ring-[#62b4ff]/20' : 'border-white/10'
           }`}
@@ -858,23 +991,23 @@ export function MultitrackTool() {
         >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[0.64rem] font-bold uppercase tracking-[0.14em] text-emerald-300">
+              <p className="text-[0.64rem] font-bold uppercase tracking-[0.14em] text-[#79c1ff]">
                 Media
               </p>
               <h2 className="mt-1 text-lg font-black tracking-tight text-white">
                 My media
               </h2>
             </div>
-            <span className="rounded-full border border-white/10 px-2.5 py-1 text-[0.62rem] font-bold text-emerald-100/55">
+            <span className="rounded-full border border-[#62b4ff]/18 bg-[#62b4ff]/6 px-2.5 py-1 text-[0.62rem] font-bold text-[#9fd1ff]/70">
               {Object.keys(timeline.assets).length} local
             </span>
           </div>
 
-          <label className="mt-2 block text-[0.65rem] font-bold uppercase tracking-[0.1em] text-emerald-100/55">
+          <label className="mt-2 block text-[0.65rem] font-bold uppercase tracking-[0.1em] text-white/48">
             Add new clips to
             <select
               aria-label="Destination track"
-              className="mt-1 block w-full rounded-lg border border-white/12 bg-[#0a1a16] px-3 py-1.5 text-sm normal-case tracking-normal text-white"
+              className="mt-1 block w-full rounded-md border border-white/12 bg-[#15161a] px-3 py-1.5 text-sm normal-case tracking-normal text-white"
               disabled={busy || recording}
               value={targetTrackId}
               onChange={(event) => setTargetTrackId(event.target.value)}
@@ -911,7 +1044,7 @@ export function MultitrackTool() {
             {(['tone', 'silence', 'click'] as const).map((kind) => (
               <button
                 key={kind}
-                className="rounded-lg border border-white/12 bg-white/[0.03] px-2 py-1.5 text-xs font-bold capitalize text-emerald-100/70 hover:bg-white/[0.07] disabled:opacity-50"
+                className="rounded-md border border-white/12 bg-white/[0.03] px-2 py-1.5 text-xs font-bold capitalize text-white/68 hover:border-[#62b4ff]/30 hover:bg-[#62b4ff]/8 hover:text-[#b9ddff] disabled:opacity-50"
                 disabled={busy || recording}
                 type="button"
                 onClick={() => void addGenerated(kind)}
@@ -920,7 +1053,7 @@ export function MultitrackTool() {
               </button>
             ))}
             <button
-              className="rounded-lg border border-white/12 px-2 py-1.5 text-xs font-bold text-emerald-100/70 hover:bg-white/[0.05]"
+              className="rounded-md border border-white/12 px-2 py-1.5 text-xs font-bold text-white/68 hover:border-[#62b4ff]/30 hover:bg-[#62b4ff]/8 hover:text-[#b9ddff]"
               disabled={busy || recording}
               type="button"
               onClick={addTrack}
@@ -931,24 +1064,24 @@ export function MultitrackTool() {
 
           <div className="mt-2 max-h-40 space-y-1.5 overflow-auto">
             {Object.values(timeline.assets).length === 0 ? (
-              <p className="rounded-xl border border-dashed border-white/12 px-3 py-5 text-center text-xs leading-relaxed text-emerald-100/50">
+              <p className="rounded-lg border border-dashed border-white/12 px-3 py-5 text-center text-xs leading-relaxed text-white/55">
                 Raw assets stay immutable. Timeline clips only store offsets, gain, and fades.
               </p>
             ) : (
               Object.values(timeline.assets).map((asset) => (
                 <div
                   key={asset.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.025] px-3 py-2"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-white/8 bg-white/[0.025] px-3 py-2 transition-colors hover:border-[#62b4ff]/25 hover:bg-[#62b4ff]/5"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-xs font-bold text-white">{asset.name}</p>
-                    <p className="mt-0.5 text-[0.62rem] text-emerald-100/50">
+                    <p className="mt-0.5 text-[0.62rem] text-white/45">
                       {formatDuration(asset.duration)} / {asset.channels === 1 ? 'mono' : 'stereo'} /{' '}
                       {asset.source.kind === 'opfs' ? 'OPFS cached' : 'memory'}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="text-[0.6rem] text-emerald-100/45">
+                    <span className="text-[0.6rem] text-white/42">
                       {formatBytes(asset.byteLength)}
                     </span>
                     <button
@@ -967,16 +1100,45 @@ export function MultitrackTool() {
               ))
             )}
           </div>
-          <p className="mt-2 text-[0.65rem] leading-relaxed text-emerald-100/48">
+          <p className="mt-2 text-[0.65rem] leading-relaxed text-white/42">
             Voice-over asks only when you press Record and creates a local PCM asset. No install-time
             microphone permission is requested. Projects are session-only, so export before closing.
           </p>
         </section>
 
-        <section className="overflow-auto rounded-lg border border-white/10 bg-[#202126] p-3 shadow-[0_18px_50px_rgba(0,0,0,0.24)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div
+          aria-label="Resize media library and inspector"
+          aria-controls="media-library-pane inspector-pane"
+          aria-orientation="vertical"
+          aria-valuemax={MAX_LIBRARY_PANE_PERCENT}
+          aria-valuemin={MIN_LIBRARY_PANE_PERCENT}
+          aria-valuenow={Math.round(libraryPanePercent)}
+          aria-valuetext={`${Math.round(libraryPanePercent)} percent media library width`}
+          className="studio-pane-divider group hidden cursor-col-resize touch-none items-center justify-center rounded-full bg-transparent focus-visible:outline-none xl:flex"
+          role="separator"
+          tabIndex={0}
+          title="Drag to resize panes. Use Left or Right Arrow, Shift for larger steps, Enter to reset."
+          onDoubleClick={() => setLibraryPanePercent(DEFAULT_LIBRARY_PANE_PERCENT)}
+          onKeyDown={handleLibraryDividerKey}
+          onLostPointerCapture={endPaneResize}
+          onPointerCancel={endPaneResize}
+          onPointerDown={(event) => beginPaneResize(event, 'horizontal')}
+          onPointerMove={continuePaneResize}
+          onPointerUp={endPaneResize}
+        >
+          <span
+            aria-hidden="true"
+            className="h-14 w-1 rounded-full bg-white/12 transition-colors group-hover:bg-[#62b4ff]/70 group-focus-visible:bg-[#62b4ff]"
+          />
+        </div>
+
+        <section
+          id="inspector-pane"
+          className="overflow-auto rounded-lg border border-white/10 bg-[#202126] p-3 shadow-[0_18px_50px_rgba(0,0,0,0.24)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[0.64rem] font-bold uppercase tracking-[0.14em] text-emerald-300">
+              <p className="text-[0.64rem] font-bold uppercase tracking-[0.14em] text-[#79c1ff]">
                 Viewer / Inspector
               </p>
               <h2 className="mt-1 text-lg font-black tracking-tight text-white">
@@ -985,7 +1147,7 @@ export function MultitrackTool() {
                   : selectedTrack?.name ?? 'Select a clip'}
               </h2>
             </div>
-            <span className="rounded-full border border-white/10 px-2.5 py-1 text-[0.62rem] font-bold text-emerald-100/55">
+            <span className="rounded-full border border-[#62b4ff]/18 bg-[#62b4ff]/6 px-2.5 py-1 text-[0.62rem] font-bold text-[#9fd1ff]/70">
               Non-destructive
             </span>
           </div>
@@ -1061,7 +1223,7 @@ export function MultitrackTool() {
                 Track role
                 <select
                   aria-label="Selected track role"
-                  className="mt-1 block w-full rounded-lg border border-white/12 bg-[#0a1a16] px-3 py-2 text-white"
+                  className="mt-1 block w-full rounded-md border border-white/12 bg-[#15161a] px-3 py-2 text-white"
                   disabled={busy || recording}
                   value={selectedTrack.role}
                   onChange={(event) =>
@@ -1079,7 +1241,7 @@ export function MultitrackTool() {
                 EQ preset
                 <select
                   aria-label="Selected track EQ preset"
-                  className="mt-1 block w-full rounded-lg border border-white/12 bg-[#0a1a16] px-3 py-2 text-white"
+                  className="mt-1 block w-full rounded-md border border-white/12 bg-[#15161a] px-3 py-2 text-white"
                   disabled={busy || recording}
                   value={selectedTrack.eqPreset}
                   onChange={(event) =>
@@ -1269,7 +1431,7 @@ export function MultitrackTool() {
               |&lt;
             </button>
             <button
-              className="grid h-11 min-w-24 place-items-center rounded-xl bg-emerald-300 px-4 text-sm font-black text-emerald-950 hover:bg-emerald-200 disabled:opacity-50"
+              className="grid h-11 min-w-24 place-items-center rounded-lg bg-[#4ca8ff] px-4 text-sm font-black text-[#06101a] shadow-[0_8px_20px_rgba(76,168,255,0.18)] hover:bg-[#72bbff] disabled:opacity-50"
               disabled={busy || recording || duration <= 0}
               type="button"
               onClick={() => void togglePlayback()}
@@ -1313,7 +1475,7 @@ export function MultitrackTool() {
           <label className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-emerald-100/50">
             BPM
             <input
-              className="ml-2 w-16 rounded-lg border border-white/12 bg-[#0a1a16] px-2 py-1.5 text-sm text-white"
+              className="ml-2 w-16 rounded-md border border-white/12 bg-[#15161a] px-2 py-1.5 text-sm text-white"
               max="300"
               min="20"
               type="number"
@@ -1356,7 +1518,7 @@ export function MultitrackTool() {
             aria-valuenow={meterPeak}
           >
             <div
-              className={`h-full ${meterPeak > 0.98 ? 'bg-red-400' : 'bg-emerald-300'}`}
+              className={`h-full ${meterPeak > 0.98 ? 'bg-red-400' : 'bg-[#62b4ff]'}`}
               style={{ width: `${Math.min(100, meterPeak * 100)}%` }}
             />
           </div>
@@ -1402,10 +1564,47 @@ export function MultitrackTool() {
         </p>
       </section>
 
-      <section className="min-h-[23rem] flex-[0.75] rounded-lg border border-white/10 bg-[#1c1d21] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.25)] xl:min-h-0 xl:basis-0 xl:overflow-hidden">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-1">
+      <div
+        aria-label="Resize timeline and inspector"
+        aria-controls="inspector-pane timeline-pane"
+        aria-orientation="horizontal"
+        aria-valuemax={timelinePaneMaximum}
+        aria-valuemin={MIN_TIMELINE_PANE_HEIGHT}
+        aria-valuenow={Math.round(timelinePaneHeight)}
+        aria-valuetext={`${Math.round(timelinePaneHeight)} pixels timeline height`}
+        className="group hidden h-2 cursor-row-resize touch-none items-center justify-center rounded-full focus-visible:outline-none xl:flex"
+        role="separator"
+        tabIndex={0}
+        title="Drag to resize the timeline. Use Up or Down Arrow, Shift for larger steps, Enter to reset."
+        onDoubleClick={() =>
+          setTimelinePaneHeight(
+            resizeTimelinePane(
+              DEFAULT_TIMELINE_PANE_HEIGHT,
+              0,
+              workspaceRef.current?.clientHeight ?? 0,
+            ),
+          )
+        }
+        onKeyDown={handleTimelineDividerKey}
+        onLostPointerCapture={endPaneResize}
+        onPointerCancel={endPaneResize}
+        onPointerDown={(event) => beginPaneResize(event, 'vertical')}
+        onPointerMove={continuePaneResize}
+        onPointerUp={endPaneResize}
+      >
+        <span
+          aria-hidden="true"
+          className="h-1 w-16 rounded-full bg-white/12 transition-colors group-hover:bg-[#62b4ff]/70 group-focus-visible:bg-[#62b4ff]"
+        />
+      </div>
+
+      <section
+        id="timeline-pane"
+        className="studio-timeline-pane flex flex-col rounded-lg border border-white/10 bg-[#1c1d21] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.25)]"
+      >
+        <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-3 px-1">
           <div>
-            <p className="text-[0.64rem] font-bold uppercase tracking-[0.14em] text-emerald-300">
+            <p className="text-[0.64rem] font-bold uppercase tracking-[0.14em] text-[#79c1ff]">
               Multitrack timeline
             </p>
             <p className="mt-1 text-xs text-emerald-100/48">
@@ -1447,16 +1646,18 @@ export function MultitrackTool() {
             </label>
           </div>
         </div>
-        <CanvasTimeline
-          disabled={busy || recording}
-          peaksByAssetId={peaksByAssetId}
-          state={timeline}
-          onChange={commitTimeline}
-          onTransientChange={updateTimelineView}
-          onSeek={seek}
-          onSkim={skim}
-          skimmingEnabled={skimming}
-        />
+        <div className="min-h-0 flex-1">
+          <CanvasTimeline
+            disabled={busy || recording}
+            peaksByAssetId={peaksByAssetId}
+            state={timeline}
+            onChange={commitTimeline}
+            onTransientChange={updateTimelineView}
+            onSeek={seek}
+            onSkim={skim}
+            skimmingEnabled={skimming}
+          />
+        </div>
       </section>
 
       {busy && <Progress value={progress} />}
