@@ -4,11 +4,11 @@
 
 ## North star
 
-The media tools you reach for when the file must stay on your device: cut, join, convert, and compress audio and video 100% offline, with no upload, no account, no ads, and no watermark.
+The media workspace you reach for when the file must stay on your device: import once, arrange and fine-tune locally, then export without an upload, account, ad, or watermark.
 
 ## The vision in 3 years
 
-Media Tools is the default privacy-first offline media toolkit across Chrome and Firefox. It grows from the shipped audio cutter into full video and a complete workspace for everyday local-file jobs, while keeping the interaction simple: choose a file, make the change, and download the result.
+Media Tools is the default privacy-first offline media toolkit across Chrome and Firefox. It grows from the shipped unified Audio Studio into full video while preserving the same non-destructive, import-once workspace for everyday local-file jobs. The durable result remains straightforward: choose local media, make the changes together, and download the result.
 
 It also becomes one part of a focused "offline tools" suite alongside File Tools and Photo Tools. Each product stays single-purpose, but all three share a recognizable promise: local processing, minimal permissions, no account, and no monetization that compromises trust.
 
@@ -56,6 +56,6 @@ Two category gaps sharpen the early differentiation:
 - **Not a tab or stream capturer.** Capture is Firefox-limited, asks for broader access, and is not a local-file transform. It weakens the cross-browser, minimal-permission wedge.
 - **Not a YouTube or stream downloader.** That category is legally fraught, saturated, and unrelated to processing a file the user already owns locally.
 - **Not an ad-supported, account-gated, watermarked, or upload-based tool.** Those mechanics reproduce the incumbent funnel that this product exists to replace.
-- **Not a real-time equalizer, volume booster, or playback modifier.** Those are live-playback jobs, not durable offline exports.
+- **Not a real-time equalizer, volume booster, or modifier for other playback.** Those are live tab or stream jobs, not durable offline exports. Multitrack Studio may preview the project being edited, but its product result is a worker-rendered local mix.
 - **Not a subscription or server product.** The core stays free and offline. Pro is a one-time unlock for power and convenience, not a dependency on hosted processing.
 - **No hidden telemetry.** Secret event collection would contradict the privacy promise. Product measurement uses aggregate store and payment data, plus explicit opt-in analytics only.

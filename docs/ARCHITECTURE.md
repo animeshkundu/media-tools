@@ -36,8 +36,8 @@ hosted web app is a static Vite build. Both create the same worker and use the s
                 ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ APP PAGE  (entrypoints/app/, opened in a TAB - the durable host)              │
-│   React UI: dropzone, tool picker, waveform / video editor, progress, cancel. │
-│   Holds tool state. Spawns and supervises the Web Worker. Triggers downloads. │
+│   React UI: media library, inspector, transport, Canvas timeline, progress.    │
+│   Holds one project. Supervises preview/workers. Triggers complete downloads.  │
 └───────────────┬───────────────────────────────────────────────────────────────┘
                 │ same App component
 ┌───────────────┴───────────────────────────────────────────────────────────────┐
@@ -82,24 +82,27 @@ used to bypass their release gates.
 
 ### 2.2 Current shipped state
 
-All shipped WAV and MP3 decode and final encoding are worker-owned. The app page renders and
-supervises jobs but does not decode audio:
+The shipped product surface is one unified Audio Studio. WAV and MP3 analysis/decode and final
+WAV/MP3 mixdown encoding are worker-owned. The app page renders and supervises jobs but does not
+decode selected files:
 
-- `lib/core/worker.ts` creates the dedicated worker backed by
-  `lib/tools/audio-cutter/encode.worker.ts`. Convert, Join, and Change Speed initiate full-file decode
-  through `startDecodeFile`; Audio Cutter delegates analysis and selected-region decode through the
-  same worker harness. Volume & Fades analyzes a compact waveform for its settings preview, then sends
-  the original file and transform settings to a fresh worker for full decode, in-place DSP, and encode.
+- `lib/core/worker.ts` creates the dedicated decode worker backed by
+  `lib/tools/audio-cutter/encode.worker.ts`. Every imported source is analyzed and decoded once through
+  `startAnalyze` and `startDecodeFile`, then retained as a bounded immutable project asset that can back
+  multiple clips.
 - MP3 decode uses worker-side WebCodecs `AudioDecoder`, guarded by
   `AudioDecoder.isConfigSupported`, and feeds `EncodedAudioChunk` values to the decoder.
 - WAV decode uses worker-side direct PCM parsing in `decodeWavRegion`.
 - `lamejs` is bundled for worker-side MP3 encoding only. It is not an MP3 decoder.
 
-Volume gain, fade envelopes, peak scanning, and normalization run in-place in the worker and reuse its
-bounded decoded PCM allocation. Bounded join normalization and concatenation plus Change Speed
-resampling currently run on the app page before final worker encoding. The next architecture step is
-to move those remaining transforms off the UI thread and preserve worker ownership as planned video
-engines and formats are added.
+Audio Studio uses a split preview/export architecture:
+
+- `schema.ts` keeps assets, clips, tracks, selection, tempo, playhead, viewport, and ducking settings as strict serializable data. PCM and `AudioBuffer` values live outside that state.
+- `MultitrackAudioEngine` runs only in the durable app page because Web Audio is unavailable in workers. It creates source -> clip gain -> track gain -> stereo pan -> EQ -> role bus -> master graphs for project-local preview.
+- `mixdown.worker.ts` is authoritative for output. It validates the project, applies deterministic speed resampling, fades, PCM DSP, and dialogue-driven music ducking, encodes stereo WAV or MP3, and returns only a complete result.
+- `opfs.worker.ts` streams bounded files into a session-isolated extension-origin cache, verifies stored data through reads of at most 8 MiB per slice, clears the active session during normal teardown, and removes stale sessions after 24 hours. It is not a large-file processing bypass.
+- `CanvasTimeline.tsx` keeps one viewport-sized backing canvas, draws only visible time and track ranges, and selects an appropriate precomputed peak level for the current zoom.
+- `voiceRecorder.ts` is the narrow main-page exception for input capture. After explicit activation it uses `getUserMedia` and a short-lived Web Audio callback to collect bounded mono PCM, then stops every stream track and adds the take as another immutable asset. It adds no manifest permission and performs no export DSP.
 
 ## 3. Tech choices and rationale
 
@@ -124,9 +127,9 @@ SAB. Any ffmpeg cost would be reserved for a measured long-tail need after the P
 
 ## 4. Data flow and message contracts
 
-The app page owns file selection and UI state, while the worker owns decode and final encoding.
-Bounded join and Change Speed transforms remain on the app page today. The shipped audio messages
-use a discriminated union; the video variants below describe the planned extension of that channel.
+The app page owns file selection, project state, preview, and optional voice capture, while workers own
+file decode and authoritative final DSP/encoding. The shipped audio messages use discriminated unions;
+the video variants below describe the planned extension of that channel.
 
 ```ts
 // Page → Worker: one job per worker instance. Transfer the heavy buffers.
@@ -145,6 +148,23 @@ type WorkerMessage =
   | { type: 'progress'; value: number }
   | { type: 'result';   buffer: ArrayBuffer; mime: string }
   | { type: 'error';    message: string };
+```
+
+Multitrack uses separate discriminated worker channels so storage and mixdown failures cannot be confused with the shared decoder:
+
+```ts
+type MixdownRequest = {
+  type: 'mixdown';
+  format: 'wav' | 'mp3';
+  input: MultitrackMixInput;
+};
+type OPFSRequest =
+  | { type: 'store'; requestId: number; sessionId: string; key: string; file: File }
+  | { type: 'read-slice'; requestId: number; sessionId: string; key: string; start: number; length: number }
+  | { type: 'remove'; requestId: number; sessionId: string; key: string }
+  | { type: 'cleanup-stale'; requestId: number; sessionId: string; cutoffTimestamp: number }
+  | { type: 'clear-session'; requestId: number; sessionId: string }
+  | { type: 'cancel'; requestId: number };
 ```
 
 Rules the harness (`lib/core/worker.ts`) already enforces and every tool inherits:
@@ -168,8 +188,7 @@ Chrome-only enhancement could use `showSaveFilePicker` after feature detection.
 entrypoints/
   background.ts                 glue: open app page on action click
   app/                          the durable host page (React)
-    App.tsx                     shell: tool routing, file state, worker supervision, status
-    (per-tool views land here as the picker grows)
+    App.tsx                     shared web/extension Audio Studio shell
 components/                     presentational, token-only: Button, Progress (+ future Select, Card, Badge, Toggle)
 web/
   index.html                    hosted-app document shell and static accessibility fallback
@@ -182,11 +201,12 @@ lib/
     dropzone.tsx                accessible file input + drag-drop
     format.ts                   bytes / duration / output-name helpers
     capability.ts   (planned)   WebCodecs/codec probes (isConfigSupported), FS Access + sidePanel detection
-  tools/<name>/                 one folder per tool; self-contained
+  tools/<name>/                 one bounded engine or product workspace
     audio-cutter/
       Waveform.tsx              canvas waveform + draggable handles
       encode.worker.ts          the actual DSP/encode (runs in the worker)
     volume-fades/                  gain envelopes, peak analysis, worker job adapter
+    multitrack/                    unified studio UI, schema, Canvas, preview, voice capture, DSP/OPFS workers
     (audio-join/, audio-speed/, video-trim/, video-mute/, video-extract-audio/, video-compress/ …)
 ```
 
@@ -195,9 +215,9 @@ Boundaries, stated as rules:
 - **`components/` is presentational and token-only.** No business logic, no `browser.*`. Reusable.
 - **`lib/core/` is tool-agnostic infrastructure.** The worker harness, download, dropzone, formatting,
   and capability detection. This is the conceptual shared core described by the program overview.
-- **`lib/tools/<name>/` is one tool, self-contained,** with its worker entry, its DSP, its view, and
-  its Vitest test. A new tool is added here and surfaced in `App.tsx`; it does not reach into another
-  tool. Adding a tool touches exactly one new folder plus the picker.
+- **`lib/tools/<name>/` is one bounded engine or workspace, self-contained,** with its worker entry,
+  DSP, view, and Vitest tests. New audio operations integrate with the unified timeline instead of
+  creating another navigation tab or file-import path.
 - **Planned heavy code must be lazy.** If `mediabunny`, `gifenc`, `SoundTouchJS`, or `ffmpeg.wasm`
   lands in a later phase, it must load only inside the tool worker that needs it and stay out of the
   shipped base chunk until its phase is approved.
@@ -228,7 +248,7 @@ not runtime support.
 
 | Browser | OS and environment | Evidence | Status |
 | --- | --- | --- | --- |
-| Firefox | Ubuntu | [Firefox E2E](../.github/workflows/e2e.yml) installs the built add-on in the CI-provisioned Firefox (Firefox 151 on Ubuntu at the time of writing) and drives its real `moz-extension://` app page through geckodriver. It exercises WAV cut and export, MP3 export, MP3 input, join, change speed, volume/fade normalization, download signatures, and no-egress resource inspection. | Release-tested as an installed extension with the extension-page CSP enforced. On CI Firefox 151 the MP3 input took the supported branch (decoded via `AudioDecoder` and re-exported); the assertion stays capability-scoped, so an unsupported Firefox must instead show the clear decoder error without a partial download. |
+| Firefox | Ubuntu | [Firefox E2E](../.github/workflows/e2e.yml) installs the built add-on in the CI-provisioned Firefox and drives its real `moz-extension://` app page through geckodriver. It exercises the unified three-pane shell, import-once editing, multi-file arrangement, asset reuse, speed/gain/fades/EQ, split/delete, WAV and MP3 downloads, MP3 input capability fallback, and no-egress resource inspection. | Release-tested as an installed extension with the extension-page CSP enforced. MP3 input remains capability-scoped: a supported Firefox decodes and re-exports it; an unsupported Firefox must show the decoder error with no partial download. |
 | Firefox | macOS | The local [media capture](media/README.md) and installed-extension E2E use geckodriver and Marionette to install the unpacked Firefox build and drive its real extension page. | Locally exercised, not CI-gated: the captured WAV editing and error flows, plus a local installed-extension E2E run that exercised MP3 input decode and WAV re-export in the provisioned Firefox. macOS-local Firefox startup is a known flake, so CI Ubuntu is the release authority; no exact Firefox or macOS version is claimed here. |
 
 The Chrome production bundle is built in CI on Ubuntu, but there is no installed-Chrome E2E suite.

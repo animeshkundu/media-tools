@@ -33,6 +33,7 @@ Delivery phase and paid entitlement are separate decisions. Several Phase 2 tool
 | Audio format convert to WAV / MP3 | MVP / Phase 1 | CHEAP | Conversion has proven demand, with native PCM WAV and bundled `lamejs` for MP3. |
 | Change audio speed, coupled speed and pitch | MVP / Phase 1 | CHEAP | Resampling adds a useful export job on the same audio engine. |
 | Adjust volume, fades, and peak normalization | MVP / Phase 1 | CHEAP | Direct PCM gain envelopes add a durable export job without becoming a live-playback modifier. |
+| Unified Audio Studio | Audio workspace / Phase 1.5 | MEDIUM | One import-once timeline combines trim, arrangement, speed, gain, fades, EQ, voice-over, preview, and WAV/MP3 mixdown without weakening local-processing limits. |
 | Extract audio from video | Fast-follow / Phase 2 | MEDIUM | Mediabunny can demux or transcode the audio without an upload. |
 | Mute / remove audio from video | Fast-follow / Phase 2 | MEDIUM | Lossless track removal fills a category gap with no dedicated extension competitor. |
 | Video cut / trim | Fast-follow / Phase 2 | MEDIUM | Firefox is unserved, and users need both fast keyframe cuts and exact cuts. |
@@ -47,7 +48,7 @@ Delivery phase and paid entitlement are separate decisions. Several Phase 2 tool
 | Tool | Reason |
 | --- | --- |
 | Tab or stream audio capture | Firefox support is limited, broader access weakens the permission story, and capture is not a local-file job. |
-| Real-time equalizer or volume boost | Both stores already serve it, and it changes live playback rather than exporting a transformed file. Offline volume and fade export remains in scope. |
+| Real-time equalizer or volume boost for tabs and streams | Both stores already serve it, and it changes other playback rather than exporting a transformed file. Project-local Audio Studio preview and offline export remain in scope. |
 | YouTube or stream downloader | It is legally fraught, saturated by tools such as VideoDownloadHelper at 1.8 million users, and belongs to a different product. |
 
 ## Per-tool functional requirements + acceptance criteria
@@ -133,6 +134,30 @@ The requirements below define target behavior. Shared privacy, offline, performa
 - Given a non-silent fixture and normalization enabled, when export completes, then the post-fade output peak is -1 dBFS within one 16-bit PCM quantization step and sample ratios are preserved.
 - Given manual gain projects a peak above 0 dBFS, when settings change, then the UI identifies potential clipping before export without silently clamping the floating-point transform.
 - Given the network is disabled or export is cancelled, then the worker makes no processing request, emits no partial download, and leaves the source file unchanged.
+
+### Unified Audio Studio
+
+**Functional requirements**
+
+- Replace separate transform tabs with one responsive workspace containing a Media Library, context-aware Viewer/Inspector, Transport/Master bar, and bottom multitrack Canvas timeline. A source is imported and decoded once, then reusable across clips and operations.
+- Keep `AudioAsset`, `AudioClip`, `AudioTrack`, and `TimelineState` serializable. Assets are immutable; clip moves, splits, deletes, trims, speed, gain, and fades only change project state.
+- Render only the visible Canvas time and track range. Cap retained media assets and their multi-level peak pyramids at 128, coalesce pan, zoom, playhead, and drag redraws through `requestAnimationFrame`, and magnetically snap to zero, playhead, beat grid, and clip boundaries within a 10 pixel threshold.
+- Preview through a main-page Web Audio graph per track and provide play, pause, seek, scrub, opt-in audio skimming, mute, solo, volume, pan, clip speed, EQ presets, and dialogue-driven music ducking.
+- Render authoritative stereo WAV or MP3 in a dedicated cancellable worker with deterministic speed resampling, fades, EQ, pan, mute/solo, auto-ducking, mixdown, and encoding.
+- Optionally stream bounded source files into OPFS in a worker and expose bounded random-access slices. OPFS must not raise the 64 MiB per-file, 30 minute project, mono/stereo, or 256 MiB worst-case in-flight limits.
+- Generate tone, silence, and click assets locally and never fetch stock audio. Offer feature-detected voice-over only after explicit activation: request no install-time manifest permission, cap mono PCM before capture against stop-time consolidation and the complete export working set for at most five minutes, stop media tracks on every exit or late permission resolution, and add a completed take as an immutable local asset. Model-based noise suppression remains unavailable.
+
+**Acceptance criteria**
+
+- Given one WAV and one generated tone on different tracks, when the user exports WAV and MP3, then each complete output has the visible project duration and the expected format.
+- Given a clip move, split, speed change, or pointer/keyboard boundary trim, when timeline state is serialized and restored, then immutable asset metadata is unchanged and the same clip position, source offset, duration, playback rate, gain, and fades are restored.
+- Given snapping is enabled, when a boundary is moved within 10 screen pixels of a beat, playhead, zero, or another clip edge, then it lands exactly on that point; disabling snapping preserves the requested time.
+- Given dialogue crosses the configured threshold, when music is present, then preview applies a smoothed live duck and worker export applies deterministic attack, reduction, and release without changing dialogue gain.
+- Given a projected project would exceed 256 MiB after accounting for retained PCM, Web Audio copies, worker snapshots, stereo mix, dialogue detector, ducking envelope, and WAV output, then it is rejected before those allocations.
+- Given export is cancelled or a worker fails, then no partial download is created. Given the network is disabled, import, preview, editing, OPFS caching where available, and WAV/MP3 export continue without an outbound request.
+- Given OPFS is unavailable, then the tool reports bounded-memory storage honestly and remains usable inside the same hard limits; it never claims multi-gigabyte support.
+- Given the editor is closed, then its arrangement is not presented as saved: the UI tells the user that projects are session-only and normal teardown clears that session's OPFS cache.
+- Given Record voice-over is activated on a capable browser, then the browser prompt appears only after that action; Stop adds one bounded local clip, while Discard, denial, limit auto-stop, error, unmount, and cancellation during the pending prompt stop every microphone track.
 
 ### Extract audio from video
 

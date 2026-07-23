@@ -1,18 +1,10 @@
 import { cutPcm, type AudioPcm } from './audio';
+import { encodeMp3Pcm } from '../../core/mp3';
 import {
   applyVolumeFadesInPlace,
   validateVolumeFadeOptions,
   type VolumeFadeOptions,
 } from '../volume-fades/volumeFades';
-
-interface Mp3EncoderInstance {
-  encodeBuffer(left: Int16Array, right?: Int16Array): Int8Array;
-  flush(): Int8Array;
-}
-
-type Mp3EncoderConstructor = new (channels: number, sampleRate: number, kbps: number) => Mp3EncoderInstance;
-
-declare const lamejs: { Mp3Encoder: Mp3EncoderConstructor };
 
 export type AudioRequest =
   | { type: 'analyze'; file: File }
@@ -625,48 +617,15 @@ async function encodeWav(
   return buffer;
 }
 
-function toInt16(source: Float32Array, start: number, end: number): Int16Array {
-  const output = new Int16Array(end - start);
-  for (let index = start; index < end; index += 1) {
-    const sample = Math.max(-1, Math.min(1, source[index] ?? 0));
-    output[index - start] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
-  }
-  return output;
-}
-
 async function encodeMp3(
   source: AudioPcm,
   send: SendReply,
   progressStart = 0.6,
   progressSpan = 0.35,
 ): Promise<ArrayBuffer> {
-  const channels = source.channels.slice(0, 2);
-  if (channels.length < 1 || !channels[0]?.length) throw new Error('No audio data to encode.');
-  const frames = channels.reduce((min, ch) => Math.min(min, ch.length), Infinity);
-  const encoder = new lamejs.Mp3Encoder(channels.length, source.sampleRate, 192);
-  const chunks: Uint8Array[] = [];
-  const blockSize = 1152;
-
-  for (let offset = 0; offset < frames; offset += blockSize) {
-    const end = Math.min(frames, offset + blockSize);
-    const chunk = encoder.encodeBuffer(
-      toInt16(channels[0]!, offset, end),
-      channels[1] ? toInt16(channels[1], offset, end) : undefined,
-    );
-    if (chunk.length) chunks.push(new Uint8Array(chunk));
-    send({ type: 'progress', value: progressStart + progressSpan * (end / frames) });
-    await Promise.resolve();
-  }
-  const finalChunk = encoder.flush();
-  if (finalChunk.length) chunks.push(new Uint8Array(finalChunk));
-  const size = chunks.reduce((total, chunk) => total + chunk.length, 0);
-  const output = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    output.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return output.buffer;
+  return encodeMp3Pcm(source, (value) =>
+    send({ type: 'progress', value: progressStart + progressSpan * value }),
+  );
 }
 
 async function runAudioRequest(request: AudioRequest, send: SendReply): Promise<void> {

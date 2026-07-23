@@ -35,6 +35,18 @@ vi.mock('../entrypoints/app/ConvertTool', () => ({
 vi.mock('../entrypoints/app/JoinMergeTool', () => ({
   JoinMergeTool: () => createElement('section'),
 }));
+vi.mock('../lib/tools/multitrack/MultitrackTool', () => ({
+  MultitrackTool: () =>
+    createElement(
+      'section',
+      { 'aria-label': 'Unified audio studio' },
+      createElement('h2', null, 'Media'),
+      createElement('h2', null, 'Inspector'),
+      createElement('h2', null, 'Project timeline'),
+      createElement('button', null, 'Record voice-over'),
+      createElement('button', null, 'Export WAV or MP3'),
+    ),
+}));
 vi.mock('../entrypoints/app/VolumeFadesTool', () => ({
   VolumeFadesTool: () => createElement('section'),
 }));
@@ -45,25 +57,20 @@ vi.mock('../entrypoints/app/TrimTimeFields', () => ({
 const { default: App } = await import('../entrypoints/app/App');
 
 describe('shared web and extension editor surfaces', () => {
-  it('renders all five tools from one app shell with surface-specific trust copy', () => {
+  it('renders one import-once studio with surface-specific trust copy', () => {
     const webMarkup = renderToStaticMarkup(createElement(App, { surface: 'web' }));
     const extensionMarkup = renderToStaticMarkup(createElement(App, { surface: 'extension' }));
 
-    expect(webMarkup.match(/role="tab"/g)).toHaveLength(5);
-    expect(webMarkup.match(/tabindex="0"/g)).toHaveLength(1);
-    expect(webMarkup.match(/tabindex="-1"/g)).toHaveLength(4);
-    expect(webMarkup).toContain('Cut audio');
-    expect(webMarkup).toContain('Join / merge');
-    expect(webMarkup).toContain('Change speed');
-    expect(webMarkup).toContain('Volume &amp; fades');
-    expect(webMarkup).toContain('Convert WAV / MP3');
-    expect(webMarkup).toContain('Local in this tab');
-    expect(webMarkup).toContain('Files are not uploaded and there is no telemetry.');
-    expect(webMarkup).not.toContain('Zero permissions and a no-egress extension policy');
-
-    expect(extensionMarkup).toContain('Locked down locally');
-    expect(extensionMarkup).toContain('Zero permissions and a no-egress extension policy');
-    expect(extensionMarkup).toContain('Works offline');
+    expect(webMarkup).not.toContain('role="tablist"');
+    expect(webMarkup).toContain('Audio Studio');
+    expect(webMarkup).toContain('Media');
+    expect(webMarkup).toContain('Inspector');
+    expect(webMarkup).toContain('Project timeline');
+    expect(webMarkup).toContain('Record voice-over');
+    expect(webMarkup).toContain('Export WAV or MP3');
+    expect(webMarkup).toContain('Local processing · no upload');
+    expect(extensionMarkup).toContain('Offline · zero install permissions');
+    expect(extensionMarkup).toContain('One timeline · non-destructive edits · session only');
   });
 
   it('mounts the hosted target from the shared App and presents both product choices honestly', () => {
@@ -95,10 +102,13 @@ describe('shared web and extension editor surfaces', () => {
     expect(appDocument).toContain('src="/media-tools/app/assets/');
     expect(appDocument).toContain('href="/media-tools/app/assets/');
     expect(assetFiles.some((file) => file.startsWith('encode.worker-'))).toBe(true);
+    expect(assetFiles.some((file) => file.startsWith('mixdown.worker-'))).toBe(true);
+    expect(assetFiles.some((file) => file.startsWith('opfs.worker-'))).toBe(true);
     expect(readFileSync(new URL('vendor/lame.min.js', appDirectory))).not.toHaveLength(0);
-    expect(executableSource).toContain('Volume & Fades');
-    expect(executableSource).toContain('Cancel analysis');
-    expect(executableSource).toContain('Conservative peak estimate');
+    expect(executableSource).toContain('Audio Studio');
+    expect(executableSource).toContain('Record voice-over');
+    expect(executableSource).toContain('Export format');
+    expect(executableSource).toContain('Auto-duck music under dialogue');
     expect(executableSource).toContain('WAV audio samples must be finite.');
     expect(executableSource).not.toMatch(
       /fetch\(|XMLHttpRequest|WebSocket|sendBeacon|EventSource/,
