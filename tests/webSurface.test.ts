@@ -35,6 +35,9 @@ vi.mock('../entrypoints/app/ConvertTool', () => ({
 vi.mock('../entrypoints/app/JoinMergeTool', () => ({
   JoinMergeTool: () => createElement('section'),
 }));
+vi.mock('../lib/tools/multitrack/MultitrackTool', () => ({
+  MultitrackTool: () => createElement('section'),
+}));
 vi.mock('../entrypoints/app/VolumeFadesTool', () => ({
   VolumeFadesTool: () => createElement('section'),
 }));
@@ -45,15 +48,16 @@ vi.mock('../entrypoints/app/TrimTimeFields', () => ({
 const { default: App } = await import('../entrypoints/app/App');
 
 describe('shared web and extension editor surfaces', () => {
-  it('renders all five tools from one app shell with surface-specific trust copy', () => {
+  it('renders all six tools from one app shell with surface-specific trust copy', () => {
     const webMarkup = renderToStaticMarkup(createElement(App, { surface: 'web' }));
     const extensionMarkup = renderToStaticMarkup(createElement(App, { surface: 'extension' }));
 
-    expect(webMarkup.match(/role="tab"/g)).toHaveLength(5);
+    expect(webMarkup.match(/role="tab"/g)).toHaveLength(6);
     expect(webMarkup.match(/tabindex="0"/g)).toHaveLength(1);
-    expect(webMarkup.match(/tabindex="-1"/g)).toHaveLength(4);
+    expect(webMarkup.match(/tabindex="-1"/g)).toHaveLength(5);
     expect(webMarkup).toContain('Cut audio');
     expect(webMarkup).toContain('Join / merge');
+    expect(webMarkup).toContain('Multitrack studio');
     expect(webMarkup).toContain('Change speed');
     expect(webMarkup).toContain('Volume &amp; fades');
     expect(webMarkup).toContain('Convert WAV / MP3');
@@ -95,10 +99,14 @@ describe('shared web and extension editor surfaces', () => {
     expect(appDocument).toContain('src="/media-tools/app/assets/');
     expect(appDocument).toContain('href="/media-tools/app/assets/');
     expect(assetFiles.some((file) => file.startsWith('encode.worker-'))).toBe(true);
+    expect(assetFiles.some((file) => file.startsWith('mixdown.worker-'))).toBe(true);
+    expect(assetFiles.some((file) => file.startsWith('opfs.worker-'))).toBe(true);
     expect(readFileSync(new URL('vendor/lame.min.js', appDirectory))).not.toHaveLength(0);
     expect(executableSource).toContain('Volume & Fades');
     expect(executableSource).toContain('Cancel analysis');
     expect(executableSource).toContain('Conservative peak estimate');
+    expect(executableSource).toContain('Multitrack Studio');
+    expect(executableSource).toContain('Auto-duck music under dialogue');
     expect(executableSource).toContain('WAV audio samples must be finite.');
     expect(executableSource).not.toMatch(
       /fetch\(|XMLHttpRequest|WebSocket|sendBeacon|EventSource/,

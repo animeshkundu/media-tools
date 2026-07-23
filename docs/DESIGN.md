@@ -102,6 +102,17 @@ Keep this an export-only transform rather than a live-playback surface. The left
 
 Once decoded, reduce the workspace to source identity and one clear format decision. Keep WAV (“lossless PCM”) and MP3 (“192 kbps”) language visible near the action.
 
+### Multitrack Studio
+
+Multitrack Studio is the one deliberate exception to the single-card transform layout. It remains one job - arrange a local mix and export one WAV - but needs four coordinated regions:
+
+1. **Media Library:** top-left asset list, bounded WAV/MP3 import, target-track selector, locally generated tone/silence/click assets, and an explicit explanation that microphone recording is unavailable.
+2. **Inspector / FX Rack:** top-right selected track and clip controls for track gain, pan, role, EQ preset, clip gain, logarithmic fades, and sidechain ducking. Noise suppression remains visibly unavailable rather than a stub.
+3. **Transport / Master:** a compact center bar with playhead, play/pause, disabled record policy control, seek, BPM, magnetic snap, master gain, peak meter, worker export, progress, and cancel.
+4. **Timeline:** a bottom Canvas viewport with synchronized DOM track headers. Only visible time and track rows are drawn. Dialogue is emerald, music blue, SFX amber, selected trim edges amber, and the playhead rose.
+
+At 1280 px and wider, the library and inspector share a row. Below that width they stack, while transport controls wrap and the timeline remains horizontally scrollable. Canvas is not the only accessible surface: mute/solo controls are native buttons, inspector controls provide exact keyboard operation, and clips have an equivalent hidden selection list.
+
 ## States and accessibility
 
 | State | Behavior |

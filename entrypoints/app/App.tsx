@@ -14,6 +14,7 @@ import { Waveform } from '@/lib/tools/audio-cutter/Waveform';
 import { ChangeSpeedTool } from './ChangeSpeedTool';
 import { ConvertTool } from './ConvertTool';
 import { JoinMergeTool } from './JoinMergeTool';
+import { MultitrackTool } from '../../lib/tools/multitrack/MultitrackTool';
 import { TrimTimeFields, type TrimValidation } from './TrimTimeFields';
 import { VolumeFadesTool } from './VolumeFadesTool';
 
@@ -24,7 +25,7 @@ type LoadedAudio = {
   waveform: Float32Array;
 };
 
-type ToolId = 'cut' | 'join' | 'speed' | 'volume' | 'convert';
+type ToolId = 'cut' | 'join' | 'multitrack' | 'speed' | 'volume' | 'convert';
 
 type AppProps = {
   surface?: 'extension' | 'web';
@@ -50,6 +51,14 @@ const TOOLS: {
     shortLabel: 'Join / merge',
     description: 'Arrange tracks into one clean file.',
     intro: 'Build one continuous track from WAV and MP3 files, in exactly the order you choose.',
+  },
+  {
+    id: 'multitrack',
+    label: 'Multitrack Studio',
+    shortLabel: 'Multitrack studio',
+    description: 'Arrange dialogue, music, and effects.',
+    intro:
+      'Build a non-destructive mix with magnetic edits, local preview, automatic ducking, and worker-rendered WAV export.',
   },
   {
     id: 'speed',
@@ -78,6 +87,7 @@ function ToolGlyph({ id }: { id: ToolId }) {
   const paths: Record<ToolId, string> = {
     cut: 'M6 7.5 18 16.5M6 16.5 18 7.5M5.5 5.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z',
     join: 'M5 7h5a3 3 0 0 1 3 3v4a3 3 0 0 0 3 3h3M16 14l3 3-3 3M5 17h4',
+    multitrack: 'M4 6h16M4 12h16M4 18h16M8 4v4m8 2v4M10 16v4',
     speed: 'M4 15a8 8 0 1 1 16 0M12 15l4-5M7 17h10',
     volume: 'M4 12h3l2-6 4 12 2-6h5M5 21h14',
     convert: 'M5 8h13m-3-3 3 3-3 3M19 16H6m3 3-3-3 3-3',
@@ -271,7 +281,7 @@ export default function App({ surface = 'extension' }: AppProps) {
                 </div>
               )}
               <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-emerald-100/55 lg:hidden">
-                5 tools
+                {TOOLS.length} tools
               </span>
             </div>
 
@@ -333,7 +343,7 @@ export default function App({ surface = 'extension' }: AppProps) {
         </aside>
 
         <main className="min-w-0 px-4 py-8 sm:px-7 sm:py-10 xl:px-12 xl:py-12" id="editor">
-          <div className="mx-auto max-w-[74rem]">
+          <div className={`mx-auto ${tool === 'multitrack' ? 'max-w-[96rem]' : 'max-w-[74rem]'}`}>
             <header className="mb-7 flex flex-wrap items-start justify-between gap-5 sm:mb-9">
               <div>
                 <p className="mb-3 flex items-center gap-2 text-[0.68rem] font-bold uppercase tracking-[0.2em] text-emerald-300">
@@ -362,6 +372,8 @@ export default function App({ surface = 'extension' }: AppProps) {
             >
               {tool === 'join' ? (
                 <JoinMergeTool />
+              ) : tool === 'multitrack' ? (
+                <MultitrackTool />
               ) : tool === 'speed' ? (
                 <ChangeSpeedTool />
               ) : tool === 'volume' ? (
