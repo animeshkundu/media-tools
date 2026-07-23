@@ -49,6 +49,8 @@ At 1280 px and wider the editor occupies the viewport below the 64 px app header
 
 The editing toolbar sits above the content panes; the transport/master bar sits between inspector and timeline. They coordinate the three panes and are not separate content destinations. Desktop uses an internal, non-page-scrolling workspace so transport feedback and timeline remain visible together. Below 1280 px the library and inspector stack and normal page scrolling returns.
 
+At 1280 px and wider, the divider between Media and Inspector and the divider above the Timeline are adjustable. Pointer drag changes the pane split; arrow keys make precise changes, Shift uses a larger step, Home and End move to safe bounds, and Enter or double-click restores the default. Sizes last for the current React session only, consistent with the session-only project contract. The controls preserve minimum useful editing space and disappear when the panes stack below the desktop breakpoint.
+
 ## Core flows
 
 ### Empty project
@@ -98,7 +100,7 @@ Canvas is not the only accessible surface. Mute/solo and inspector controls are 
 
 ## Production evidence
 
-Large real-Firefox captures live under [`media/screenshots/`](media/screenshots/):
+The 1728 × 1117 real-Firefox captures live under [`media/screenshots/`](media/screenshots/):
 
 - `audio-studio-empty.png`
 - `audio-studio-imported.png`

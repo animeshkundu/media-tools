@@ -6,7 +6,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import { Builder, By } from 'selenium-webdriver';
+import { Builder, By, Key } from 'selenium-webdriver';
 import {
   Context,
   Options as FirefoxOptions,
@@ -286,6 +286,16 @@ async function main() {
     await setControl(driver, 'select[aria-label="Selected track EQ preset"]', 'warm');
     await setControl(driver, 'input[aria-label="Timeline zoom"]', '120');
     await setControl(driver, 'input[aria-label="Timeline playhead"]', '2.5');
+    await (
+      await driver.findElement(
+        By.css('[role="separator"][aria-label="Resize media library and inspector"]'),
+      )
+    ).sendKeys(Key.ARROW_RIGHT);
+    const timelineDivider = await driver.findElement(
+      By.css('[role="separator"][aria-label="Resize timeline and inspector"]'),
+    );
+    await timelineDivider.sendKeys(Key.ARROW_UP);
+    await driver.executeScript('arguments[0].blur();', timelineDivider);
     await waitForText(driver, 'label', 'Speed 1.50x');
     await capture(driver, staged.edited);
 

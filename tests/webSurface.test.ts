@@ -83,11 +83,15 @@ describe('shared web and extension editor surfaces', () => {
     expect(webDocument).toContain('href="/media-tools/styles.css"');
     expect(webDocument).toContain('class="skip-link"');
     expect(landingPage).toContain('href="/media-tools/app/"');
+    expect(landingPage).toContain('<strong>Resizable</strong> studio panes');
+    expect(landingPage).toContain('Inputs are capped at 64 MB before processing begins.');
     expect(landingPage).toContain('Like any hosted page, its code is delivered by the website');
     expect(landingPage).toContain("connect-src 'none'");
     expect(landingPage).toContain(
       'Private, offline audio cutting for Firefox and Chrome, entirely in your browser.',
     );
+    expect(landingPage).toContain('<meta property="og:image:width" content="1728" />');
+    expect(landingPage).toContain('<meta property="og:image:height" content="1117" />');
   });
 
   it('ships the static hosted artifact with local worker and encoder assets', () => {

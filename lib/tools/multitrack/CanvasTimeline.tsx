@@ -28,7 +28,7 @@ import {
 const ROW_HEIGHT = 88;
 const RULER_HEIGHT = 30;
 const HANDLE_PIXELS = 9;
-const MIN_VIEWPORT_HEIGHT = 280;
+const MIN_VIEWPORT_HEIGHT = RULER_HEIGHT + ROW_HEIGHT;
 
 type DragMode = 'move' | 'trim-start' | 'trim-end';
 
@@ -157,13 +157,13 @@ export function CanvasTimeline({
           const time = beat * beatSeconds;
           const x = time * pixelsPerSecond - scroll.left;
           context.strokeStyle =
-            beat % 4 === 0 ? 'rgba(110,231,183,0.23)' : 'rgba(255,255,255,0.07)';
+            beat % 4 === 0 ? 'rgba(99,183,255,0.2)' : 'rgba(255,255,255,0.07)';
           context.beginPath();
           context.moveTo(Math.round(x) + 0.5, 0);
           context.lineTo(Math.round(x) + 0.5, height);
           context.stroke();
           if (beat % 4 === 0) {
-            context.fillStyle = 'rgba(209,250,229,0.62)';
+            context.fillStyle = 'rgba(196,224,255,0.65)';
             context.fillText(`${time.toFixed(1)}s`, x + 5, RULER_HEIGHT / 2);
           }
         }
@@ -447,14 +447,14 @@ export function CanvasTimeline({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/20">
-      <div className="grid grid-cols-[10.5rem_minmax(0,1fr)]">
+    <div className="h-full min-h-0 overflow-hidden rounded-lg border border-white/10 bg-black/20">
+      <div className="grid h-full grid-cols-[10.5rem_minmax(0,1fr)]">
         <div
           aria-label="Track controls"
           className="relative z-10 overflow-hidden border-r border-white/10 bg-[#202126]"
-          style={{ height: viewportSize.height }}
+          style={{ height: '100%' }}
         >
-          <div className="h-[30px] border-b border-white/8 px-3 py-2 text-[0.6rem] font-bold uppercase tracking-[0.13em] text-emerald-100/45">
+          <div className="h-[30px] border-b border-white/8 px-3 py-2 text-[0.6rem] font-bold uppercase tracking-[0.13em] text-white/42">
             Tracks
           </div>
           <div style={{ transform: `translateY(${-scroll.top}px)` }}>
@@ -473,7 +473,7 @@ export function CanvasTimeline({
                 >
                   {track.name}
                 </button>
-                <span className="mt-0.5 block text-[0.6rem] uppercase tracking-[0.1em] text-emerald-100/45">
+                <span className="mt-0.5 block text-[0.6rem] uppercase tracking-[0.1em] text-white/40">
                   {track.role}
                 </span>
                 <div className="mt-2 flex gap-1.5">
@@ -482,7 +482,7 @@ export function CanvasTimeline({
                     className={`rounded-md border px-2 py-1 text-[0.62rem] font-bold ${
                       track.muted
                         ? 'border-red-300/40 bg-red-300/10 text-red-200'
-                        : 'border-white/12 text-emerald-100/65'
+                        : 'border-white/12 text-white/62'
                     }`}
                     disabled={disabled}
                     type="button"
@@ -495,7 +495,7 @@ export function CanvasTimeline({
                     className={`rounded-md border px-2 py-1 text-[0.62rem] font-bold ${
                       track.solo
                         ? 'border-amber-300/40 bg-amber-300/10 text-amber-200'
-                        : 'border-white/12 text-emerald-100/65'
+                        : 'border-white/12 text-white/62'
                     }`}
                     disabled={disabled}
                     type="button"
@@ -514,7 +514,7 @@ export function CanvasTimeline({
           aria-label="Multitrack timeline viewport"
           className="relative overflow-auto"
           style={{
-            height: viewportSize.height,
+            height: '100%',
             scrollbarColor: '#555963 #15161a',
             scrollbarWidth: 'thin',
           }}
