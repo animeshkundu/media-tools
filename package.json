@@ -23,8 +23,8 @@
   },
   "dependencies": {
     "lamejs": "1.2.1",
-    "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
